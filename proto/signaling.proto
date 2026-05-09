@@ -1,0 +1,43 @@
+syntax="proto3";
+package signaling;
+
+enum TargetType
+{
+
+  DirectMessage = 0;
+  GroupChatMessage = 1;
+
+}
+
+message ChatMessage
+{
+
+  string sender_id = 1;
+  string target_id = 2;
+  TargetType type = 3;
+  string content = 4;
+  int64 timestamp_ms = 5;
+
+}
+
+message MessageAcknowledged
+{
+
+  bool success = 1;
+
+}
+
+message UserIdentity
+{
+
+  string user_id = 1;
+
+}
+
+service SignalingService
+{
+
+  rpc SendMessage(ChatMessage) returns (MessageAcknowledged); // client sends msg, server acknowledges
+  rpc StreamEvents(UserIdentity) returns (stream ChatMessage); // stream messages to user instead of constant req
+
+}

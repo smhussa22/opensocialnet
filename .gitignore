@@ -1,0 +1,6 @@
+frontend/
+.idea/
+.vscode/
+.cmake/
+build/
+cmake-build-debug/
