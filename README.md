@@ -1,0 +1,1 @@
+OpenSocialNet is a high-performance real-time communication platform designed to mimick the design and architecture of social platforms like Discord.
