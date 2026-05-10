@@ -23,21 +23,21 @@ namespace OpenSocialNet::Audio
 
     }
 
-    void AudioStream::resume()
+    void AudioStream::resume() noexcept
     {
 
         SDL_ResumeAudioStreamDevice(m_stream.get());
 
     }
 
-    void AudioStream::pause()
+    void AudioStream::pause() noexcept
     {
 
         SDL_PauseAudioStreamDevice(m_stream.get());
 
     }
 
-    void AudioStream::put_audio_data(const void* data, int size)
+    void AudioStream::put_audio_data(const void* data, int size) noexcept
     {
 
         SDL_PutAudioStreamData(m_stream.get(), data, size);

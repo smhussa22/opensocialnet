@@ -19,7 +19,7 @@ namespace OpenSocialNet::Audio
     struct AudioStreamDeleter
     {
 
-        void operator()(SDL_AudioStream* stream) const
+        void operator()(SDL_AudioStream* stream) const noexcept
         {
 
             if (stream != nullptr) SDL_DestroyAudioStream(stream);

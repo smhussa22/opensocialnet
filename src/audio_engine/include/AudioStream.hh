@@ -21,9 +21,9 @@ namespace OpenSocialNet::Audio
     {
     public:
         explicit AudioStream(const SDL_AudioSpec& audio_spec);
-        void resume();
-        void pause();
-        void put_audio_data(const void* data, int size);
+        void resume() noexcept;
+        void pause() noexcept;
+        void put_audio_data(const void* data, int size) noexcept;
 
     private:
         AudioStreamPtr m_stream {};
