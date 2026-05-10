@@ -37,7 +37,7 @@ namespace OpenSocialNet::Network
     bool UdpSocket::set_non_blocking() noexcept
     {
 
-        int flags = ::fcntl(socket_fd, F_GETFL);
+        int flags = ::fcntl(socket_fd, F_GETFL, 0);
         if (flags == -1) return false;
         return ::fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) != -1;
 
