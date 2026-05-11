@@ -15,6 +15,13 @@
 namespace OpenSocialNet::Network
 {
 
+    class UdpReceiver
+    {
+
+        
+
+    };
+
 };
 
 #endif // UDP_RECEIVER_HH

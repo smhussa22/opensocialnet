@@ -27,6 +27,10 @@ namespace OpenSocialNet::Network
 
         // Generates a random SSRC for the sender's session
         UdpSender();
+        UdpSender(const UdpSender&) = delete;
+        UdpSender& operator=(const UdpSender&) = delete;
+        UdpSender(UdpSender&&) = delete;
+        UdpSender& operator=(UdpSender&&) = delete;
 
         // Opens the socket and resolves the remote address.
         // Returns true on success, false if the socket failed to open or the address is invalid.
