@@ -1,4 +1,5 @@
 // related headers
+#include "AudioStream.hh"
 
 // c sys headers
 
@@ -10,8 +11,6 @@
 #include <SDL3/SDL.h>
 
 // project headers
-#include "AudioStream.hh"
-
 
 namespace OpenSocialNet::Audio
 {

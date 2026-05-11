@@ -24,6 +24,8 @@ namespace OpenSocialNet::Network
 
     public:    
         UdpSocket() = default;
+        ~UdpSocket() { ::close(socket_fd); }
+        
         UdpSocket(const UdpSocket&) = delete;                       // avoid copying so 2 objects dont think they own the same fd
         UdpSocket& operator=(const UdpSocket&) = delete;            // same reason as above for the copyassignment
         UdpSocket(UdpSocket&& other) noexcept : socket_fd { other.socket_fd }
@@ -33,12 +35,6 @@ namespace OpenSocialNet::Network
         
         }
         UdpSocket& operator=(UdpSocket&&) = delete;                 // just never needed
-        ~UdpSocket() 
-        { 
-
-            ::close(socket_fd);
-            
-        }
 
         // Creates the UDP socket file descriptor. !!!! MUST !!!! be called before any other method
         // Returns true on success, false if the OS failed to create the socket.
