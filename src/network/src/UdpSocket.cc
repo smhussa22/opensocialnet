@@ -1,4 +1,5 @@
 // related headers
+#include "UdpSocket.hh"
 
 // c sys headers
 #include <sys/socket.h>
@@ -12,7 +13,6 @@
 // 3rd party headers
 
 // project headers
-#include "UdpSocket.hh"
 
 namespace OpenSocialNet::Network
 {
