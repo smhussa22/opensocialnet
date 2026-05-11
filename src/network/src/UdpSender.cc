@@ -23,11 +23,11 @@ namespace OpenSocialNet::Network
     {
 
         std::mt19937 generator { std::random_device{}() };
-        ssrc = std::uniform_int_distribution<u_int32_t>{}(generator);
-
+        ssrc = std::uniform_int_distribution<std::uint32_t>{}(generator);
+        
     }
 
-    bool UdpSender::init(std::string_view host = ipv4_loopback_address, uint16_t port = test_port) noexcept
+    bool UdpSender::init(std::string_view host, uint16_t port) noexcept
     {
 
         if (!socket.open()) return false;
