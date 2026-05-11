@@ -29,7 +29,7 @@ namespace OpenSocialNet::Network
 
             socket.close();
             return false;
-            
+
         }
 
         return true;
@@ -47,7 +47,7 @@ namespace OpenSocialNet::Network
     {
 
         socklen_t sender_address_size { sizeof(sender_address) };
-        ssize_t received_bytes = ::recvfrom(socket.get_socket_fd(), &packet, packet.wire_size(), 0, reinterpret_cast<sockaddr*>(&sender_address), &sender_address_size);
+        ssize_t received_bytes = ::recvfrom(socket.get_socket_fd(), &packet, sizeof(Packet), 0, reinterpret_cast<sockaddr*>(&sender_address), &sender_address_size);
         if (received_bytes < static_cast<ssize_t>(sizeof(PacketHeader))) return false;
         return received_bytes == static_cast<ssize_t>(packet.wire_size());
 
