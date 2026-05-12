@@ -21,6 +21,7 @@ add_executable(network
     src/UdpSender.cc
     src/UdpReceiver.cc
     ../audio_engine/src/AudioStream.cc
+    ../audio_engine/src/AudioCapture.cc
 )
 
 target_include_directories(network PRIVATE

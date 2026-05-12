@@ -3,6 +3,8 @@
 
 // c sys headers
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/time.h>
 #include <cstdint>
 
 // cpp stdlib headers
@@ -32,6 +34,10 @@ namespace OpenSocialNet::Network
 
         }
 
+        // Bound timeout so receive() returns periodically and the caller can poll a running flag.
+        timeval timeout { 0, 100'000 };
+        ::setsockopt(socket.get_socket_fd(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
         return true;
 
     }
@@ -45,12 +51,21 @@ namespace OpenSocialNet::Network
 
     bool UdpReceiver::receive(Packet& packet) noexcept
     {
-
         socklen_t sender_address_size { sizeof(sender_address) };
-        ssize_t received_bytes = ::recvfrom(socket.get_socket_fd(), &packet, sizeof(Packet), 0, reinterpret_cast<sockaddr*>(&sender_address), &sender_address_size);
-        if (received_bytes < static_cast<ssize_t>(sizeof(PacketHeader))) return false;
-        return received_bytes == static_cast<ssize_t>(packet.wire_size());
+        ssize_t received_bytes = ::recvfrom(
+            socket.get_socket_fd(), &packet, sizeof(Packet), 0,
+            reinterpret_cast<sockaddr*>(&sender_address), &sender_address_size
+        );
 
+        if (received_bytes < static_cast<ssize_t>(sizeof(PacketHeader))) return false;
+
+        // convert header fields from network to host byte order
+        packet.header.ssrc         = ntohl(packet.header.ssrc);
+        packet.header.timestamp    = ntohl(packet.header.timestamp);
+        packet.header.sequence     = ntohs(packet.header.sequence);
+        packet.header.payload_size = ntohs(packet.header.payload_size);
+
+        return received_bytes == static_cast<ssize_t>(packet.wire_size());
     }
 
 };

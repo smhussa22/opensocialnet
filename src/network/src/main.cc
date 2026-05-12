@@ -3,34 +3,33 @@
 #include "UdpSender.hh"
 #include "UdpReceiver.hh"
 #include "AudioStream.hh"
+#include "AudioCapture.hh"
 #include "AudioConstants.hh"
 
 #include <SDL3/SDL.h>
-#include <cmath>
 #include <cstring>
 #include <thread>
 #include <atomic>
+#include <array>
 #include <iostream>
-
-using namespace OpenSocialNet::Network;
-using namespace OpenSocialNet::Audio;
+#include <csignal>
 
 static std::atomic<bool> running {true};
 
-void receive_thread(UdpReceiver& receiver, AudioStream& audio_stream)
+static void on_signal(int)
 {
-    Packet packet {};
+    running = false;
+}
+
+void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet::Audio::AudioStream& audio_stream)
+{
+    OpenSocialNet::Network::Packet packet {};
 
     while (running)
     {
         if (!receiver.receive(packet)) continue;
-
         if (packet.header.payload_size == 0) continue;
-        if (packet.header.payload_size > maximum_packet_size) continue;
-
-        std::cout << "Received packet seq=" << packet.header.sequence
-                  << " timestamp=" << packet.header.timestamp
-                  << " size=" << packet.header.payload_size << "\n";
+        if (packet.header.payload_size > OpenSocialNet::Network::maximum_packet_size) continue;
 
         audio_stream.put_audio_data(packet.payload, packet.header.payload_size);
     }
@@ -38,73 +37,96 @@ void receive_thread(UdpReceiver& receiver, AudioStream& audio_stream)
 
 int main()
 {
+    std::signal(SIGINT, on_signal);
+    std::signal(SIGTERM, on_signal);
+
     if (!SDL_Init(SDL_INIT_AUDIO))
     {
         std::cout << "SDL init failed: " << SDL_GetError() << "\n";
         return 1;
     }
+    std::cout << "[main] SDL init ok\n";
 
-    // init audio
-    SDL_AudioSpec spec { create_opus_audio_spec() };
-    AudioStream audio_stream { spec };
+    SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
+    OpenSocialNet::Audio::AudioStream audio_stream { spec };
     audio_stream.resume();
+    std::cout << "[main] playback stream open\n";
 
-    // init receiver
-    UdpReceiver receiver {};
+    OpenSocialNet::Audio::AudioCapture capture {};
+    if (!capture.init())
+    {
+        std::cout << "[main] Failed to init capture\n";
+        return 1;
+    }
+    std::cout << "[main] capture init ok\n";
+
+    OpenSocialNet::Network::UdpReceiver receiver {};
     if (!receiver.init())
     {
-        std::cout << "Failed to init receiver\n";
+        std::cout << "[main] Failed to init receiver\n";
         return 1;
     }
+    std::cout << "[main] receiver init ok\n";
 
-    // init sender
-    UdpSender sender {};
+    OpenSocialNet::Network::UdpSender sender {};
     if (!sender.init())
     {
-        std::cout << "Failed to init sender\n";
+        std::cout << "[main] Failed to init sender\n";
         return 1;
     }
+    std::cout << "[main] sender init ok\n";
 
-    // start receive thread
     std::thread rx { receive_thread, std::ref(receiver), std::ref(audio_stream) };
 
-    // generate sine wave and send as PCM packets
-    // chunk_frames * sizeof(float) must fit within maximum_packet_size (1200)
-    const int   chunk_frames = 240;
-    const float freq         = 440.0f;
-    const float amplitude    = 0.3f;
-    const float phase_inc    = 2.0f * static_cast<float>(M_PI) * freq / opus_sample_rate;
+    std::array<float, 480> chunk {};
+    std::cout << "[main] starting capture loop...\n";
 
-    float phase = 0.0f;
-    float chunk[chunk_frames];
+    int packets_sent = 0;
 
-    std::cout << "Sending 440Hz sine wave over UDP...\n";
-
-    for (int i = 0; i < 1000; ++i)
+    while (running)
     {
-        for (int s = 0; s < chunk_frames; ++s)
+        size_t avail = capture.available();
+
+        if (avail >= 480)
         {
-            chunk[s] = amplitude * std::sin(phase);
-            phase   += phase_inc;
-            if (phase > 2.0f * static_cast<float>(M_PI)) phase -= 2.0f * static_cast<float>(M_PI);
+            size_t got = capture.read(std::span<float>{chunk});
+            if (got == 0)
+            {
+                std::cout << "[main] read returned 0 despite available=" << avail << "\n";
+                continue;
+            }
+
+            OpenSocialNet::Network::Packet packet {};
+            packet.header.payload_type = OpenSocialNet::Network::PayloadType::PCM;
+            packet.header.payload_size = static_cast<uint16_t>(got * sizeof(float));
+            std::memcpy(packet.payload, chunk.data(), packet.header.payload_size);
+
+            bool ok = sender.send(packet);
+            ++packets_sent;
+
+            if (packets_sent % 50 == 0)
+                std::cout << "[main] sent " << packets_sent << " packets, last size="
+                          << packet.header.payload_size << " send_ok=" << ok << "\n";
+        }
+        else if (packets_sent == 0)
+        {
+            // print every 500ms if we never get any samples
+            static int ticks = 0;
+            if (++ticks % 50 == 0)
+                std::cout << "[main] waiting for mic samples, available=" << avail << "\n";
         }
 
-        Packet packet {};
-        packet.header.payload_type = PayloadType::PCM;
-        packet.header.payload_size = chunk_frames * sizeof(float);
-        std::memcpy(packet.payload, chunk, packet.header.payload_size);
-
-        sender.send(packet);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    // give the receiver time to drain in-flight packets, then unblock its recvfrom
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "[main] shutting down, total packets sent=" << packets_sent << "\n";
+
     running = false;
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     receiver.shutdown();
     rx.join();
 
+    capture.shutdown();
     SDL_Quit();
     return 0;
 }

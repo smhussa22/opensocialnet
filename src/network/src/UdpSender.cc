@@ -55,18 +55,33 @@ namespace OpenSocialNet::Network
 
     bool UdpSender::send(Packet& packet) noexcept
     {
-
-        packet.header.ssrc = ssrc;
-        packet.header.sequence = sequence++;
+        packet.header.ssrc      = ssrc;
+        packet.header.sequence  = sequence++;
         packet.header.timestamp = timestamp;
-        timestamp += opus_samples_per_frame;
+        timestamp              += opus_samples_per_frame;
 
-        ssize_t sent_bytes = ::sendto(socket.get_socket_fd(), &packet, packet.wire_size(), 0, reinterpret_cast<const sockaddr*>(&receiver_address), sizeof(receiver_address));
-        return sent_bytes == static_cast<ssize_t>(packet.wire_size());
+        // convert to network byte order before sending
+        uint32_t net_ssrc         = htonl(packet.header.ssrc);
+        uint32_t net_timestamp    = htonl(packet.header.timestamp);
+        uint16_t net_sequence     = htons(packet.header.sequence);
+        uint16_t net_payload_size = htons(packet.header.payload_size);
 
+        packet.header.ssrc         = net_ssrc;
+        packet.header.timestamp    = net_timestamp;
+        packet.header.sequence     = net_sequence;
+        packet.header.payload_size = net_payload_size;
+
+        ssize_t sent = ::sendto(
+            socket.get_socket_fd(),
+            &packet,
+            ntohs(net_payload_size) + sizeof(PacketHeader),
+            0,
+            reinterpret_cast<const sockaddr*>(&receiver_address),
+            sizeof(receiver_address)
+        );
+
+        return sent > 0;
     }
-
-
 
 };
 

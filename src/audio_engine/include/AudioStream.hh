@@ -20,7 +20,7 @@ namespace OpenSocialNet::Audio
     class AudioStream
     {
     public:
-        explicit AudioStream(const SDL_AudioSpec& audio_spec);
+        explicit AudioStream(const SDL_AudioSpec& spec, SDL_AudioDeviceID device = SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, SDL_AudioStreamCallback callback = nullptr, void* userdata = nullptr);
         void resume() noexcept;
         void pause() noexcept;
         void put_audio_data(const void* data, int size) noexcept;

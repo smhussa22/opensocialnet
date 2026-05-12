@@ -16,7 +16,7 @@
 namespace OpenSocialNet::Network
 {
 
-    inline constexpr std::uint16_t maximum_packet_size { 1200 }; // via webrtc; to account for VPN, PPPoE, tunnels, etc.
+    inline constexpr std::uint16_t maximum_packet_size { 1920 }; // 480 F32 samples (raw PCM, 10 ms @ 48 kHz); revisit once Opus encoding lands.
     inline constexpr std::string ipv4_loopback_address { "127.0.0.1" };
     inline constexpr std::string ipv6_loopback_address { "::1" };
     inline constexpr std::uint16_t test_port { 9000 };
