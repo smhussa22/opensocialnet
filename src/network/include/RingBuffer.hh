@@ -1,30 +1,19 @@
 #ifndef RING_BUFFER_HH
 #define RING_BUFFER_HH
 
-// related headers
-
-// c sys headers
 #include <cstddef>
-
-// cpp stdlib headers
 #include <array>
 #include <atomic>
 #include <algorithm>
 
-// 3rd party headers
-
-// project headers
-
-namespace OpenSocialNet::Network
+namespace OpenSocialNet::Audio
 {
-
     template<typename T, size_t Capacity>
     class RingBuffer
     {
+        static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of 2");
 
-    static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of 2");
     public:
-
         RingBuffer() = default;
         ~RingBuffer() = default;
 
@@ -38,21 +27,15 @@ namespace OpenSocialNet::Network
         size_t write(const T* src, size_t count) noexcept
         {
 
-            const size_t head = head.load(std::memory_order_relaxed);
-            const size_t tail = tail.load(std::memory_order_acquire);
-            const size_t available = Capacity - (head - tail);
-            const size_t n = std::min(count, available);
+            const size_t write_pos = write_index.load(std::memory_order_relaxed);
+            const size_t read_pos = read_index.load(std::memory_order_acquire);
+            const size_t space_left = Capacity - (write_pos - read_pos);
+            const size_t n  = std::min(count, space_left);
 
-            for (size_t i = 0; i < n; ++i)
-            {
+            for (size_t i = 0; i < n; ++i) samples[(write_pos + i) & (Capacity - 1)] = src[i];
 
-                buffer[(head + i) + (Capacity - 1)] = src[i];
-
-            }
-
-            head.store(head + n, std::memory_order_release);
+            write_index.store(write_pos + n, std::memory_order_release);
             return n;
-
         }
 
         // Reads up to count elements into dst from the buffer.
@@ -60,19 +43,14 @@ namespace OpenSocialNet::Network
         size_t read(T* dst, size_t count) noexcept
         {
 
-            const size_t tail = tail.load(std::memory_order_relaxed);
-            const size_t head = head.load(std::memory_order_acquire);
-            const size_t available = head - tail;
-            const size_t n = std::min(count, available);
+            const size_t read_pos = read_index.load(std::memory_order_relaxed);
+            const size_t write_pos = write_index.load(std::memory_order_acquire);
+            const size_t samples_ready = write_pos - read_pos;
+            const size_t n = std::min(count, samples_ready);
 
-            for (size_t i = 0; i < n; ++i)
-            {
-            
-                dst[i] = buffer[(tail + i) & (Capacity - 1)];
-            
-            }
+            for (size_t i = 0; i < n; ++i) dst[i] = samples[(read_pos + i) & (Capacity - 1)];
 
-            tail.store(tail + n, std::memory_order_release);
+            read_index.store(read_pos + n, std::memory_order_release);
             return n;
 
         }
@@ -81,8 +59,8 @@ namespace OpenSocialNet::Network
         size_t available() const noexcept
         {
 
-            return head.load(std::memory_order_acquire) - tail_.load(std::memory_order_acquire);
-            
+            return write_index.load(std::memory_order_acquire) - read_index.load(std::memory_order_acquire);
+
         }
 
         // Returns true if the buffer is empty.
@@ -92,15 +70,14 @@ namespace OpenSocialNet::Network
         bool full() const noexcept { return available() == Capacity; }
 
     private:
-        std::array<T, Capacity> buffer {};
-        std::atomic<size_t> head { 0 };
-        std::atomic<size_t> tail { 0 };
+        std::array<T, Capacity> samples {};
+        std::atomic<size_t>     write_index { 0 };
+        std::atomic<size_t>     read_index  { 0 };
 
     };
 
-    // 2 seconds of mono 48kHz audio — power of 2 above 96000
     using AudioRingBuffer = RingBuffer<float, 131072>;
 
-};
+}
 
 #endif // RING_BUFFER_HH
