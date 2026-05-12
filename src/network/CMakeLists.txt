@@ -8,4 +8,5 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(network src/main.cc)
 
-target_include_directories(network PRIVATE include)
+# temporary; remove this include after testing
+target_include_directories(network PRIVATE include../audio_engine/include)
