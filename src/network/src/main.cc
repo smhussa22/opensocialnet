@@ -1,3 +1,18 @@
+// related headers
+
+// c sys headers
+#include <csignal>
+#include <cstring>
+// cpp stdlib headers
+#include <thread>
+#include <atomic>
+#include <array>
+#include <iostream>
+
+// 3rd party headers
+#include <SDL3/SDL.h>
+
+// project headers
 #include "NetworkConstants.hh"
 #include "Packet.hh"
 #include "UdpSender.hh"
@@ -6,13 +21,6 @@
 #include "AudioCapture.hh"
 #include "AudioConstants.hh"
 
-#include <SDL3/SDL.h>
-#include <cstring>
-#include <thread>
-#include <atomic>
-#include <array>
-#include <iostream>
-#include <csignal>
 
 static std::atomic<bool> running {true};
 
@@ -27,6 +35,7 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet
 
     while (running)
     {
+
         if (!receiver.receive(packet)) continue;
         if (packet.header.payload_size == 0) continue;
         if (packet.header.payload_size > OpenSocialNet::Network::maximum_packet_size) continue;
@@ -129,4 +138,5 @@ int main()
     capture.shutdown();
     SDL_Quit();
     return 0;
+
 }
