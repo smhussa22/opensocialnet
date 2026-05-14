@@ -17,12 +17,26 @@
 namespace OpenSocialNet::Network
 {
 
-    class JitterBuffer 
+    class PacketJitterBuffer 
     {
-
+     
     public:
+
+        PacketJitterBuffer() = default;
+        ~PacketJitterBuffer() = default;
+
+        PacketJitterBuffer(const PacketJitterBuffer&) = delete;
+        PacketJitterBuffer& operator=(const PacketJitterBuffer&) = delete;
+        PacketJitterBuffer(PacketJitterBuffer&&) = delete;
+        PacketJitterBuffer& operator=(PacketJitterBuffer&&) = delete;
+        
+        // inserts packet keyed by sequence number, discards if too late
         bool push(Packet& packet) noexcept;
+
+        // returns the next packet in order if ready, returns false if not enough buffered yet
         bool pop(Packet& out) noexcept;
+
+        // returns how many packets are currently held
         size_t get_size() const noexcept;
 
         void set_playout_threshold(size_t threshold) noexcept { playout_threshold = threshold; }

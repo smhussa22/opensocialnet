@@ -1,5 +1,4 @@
 // related headers
-#include "AudioStream.hh"
 
 // c sys headers
 
@@ -11,14 +10,13 @@
 #include <SDL3/SDL.h>
 
 // project headers
+#include "AudioStream.hh"
+
 
 namespace OpenSocialNet::Audio
 {
 
-    AudioStream::AudioStream(const SDL_AudioSpec& spec,
-                             SDL_AudioDeviceID device,
-                             SDL_AudioStreamCallback callback,
-                             void* userdata) : m_stream { SDL_OpenAudioDeviceStream(device, &spec, callback, userdata) }
+    AudioStream::AudioStream(const SDL_AudioSpec& audio_spec) : m_stream { SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nullptr, nullptr) }
     {
 
         if (!m_stream) throw std::runtime_error { SDL_GetError() };
