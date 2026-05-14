@@ -6,6 +6,7 @@
 
 // cpp stdlib headers
 #include <map>
+#include <mutex>
 
 // 3rd party headers
 
@@ -18,6 +19,7 @@ namespace OpenSocialNet::Network
     bool PacketJitterBuffer::push(Packet& packet) noexcept
     {
 
+        std::scoped_lock<std::mutex> lock { mutex };
         if (playing && packet.header.sequence < next_sequence) return false;
         if (buffer.size() >= 50) return false;
 
@@ -28,6 +30,8 @@ namespace OpenSocialNet::Network
 
     bool PacketJitterBuffer::pop(Packet& out) noexcept
     {
+
+        std::scoped_lock<std::mutex> lock { mutex };
 
         if (!playing)
         {
@@ -44,7 +48,7 @@ namespace OpenSocialNet::Network
 
             ++next_sequence;
             return false;
-            
+
         }
 
         out = std::move(it->second);
@@ -57,6 +61,7 @@ namespace OpenSocialNet::Network
     size_t PacketJitterBuffer::size() const noexcept
     {
 
+        std::scoped_lock<std::mutex> lock { mutex };
         return buffer.size();
 
     }

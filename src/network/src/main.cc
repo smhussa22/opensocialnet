@@ -3,6 +3,7 @@
 // c sys headers
 #include <csignal>
 #include <cstring>
+
 // cpp stdlib headers
 #include <thread>
 #include <atomic>
@@ -20,7 +21,7 @@
 #include "AudioStream.hh"
 #include "AudioCapture.hh"
 #include "AudioConstants.hh"
-
+#include "PacketJitterBuffer.hh"
 
 static std::atomic<bool> running {true};
 
@@ -29,8 +30,9 @@ static void on_signal(int)
     running = false;
 }
 
-void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet::Audio::AudioStream& audio_stream)
+void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet::Network::PacketJitterBuffer& jitter_buffer)
 {
+
     OpenSocialNet::Network::Packet packet {};
 
     while (running)
@@ -40,8 +42,10 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet
         if (packet.header.payload_size == 0) continue;
         if (packet.header.payload_size > OpenSocialNet::Network::maximum_packet_size) continue;
 
-        audio_stream.put_audio_data(packet.payload, packet.header.payload_size);
+        jitter_buffer.push(packet);
+
     }
+
 }
 
 int main()
@@ -85,7 +89,10 @@ int main()
     }
     std::cout << "[main] sender init ok\n";
 
-    std::thread rx { receive_thread, std::ref(receiver), std::ref(audio_stream) };
+    OpenSocialNet::Network::PacketJitterBuffer jitter_buffer {};
+    OpenSocialNet::Network::Packet out_packet {};
+
+    std::thread rx { receive_thread, std::ref(receiver), std::ref(jitter_buffer) };
 
     std::array<float, 480> chunk {};
     std::cout << "[main] starting capture loop...\n";
@@ -94,6 +101,7 @@ int main()
 
     while (running)
     {
+
         size_t avail = capture.available();
 
         if (avail >= 480)
@@ -124,7 +132,13 @@ int main()
             if (++ticks % 50 == 0)
                 std::cout << "[main] waiting for mic samples, available=" << avail << "\n";
         }
+        
+        if (jitter_buffer.pop(out_packet))
+        {
 
+            audio_stream.put_audio_data(out_packet.payload, out_packet.header.payload_size);
+
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 

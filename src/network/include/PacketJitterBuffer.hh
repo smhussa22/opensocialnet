@@ -8,6 +8,7 @@
 
 // cpp stdlib headers
 #include <map>
+#include <mutex>
 
 // 3rd party headers
 
@@ -29,7 +30,7 @@ namespace OpenSocialNet::Network
         PacketJitterBuffer& operator=(const PacketJitterBuffer&) = delete;
         PacketJitterBuffer(PacketJitterBuffer&&) = delete;
         PacketJitterBuffer& operator=(PacketJitterBuffer&&) = delete;
-        
+
         // inserts packet keyed by sequence number, discards if too late
         bool push(Packet& packet) noexcept;
 
@@ -48,6 +49,7 @@ namespace OpenSocialNet::Network
         std::uint16_t next_sequence {};                // sequence number expected to play next
         size_t playout_threshold { 5 };                // minimum packets buffered before playback starts
         bool playing { false };                        // true once there is enough packets to start
+        mutable std::mutex mutex {};                   // to lock all operations and avoid race conditions
 
     };
 
