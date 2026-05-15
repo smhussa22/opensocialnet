@@ -42,6 +42,8 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet
         if (packet.header.payload_size == 0) continue;
         if (packet.header.payload_size > OpenSocialNet::Network::maximum_packet_size) continue;
 
+        std::cout << "payload_size=" << packet.header.payload_size << " expected=1920\n";
+        
         jitter_buffer.push(packet);
 
     }

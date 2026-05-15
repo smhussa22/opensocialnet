@@ -58,12 +58,4 @@ namespace OpenSocialNet::Network
 
     }
 
-    size_t PacketJitterBuffer::size() const noexcept
-    {
-
-        std::scoped_lock<std::mutex> lock { mutex };
-        return buffer.size();
-
-    }
-
 }

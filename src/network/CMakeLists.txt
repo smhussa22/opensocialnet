@@ -20,6 +20,7 @@ add_executable(network
     src/UdpSocket.cc
     src/UdpSender.cc
     src/UdpReceiver.cc
+    src/PacketJitterBuffer.cc
     ../audio_engine/src/AudioStream.cc
     ../audio_engine/src/AudioCapture.cc
 )

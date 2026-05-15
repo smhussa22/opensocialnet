@@ -16,7 +16,7 @@
 namespace OpenSocialNet::Audio
 {
 
-    AudioStream::AudioStream(const SDL_AudioSpec& audio_spec) : m_stream { SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audio_spec, nullptr, nullptr) }
+    AudioStream::AudioStream(const SDL_AudioSpec& spec, SDL_AudioDeviceID device, SDL_AudioStreamCallback callback, void* userdata) : m_stream { SDL_OpenAudioDeviceStream(device, &spec, callback, userdata) }
     {
 
         if (!m_stream) throw std::runtime_error { SDL_GetError() };
