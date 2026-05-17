@@ -44,7 +44,7 @@ namespace OpenSocialNet::Network
 
         // Stamps ssrc, increments sequence, sets timestamp, then sends the packet.
         // Returns true if all bytes were sent, false on failure.
-        bool send(Packet& packet) noexcept;
+        bool send(Packet packet) noexcept;
 
         bool is_open() const noexcept { return socket.is_open(); }
 

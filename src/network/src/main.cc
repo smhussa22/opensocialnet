@@ -50,6 +50,21 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet
 
 }
 
+static void on_playback(void* userdata, SDL_AudioStream* stream, int additional, int total)
+{
+
+    auto* jitter = static_cast<OpenSocialNet::Network::PacketJitterBuffer*>(userdata);
+    OpenSocialNet::Network::Packet packet {};
+    int fed = 0;
+    while (fed < additional)
+    {
+        if (!jitter->pop(packet)) break;
+        SDL_PutAudioStreamData(stream, packet.payload, packet.header.payload_size);
+        fed += packet.header.payload_size;
+    }
+
+}
+
 int main()
 {
     std::signal(SIGINT, on_signal);
@@ -62,8 +77,9 @@ int main()
     }
     std::cout << "[main] SDL init ok\n";
 
+    OpenSocialNet::Network::PacketJitterBuffer jitter_buffer {};
     SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
-    OpenSocialNet::Audio::AudioStream audio_stream { spec };
+    OpenSocialNet::Audio::AudioStream audio_stream { spec, SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, on_playback, &jitter_buffer };
     audio_stream.resume();
     std::cout << "[main] playback stream open\n";
 
@@ -90,9 +106,6 @@ int main()
         return 1;
     }
     std::cout << "[main] sender init ok\n";
-
-    OpenSocialNet::Network::PacketJitterBuffer jitter_buffer {};
-    OpenSocialNet::Network::Packet out_packet {};
 
     std::thread rx { receive_thread, std::ref(receiver), std::ref(jitter_buffer) };
 
@@ -134,14 +147,9 @@ int main()
             if (++ticks % 50 == 0)
                 std::cout << "[main] waiting for mic samples, available=" << avail << "\n";
         }
-        
-        if (jitter_buffer.pop(out_packet))
-        {
 
-            audio_stream.put_audio_data(out_packet.payload, out_packet.header.payload_size);
-
-        }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
     }
 
     std::cout << "[main] shutting down, total packets sent=" << packets_sent << "\n";

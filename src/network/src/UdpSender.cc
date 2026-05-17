@@ -53,7 +53,7 @@ namespace OpenSocialNet::Network
 
     }
 
-    bool UdpSender::send(Packet& packet) noexcept
+    bool UdpSender::send(Packet packet) noexcept
     {
         packet.header.ssrc      = ssrc;
         packet.header.sequence  = sequence++;

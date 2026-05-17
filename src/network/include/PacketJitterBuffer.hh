@@ -47,7 +47,7 @@ namespace OpenSocialNet::Network
     private:
         std::map<std::uint16_t, Packet> buffer {};     // packets keyed by sequence number, autoordered
         std::uint16_t next_sequence {};                // sequence number expected to play next
-        size_t playout_threshold { 5 };                // minimum packets buffered before playback starts
+        size_t playout_threshold { 2 };                // minimum packets buffered before playback starts
         bool playing { false };                        // true once there is enough packets to start
         mutable std::mutex mutex {};                   // to lock all operations and avoid race conditions
 
