@@ -77,6 +77,8 @@ int main()
     }
     std::cout << "[main] SDL init ok\n";
 
+    {
+
     OpenSocialNet::Network::PacketJitterBuffer jitter_buffer {};
     SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
     OpenSocialNet::Audio::AudioStream audio_stream { spec, SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, on_playback, &jitter_buffer };
@@ -160,6 +162,9 @@ int main()
     rx.join();
 
     capture.shutdown();
+
+    } // audio_stream + jitter_buffer + sender + receiver destroyed here, before SDL_Quit
+
     SDL_Quit();
     return 0;
 
