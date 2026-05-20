@@ -45,10 +45,13 @@ namespace OpenSocialNet::Network
         auto it = buffer.find(next_sequence);
         if (it == buffer.end())
         {
-
-            ++next_sequence;
+            // only skip if we have newer packets waiting — don't skip just because it's missing yet
+            if (!buffer.empty() and buffer.begin()->first > next_sequence + 5)
+            {
+                // gap is large enough that packet is truly lost, not just late
+                next_sequence = buffer.begin()->first;
+            }
             return false;
-
         }
 
         out = std::move(it->second);
