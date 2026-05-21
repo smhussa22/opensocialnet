@@ -20,7 +20,7 @@ namespace OpenSocialNet::Network
     {
 
         std::scoped_lock<std::mutex> lock { mutex };
-        if (playing && packet.header.sequence < next_sequence) return false;
+        if (playing && packet_sequence_less_than(packet.header.sequence, next_sequence)) return false;
         if (buffer.size() >= 50) return false;
 
         buffer.emplace(packet.header.sequence, packet);
@@ -46,7 +46,7 @@ namespace OpenSocialNet::Network
         if (it == buffer.end())
         {
             // only skip if we have newer packets waiting — don't skip just because it's missing yet
-            if (!buffer.empty() and buffer.begin()->first > next_sequence + 5)
+            if (!buffer.empty() and packet_sequence_less_than(next_sequence + 5, buffer.begin()->first))
             {
                 // gap is large enough that packet is truly lost, not just late
                 next_sequence = buffer.begin()->first;
@@ -58,6 +58,13 @@ namespace OpenSocialNet::Network
         buffer.erase(it);
         ++next_sequence;
         return true;
+
+    }
+
+    bool PacketJitterBuffer::packet_sequence_less_than (std::uint16_t packet_a_sequence_number, std::uint16_t packet_b_sequence_number) const noexcept
+    {
+
+        return static_cast<int16_t>(packet_a_sequence_number - packet_b_sequence_number) < 0;
 
     }
 

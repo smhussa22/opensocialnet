@@ -40,6 +40,9 @@ namespace OpenSocialNet::Network
         // returns how many packets are currently held
         size_t get_size() const noexcept;
 
+        // returns true if a is "before" b, accounting for uint16_t wraparound
+        bool packet_sequence_less_than (std::uint16_t packet_a_sequence_number, std::uint16_t packet_b_sequence_number) const noexcept;
+    
         void set_playout_threshold(size_t threshold) noexcept { playout_threshold = threshold; }
         size_t size() const noexcept { return buffer.size(); }
         bool is_playing() const noexcept { return playing; }
