@@ -18,6 +18,7 @@ namespace OpenSocialNet::Audio
 
     inline constexpr std::int32_t opus_sample_rate { 48000 };
     inline constexpr std::int32_t opus_channels    { 1 };
+    inline constexpr std::int16_t samples_per_frame         { 480 };
 
     inline SDL_AudioSpec create_opus_audio_spec()
     {

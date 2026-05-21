@@ -15,6 +15,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL3)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(OPUS REQUIRED IMPORTED_TARGET opus)
+
 add_executable(network
     src/main.cc
     src/UdpSocket.cc
@@ -23,6 +26,8 @@ add_executable(network
     src/PacketJitterBuffer.cc
     ../audio_engine/src/AudioStream.cc
     ../audio_engine/src/AudioCapture.cc
+    ../audio_engine/src/AudioEncoder.cc
+    ../audio_engine/src/AudioDecoder.cc
 )
 
 target_include_directories(network PRIVATE
@@ -30,4 +35,4 @@ target_include_directories(network PRIVATE
     ../audio_engine/include
 )
 
-target_link_libraries(network PRIVATE SDL3::SDL3)
+target_link_libraries(network PRIVATE SDL3::SDL3 PkgConfig::OPUS)

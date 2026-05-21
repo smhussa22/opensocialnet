@@ -26,7 +26,7 @@ namespace OpenSocialNet::Audio
         void put_audio_data(const void* data, int size) noexcept;
 
     private:
-        AudioStreamPtr m_stream {};
+        AudioStreamPtr stream {};
 
     };
     

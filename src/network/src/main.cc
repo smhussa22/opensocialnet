@@ -21,6 +21,8 @@
 #include "AudioStream.hh"
 #include "AudioCapture.hh"
 #include "AudioConstants.hh"
+#include "AudioEncoder.hh"
+#include "AudioDecoder.hh"
 #include "PacketJitterBuffer.hh"
 
 static std::atomic<bool> running {true};
@@ -48,17 +50,35 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, OpenSocialNet
 
 }
 
+struct PlaybackContext
+{
+
+    OpenSocialNet::Network::PacketJitterBuffer* jitter_buffer {};
+    OpenSocialNet::Audio::AudioDecoder*         decoder {};
+
+};
+
 static void on_playback(void* userdata, SDL_AudioStream* stream, int additional, int total)
 {
 
-    auto* jitter = static_cast<OpenSocialNet::Network::PacketJitterBuffer*>(userdata);
+    auto* context = static_cast<PlaybackContext*>(userdata);
     OpenSocialNet::Network::Packet packet {};
+    std::array<float, OpenSocialNet::Audio::samples_per_frame> decoded_pcm {};
+    constexpr int decoded_byte_count { static_cast<int>(decoded_pcm.size() * sizeof(float)) };
+
     int fed = 0;
     while (fed < additional)
     {
-        if (!jitter->pop(packet)) break;
-        SDL_PutAudioStreamData(stream, packet.payload, packet.header.payload_size);
-        fed += packet.header.payload_size;
+        if (!context->jitter_buffer->pop(packet)) break;
+
+        const int decoded_samples { context->decoder->decode_bytes(
+            std::span<const std::byte> { reinterpret_cast<const std::byte*>(packet.payload), packet.header.payload_size },
+            std::span<float>           { decoded_pcm }
+        ) };
+        if (decoded_samples < 0) continue; // skip corrupted frames; keep the stream alive
+
+        SDL_PutAudioStreamData(stream, decoded_pcm.data(), decoded_byte_count);
+        fed += decoded_byte_count;
     }
 
 }
@@ -78,8 +98,26 @@ int main()
     {
 
         OpenSocialNet::Network::PacketJitterBuffer jitter_buffer {};
+
+        OpenSocialNet::Audio::AudioDecoder decoder {};
+        if (!decoder.valid())
+        {
+            std::cout << "[main] Failed to init Opus decoder\n";
+            return 1;
+        }
+        std::cout << "[main] decoder init ok\n";
+
+        OpenSocialNet::Audio::AudioEncoder encoder {};
+        if (!encoder.valid())
+        {
+            std::cout << "[main] Failed to init Opus encoder\n";
+            return 1;
+        }
+        std::cout << "[main] encoder init ok\n";
+
+        PlaybackContext playback_context { &jitter_buffer, &decoder };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
-        OpenSocialNet::Audio::AudioStream audio_stream { spec, SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, on_playback, &jitter_buffer };
+        OpenSocialNet::Audio::AudioStream audio_stream { spec, SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, on_playback, &playback_context };
         audio_stream.resume();
         std::cout << "[main] playback stream open\n";
 
@@ -117,15 +155,21 @@ int main()
         while (running)
         {
 
-            while (capture.available() >= 480)
+            while (capture.available() >= OpenSocialNet::Audio::samples_per_frame)
             {
 
                 size_t got = capture.read(std::span<float>{chunk});
-                if (got == 0) break;
+                if (got != OpenSocialNet::Audio::samples_per_frame) break;
+
                 OpenSocialNet::Network::Packet packet {};
-                packet.header.payload_type = OpenSocialNet::Network::PayloadType::PCM;
-                packet.header.payload_size = static_cast<uint16_t>(got * sizeof(float));
-                std::memcpy(packet.payload, chunk.data(), packet.header.payload_size);
+                const int encoded_bytes { encoder.encode_samples(
+                    std::span<const float>     { chunk.data(), got },
+                    std::span<std::byte>       { reinterpret_cast<std::byte*>(packet.payload), OpenSocialNet::Network::maximum_packet_size }
+                ) };
+                if (encoded_bytes <= 0) continue;
+
+                packet.header.payload_type = OpenSocialNet::Network::PayloadType::Opus;
+                packet.header.payload_size = static_cast<uint16_t>(encoded_bytes);
 
                 sender.send(packet);
                 ++packets_sent;
