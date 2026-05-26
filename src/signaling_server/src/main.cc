@@ -15,7 +15,7 @@
 #include <vector>
 
 // 3rd party headers
-#include <App.h>
+#include <uwebsockets/App.h>
 #include <cassandra.h>
 #include <librdkafka/rdkafkacpp.h>
 

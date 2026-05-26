@@ -12,7 +12,16 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 find_package(Protobuf CONFIG REQUIRED)
 find_package(RdKafka CONFIG REQUIRED)
 find_package(unofficial-uwebsockets CONFIG REQUIRED)
-find_package(cassandra-cpp-driver CONFIG REQUIRED)
+
+# cassandra-cpp-driver: built from source into $HOME/local (vcpkg dropped this port).
+# Find the header + .so by hint rather than CMake config since the driver doesn't
+# install one. Embed an RPATH so the binary can locate libcassandra.so at runtime.
+find_path(CASSANDRA_INCLUDE_DIR cassandra.h
+        HINTS $ENV{HOME}/local/include
+        REQUIRED)
+find_library(CASSANDRA_LIB cassandra
+        HINTS $ENV{HOME}/local/lib
+        REQUIRED)
 
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
 set(PROTO_FILE ${PROTO_DIR}/signaling.proto)
@@ -57,11 +66,17 @@ target_include_directories(signaling_server PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/proto
         ${Protobuf_INCLUDE_DIRS}
+        ${CASSANDRA_INCLUDE_DIR}
 )
 
 target_link_libraries(signaling_server PRIVATE
         protobuf::libprotobuf
         RdKafka::rdkafka++
         unofficial::uwebsockets::uwebsockets
-        cassandra-cpp-driver
+        ${CASSANDRA_LIB}
+)
+
+set_target_properties(signaling_server PROPERTIES
+        BUILD_RPATH   "$ENV{HOME}/local/lib"
+        INSTALL_RPATH "$ENV{HOME}/local/lib"
 )
