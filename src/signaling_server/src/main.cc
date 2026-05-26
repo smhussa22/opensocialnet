@@ -6,6 +6,7 @@
 // cpp stdlib headers
 #include <atomic>
 #include <chrono>
+#include <climits>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -26,15 +27,6 @@
 
 namespace
 {
-
-using OpenSocialNet::Signaling::CassClusterPtr;
-using OpenSocialNet::Signaling::CassSessionPtr;
-using OpenSocialNet::Signaling::CassUuidGenPtr;
-using OpenSocialNet::Signaling::CassPreparedPtr;
-using OpenSocialNet::Signaling::CassStatementPtr;
-using OpenSocialNet::Signaling::CassFuturePtr;
-using OpenSocialNet::Signaling::CassResultPtr;
-using OpenSocialNet::Signaling::CassIteratorPtr;
 
 // ============================================================
 // Per-connection state. uWebSockets allocates one of these
@@ -70,12 +62,12 @@ struct Gateway
   // destroyed in reverse, so prepareds release before the session and
   // the session releases before the cluster (which is what the
   // DataStax driver requires).
-  CassClusterPtr cass_cluster { };
-  CassSessionPtr cass_session { };
-  CassUuidGenPtr uuid_gen { };
-  CassPreparedPtr prep_insert_message { };
-  CassPreparedPtr prep_fetch_history { };
-  CassPreparedPtr prep_user_channels { };
+  OpenSocialNet::Signaling::CassClusterPtr cass_cluster { };
+  OpenSocialNet::Signaling::CassSessionPtr cass_session { };
+  OpenSocialNet::Signaling::CassUuidGenPtr uuid_gen { };
+  OpenSocialNet::Signaling::CassPreparedPtr prep_insert_message { };
+  OpenSocialNet::Signaling::CassPreparedPtr prep_fetch_history { };
+  OpenSocialNet::Signaling::CassPreparedPtr prep_user_channels { };
 
   // Kafka
   std::unique_ptr<RdKafka::Producer> producer { };
@@ -152,17 +144,17 @@ void scylla_init()
   gateway.cass_session.reset(cass_session_new());
   gateway.uuid_gen.reset(cass_uuid_gen_new());
 
-  CassFuturePtr fut { cass_session_connect_keyspace(gateway.cass_session.get(), gateway.cass_cluster.get(), "opensocialnet") };
+  OpenSocialNet::Signaling::CassFuturePtr fut { cass_session_connect_keyspace(gateway.cass_session.get(), gateway.cass_cluster.get(), "opensocialnet") };
   if (cass_future_error_code(fut.get()) != CASS_OK) scylla_die("scylla connect", fut.get());
 
   // Prepared statements: parsed once on Scylla, cached, reused per call.
   // Server keeps a md5 -> AST map; we just send the hash + bound params.
-  auto prepare = [](const char* cql) -> CassPreparedPtr
+  auto prepare = [](const char* cql) -> OpenSocialNet::Signaling::CassPreparedPtr
   {
 
-    CassFuturePtr f { cass_session_prepare(gateway.cass_session.get(), cql) };
+    OpenSocialNet::Signaling::CassFuturePtr f { cass_session_prepare(gateway.cass_session.get(), cql) };
     if (cass_future_error_code(f.get()) != CASS_OK) scylla_die("scylla prepare", f.get());
-    return CassPreparedPtr { cass_future_get_prepared(f.get()) };
+    return OpenSocialNet::Signaling::CassPreparedPtr { cass_future_get_prepared(f.get()) };
 
   };
 
@@ -180,7 +172,7 @@ std::string scylla_insert_message(const std::string& channel_id, const std::stri
   CassUuid uuid { };
   cass_uuid_gen_time(gateway.uuid_gen.get(), &uuid);
 
-  CassStatementPtr stmt { cass_prepared_bind(gateway.prep_insert_message.get()) };
+  OpenSocialNet::Signaling::CassStatementPtr stmt { cass_prepared_bind(gateway.prep_insert_message.get()) };
   cass_statement_bind_string(stmt.get(), 0, channel_id.c_str());
   cass_statement_bind_uuid(stmt.get(), 1, uuid);
   cass_statement_bind_string(stmt.get(), 2, sender_id.c_str());
@@ -189,7 +181,7 @@ std::string scylla_insert_message(const std::string& channel_id, const std::stri
   // TODO: this blocks the WS event loop. For real load, switch to
   // cass_future_set_callback() and resume the handler from the
   // driver's IO thread via uWS::Loop::defer().
-  CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
+  OpenSocialNet::Signaling::CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
   cass_future_wait(fut.get());
 
   char uuid_str[CASS_UUID_STRING_LENGTH] { };
@@ -203,16 +195,16 @@ std::vector<std::string> scylla_user_channels(const std::string& user_id)
 
   std::vector<std::string> out { };
 
-  CassStatementPtr stmt { cass_prepared_bind(gateway.prep_user_channels.get()) };
+  OpenSocialNet::Signaling::CassStatementPtr stmt { cass_prepared_bind(gateway.prep_user_channels.get()) };
   cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
-  CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
+  OpenSocialNet::Signaling::CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
   cass_future_wait(fut.get());
 
   if (cass_future_error_code(fut.get()) == CASS_OK)
   {
 
-    CassResultPtr result { cass_future_get_result(fut.get()) };
-    CassIteratorPtr it { cass_iterator_from_result(result.get()) };
+    OpenSocialNet::Signaling::CassResultPtr result { cass_future_get_result(fut.get()) };
+    OpenSocialNet::Signaling::CassIteratorPtr it { cass_iterator_from_result(result.get()) };
     while (cass_iterator_next(it.get()))
     {
 
@@ -303,9 +295,7 @@ void kafka_consumer_thread()
     const auto& evt = envelope.chat_message_event();
     // uWS::App::publish is safe to call from any thread; it defers
     // the actual sends onto the WS loop.
-    gateway.app->publish(evt.channel_id(),
-                         std::string_view { static_cast<const char*>(msg->payload()), msg->len() },
-                         uWS::OpCode::BINARY);
+    gateway.app->publish(evt.channel_id(), std::string_view { static_cast<const char*>(msg->payload()), msg->len() }, uWS::OpCode::BINARY);
 
   }
 
@@ -329,6 +319,7 @@ void on_hello(WebSocket* ws, const signaling::Hello& hello)
   sess->user_id = hello.user_id();
   sess->session_id = make_session_id();
   sess->authenticated = true;
+  std::cerr << "[hello] user=" << sess->user_id << " session=" << sess->session_id << '\n';
 
   signaling::Envelope envelope { };
   auto* ready = envelope.mutable_ready();
@@ -354,6 +345,7 @@ void on_send_message(WebSocket* ws, const signaling::SendMessage& req)
 
   auto* sess = ws->getUserData();
   if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+  std::cerr << "[send] user=" << sess->user_id << " channel=" << req.channel_id() << " content=" << req.content() << '\n';
 
   // 1. Persist (source of truth, gives us canonical message_id).
   const std::string message_id { scylla_insert_message(req.channel_id(), sess->user_id, req.content()) };
@@ -366,20 +358,14 @@ void on_send_message(WebSocket* ws, const signaling::SendMessage& req)
   evt->set_channel_id(req.channel_id());
   evt->set_sender_id(sess->user_id);
   evt->set_content(req.content());
-  evt->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
-                          std::chrono::system_clock::now().time_since_epoch()).count());
+  evt->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 
   std::string serialized { };
   out.SerializeToString(&serialized);
 
   // 3. Produce to Kafka. EVERY gateway's consumer (including this one)
   // will pick it up and call app->publish() locally.
-  gateway.producer->produce(gateway.topic_name,
-                            RdKafka::Topic::PARTITION_UA,
-                            RdKafka::Producer::MSG_COPY,
-                            serialized.data(), serialized.size(),
-                            req.channel_id().data(), req.channel_id().size(),
-                            0, nullptr);
+  gateway.producer->produce(gateway.topic_name, RdKafka::Topic::PARTITION_UA, RdKafka::Producer::MSG_COPY, serialized.data(), serialized.size(), req.channel_id().data(), req.channel_id().size(), 0, nullptr);
   gateway.producer->poll(0);
 
 }
@@ -390,11 +376,72 @@ void on_fetch_history(WebSocket* ws, const signaling::FetchHistory& req)
   auto* sess = ws->getUserData();
   if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
 
-  // TODO: bind req.channel_id() + req.before_message_id() (as TimeUUID;
-  // use maxTimeuuid(now) if empty) + req.limit(), run prep_fetch_history,
-  // iterate rows, populate HistoryResponse.msgs[].
+  // Cursor: empty => the literal maximum v1 TimeUUID. We can't use
+  // cass_uuid_max_from_time(LLONG_MAX, ...) here because the driver
+  // internally multiplies (ms * 10000) to convert to 100ns intervals,
+  // and LLONG_MAX * 10000 overflows uint64 -- wrapping to a value
+  // smaller than real TimeUUIDs and excluding all rows.
+  CassUuid cursor { };
+  if (!req.before_message_id().empty()) cass_uuid_from_string(req.before_message_id().c_str(), &cursor);
+  else cass_uuid_from_string("ffffffff-ffff-1fff-bfff-ffffffffffff", &cursor);
+
+  const int32_t limit { (req.limit() == 0 || req.limit() > 100) ? 100 : static_cast<int32_t>(req.limit()) };
+
+  OpenSocialNet::Signaling::CassStatementPtr stmt { cass_prepared_bind(gateway.prep_fetch_history.get()) };
+  cass_statement_bind_string(stmt.get(), 0, req.channel_id().c_str());
+  cass_statement_bind_uuid(stmt.get(), 1, cursor);
+  cass_statement_bind_int32(stmt.get(), 2, limit);
+
+  OpenSocialNet::Signaling::CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
+  cass_future_wait(fut.get());
+
+  if (cass_future_error_code(fut.get()) != CASS_OK)
+  {
+
+    const char* err_msg { nullptr };
+    size_t err_len { 0 };
+    cass_future_error_message(fut.get(), &err_msg, &err_len);
+    std::cerr << "[history] query failed: " << std::string_view { err_msg, err_len } << '\n';
+    send_error(ws, 500, "history fetch failed");
+    return;
+
+  }
+
   signaling::Envelope envelope { };
-  envelope.mutable_history_response()->set_request_id(req.request_id());
+  auto* resp = envelope.mutable_history_response();
+  resp->set_request_id(req.request_id());
+
+  OpenSocialNet::Signaling::CassResultPtr result { cass_future_get_result(fut.get()) };
+  OpenSocialNet::Signaling::CassIteratorPtr it { cass_iterator_from_result(result.get()) };
+  std::cerr << "[history] channel=" << req.channel_id() << " before=" << req.before_message_id() << " limit=" << limit << " row_count=" << cass_result_row_count(result.get()) << '\n';
+  while (cass_iterator_next(it.get()))
+  {
+
+    const auto* row = cass_iterator_get_row(it.get());
+
+    CassUuid uuid { };
+    cass_value_get_uuid(cass_row_get_column(row, 0), &uuid);
+    char uuid_str[CASS_UUID_STRING_LENGTH] { };
+    cass_uuid_string(uuid, uuid_str);
+
+    const char* sender { nullptr };
+    size_t sender_len { 0 };
+    cass_value_get_string(cass_row_get_column(row, 1), &sender, &sender_len);
+
+    const char* content { nullptr };
+    size_t content_len { 0 };
+    cass_value_get_string(cass_row_get_column(row, 2), &content, &content_len);
+
+    auto* evt = resp->add_msgs();
+    evt->set_message_id(uuid_str);
+    evt->set_channel_id(req.channel_id());
+    evt->set_sender_id(std::string(sender, sender_len));
+    evt->set_content(std::string(content, content_len));
+    evt->set_timestamp_ms(cass_uuid_timestamp(uuid));
+
+  }
+
+  std::cerr << "[history] sending response with " << resp->msgs_size() << " msgs\n";
   send_envelope(ws, envelope);
 
 }
@@ -442,17 +489,16 @@ void on_message(WebSocket* ws, std::string_view data, uWS::OpCode op)
 
   }
 
-  using P = signaling::Envelope;
   switch (envelope.payload_case())
   {
 
-    case P::kHello: on_hello(ws, envelope.hello()); break;
-    case P::kSendMessage: on_send_message(ws, envelope.send_message()); break;
-    case P::kFetchHistory: on_fetch_history(ws, envelope.fetch_history()); break;
-    case P::kJoinVoice: on_join_voice(ws, envelope.join_voice()); break;
-    case P::kLeaveVoice: on_leave_voice(ws, envelope.leave_voice()); break;
+    case signaling::Envelope::kHello: on_hello(ws, envelope.hello()); break;
+    case signaling::Envelope::kSendMessage: on_send_message(ws, envelope.send_message()); break;
+    case signaling::Envelope::kFetchHistory: on_fetch_history(ws, envelope.fetch_history()); break;
+    case signaling::Envelope::kJoinVoice: on_join_voice(ws, envelope.join_voice()); break;
+    case signaling::Envelope::kLeaveVoice: on_leave_voice(ws, envelope.leave_voice()); break;
 
-    case P::kHeartbeat:
+    case signaling::Envelope::kHeartbeat:
     {
 
       signaling::Envelope reply { };
@@ -476,6 +522,7 @@ void on_message(WebSocket* ws, std::string_view data, uWS::OpCode op)
 int main()
 {
 
+  // to verify protobuf library version compatibility; dont rmeove
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   scylla_init();
@@ -516,7 +563,7 @@ int main()
   {
 
     if (token) std::cout << "gateway listening on :9001\n";
-    else       std::cerr << "failed to listen on :9001\n";
+    else std::cerr << "failed to listen on :9001\n";
 
   });
 
