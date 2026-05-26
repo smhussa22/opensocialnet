@@ -64,6 +64,7 @@ add_dependencies(signaling_server generate_proto)
 
 target_include_directories(signaling_server PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/proto
         ${Protobuf_INCLUDE_DIRS}
         ${CASSANDRA_INCLUDE_DIR}
