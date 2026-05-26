@@ -1,43 +1,141 @@
-syntax="proto3";
+syntax = "proto3";
 package signaling;
 
-enum TargetType
+// Every WebSocket frame on the gateway is exactly one Envelope,
+// serialized as binary protobuf. The `oneof payload` is the type
+// discriminator (analogous to Discord's gateway `op` code).
+
+message Envelope
 {
 
-  DirectMessage = 0;
-  GroupChatMessage = 1;
+  uint64 seq = 1; // monotonic per-sender; used for client dedup / resume
+
+  oneof payload
+  {
+
+    // ---- client -> server ----
+    Hello          hello          = 10;
+    Heartbeat      heartbeat      = 11;
+    SendMessage    send_message   = 12;
+    FetchHistory   fetch_history  = 13;
+    JoinVoice      join_voice     = 14;
+    LeaveVoice     leave_voice    = 15;
+
+    // ---- server -> client ----
+    Ready             ready              = 30;
+    HeartbeatAck      heartbeat_ack      = 31;
+    ChatMessageEvent  chat_message_event = 32;
+    HistoryResponse   history_response   = 33;
+    VoicePeerJoined   voice_peer_joined  = 34;
+    VoicePeerLeft     voice_peer_left    = 35;
+    ErrorEvent        error              = 36;
+
+  }
 
 }
 
-message ChatMessage
+// ---- auth / lifecycle ----
+
+message Hello
 {
 
-  string sender_id = 1;
-  string target_id = 2;
-  TargetType type = 3;
-  string content = 4;
-  int64 timestamp_ms = 5;
+  string user_id    = 1;
+  string auth_token = 2;
 
 }
 
-message MessageAcknowledged
+message Ready
 {
 
-  bool success = 1;
+  string session_id           = 1;
+  repeated string channel_ids = 2; // channels this user is subscribed to
 
 }
 
-message UserIdentity
+message Heartbeat    { uint64 nonce = 1; }
+message HeartbeatAck { uint64 nonce = 1; }
+
+// ---- chat ----
+
+message SendMessage
+{
+
+  string client_nonce = 1; // client-generated, echoed back for dedup
+  string channel_id   = 2;
+  string content      = 3;
+
+}
+
+message ChatMessageEvent
+{
+
+  string message_id   = 1; // canonical id assigned by server (e.g. Scylla TimeUUID)
+  string client_nonce = 2;
+  string channel_id   = 3;
+  string sender_id    = 4;
+  string content      = 5;
+  int64  timestamp_ms = 6;
+
+}
+
+message FetchHistory
+{
+
+  string request_id        = 1;
+  string channel_id        = 2;
+  string before_message_id = 3; // paginate: messages older than this
+  uint32 limit             = 4; // server-clamped
+
+}
+
+message HistoryResponse
+{
+
+  string request_id              = 1;
+  repeated ChatMessageEvent msgs = 2;
+
+}
+
+// ---- voice signaling ----
+// Once a client joins a voice channel, the gateway tells every other
+// member their UDP endpoint + SSRC. Audio frames then flow over the
+// custom UDP transport directly between peers (or via a media router).
+
+message JoinVoice  { string channel_id = 1; }
+message LeaveVoice { string channel_id = 1; }
+
+message VoicePeer
 {
 
   string user_id = 1;
+  string ip      = 2; // peer's reachable UDP address
+  uint32 port    = 3;
+  uint32 ssrc    = 4; // identifier in the audio stream
 
 }
 
-service SignalingService
+message VoicePeerJoined
 {
 
-  rpc SendMessage(ChatMessage) returns (MessageAcknowledged); // client sends msg, server acknowledges
-  rpc StreamEvents(UserIdentity) returns (stream ChatMessage); // stream messages to user instead of constant req
+  string    channel_id = 1;
+  VoicePeer peer       = 2;
+
+}
+
+message VoicePeerLeft
+{
+
+  string channel_id = 1;
+  string user_id    = 2;
+
+}
+
+// ---- errors ----
+
+message ErrorEvent
+{
+
+  uint32 code    = 1;
+  string message = 2;
 
 }

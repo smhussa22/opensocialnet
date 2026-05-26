@@ -1,0 +1,76 @@
+-- ScyllaDB schema for the signaling server.
+-- Apply with: cqlsh -f schema.cql  (against localhost:9042 via docker)
+
+CREATE KEYSPACE IF NOT EXISTS opensocialnet
+  WITH REPLICATION = {
+    'class': 'SimpleStrategy',
+    'replication_factor': 1
+  };
+
+USE opensocialnet;
+
+
+-- Messages: the hot path.
+--
+-- Partition key (channel_id) -> all messages for one channel live on
+-- the same replica set, so a single read serves a history page.
+--
+-- Clustering key (message_id DESC) -> rows are stored newest-first
+-- on disk, so "give me the last N messages" is a sequential read
+-- with no in-memory sort.
+--
+-- message_id is a TimeUUID: 128 bits encoding (timestamp + random),
+-- monotonic per node, and globally unique without a coordinator.
+-- toTimestamp(message_id) recovers the wall-clock time, so we don't
+-- store a separate timestamp column.
+CREATE TABLE IF NOT EXISTS messages (
+  channel_id  text,
+  message_id  timeuuid,
+  sender_id   text,
+  content     text,
+  PRIMARY KEY ((channel_id), message_id)
+) WITH CLUSTERING ORDER BY (message_id DESC);
+
+
+-- Channels: metadata. Partition key is the channel itself; this table
+-- is read-mostly and small.
+CREATE TABLE IF NOT EXISTS channels (
+  channel_id  text PRIMARY KEY,
+  guild_id    text,
+  name        text,
+  kind        text  -- 'text' or 'voice'
+);
+
+
+-- Users: minimal profile. Real auth (password hashes, sessions, etc.)
+-- belongs in a separate auth service / table -- keep this lean.
+CREATE TABLE IF NOT EXISTS users (
+  user_id     text PRIMARY KEY,
+  username    text,
+  created_at  timestamp
+);
+
+
+-- Channel membership: which users belong to which channels. Used by
+-- the gateway on Hello to determine which Kafka partitions to consume
+-- and which channels to include in the Ready response.
+--
+-- Partitioned by channel_id so the gateway can list members of a
+-- channel in one read (e.g. when broadcasting VoicePeerJoined).
+CREATE TABLE IF NOT EXISTS channel_members (
+  channel_id  text,
+  user_id     text,
+  joined_at   timestamp,
+  PRIMARY KEY ((channel_id), user_id)
+);
+
+
+-- Reverse index: given a user, what channels are they in?
+-- Cassandra/Scylla doesn't do JOINs -- you denormalize. We write
+-- to both channel_members and user_channels on every join/leave.
+CREATE TABLE IF NOT EXISTS user_channels (
+  user_id     text,
+  channel_id  text,
+  joined_at   timestamp,
+  PRIMARY KEY ((user_id), channel_id)
+);

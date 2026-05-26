@@ -2,8 +2,10 @@
   "name": "opensocialnet",
   "version-string": "0.1.0",
   "dependencies": [
-    "grpc",
     "protobuf",
-    "librdkafka"
+    "grpc",
+    "librdkafka",
+    "uwebsockets",
+    "cassandra-cpp-driver"
   ]
 }

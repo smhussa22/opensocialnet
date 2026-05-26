@@ -15,3 +15,18 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  scylla:
+    image: scylladb/scylla:5.4
+    ports:
+      - "9042:9042"
+    command:
+      - --smp=1
+      - --memory=750M
+      - --overprovisioned=1
+      - --developer-mode=1
+    volumes:
+      - scylla-data:/var/lib/scylla
+
+volumes:
+  scylla-data:
