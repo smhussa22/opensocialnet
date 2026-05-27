@@ -9,10 +9,12 @@
 #include <climits>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <string>
 #include <string_view>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 // 3rd party headers
@@ -72,6 +74,14 @@ struct Gateway
   // Kafka
   std::unique_ptr<RdKafka::Producer> producer { };
   std::string topic_name { "chat_events" };
+
+  // Async Scylla bookkeeping. Driver callbacks fire on the driver's IO
+  // thread, so before touching a WebSocket* we bounce back to the loop
+  // via Loop::defer and consult this set to confirm the socket is still
+  // alive. open() inserts; close() erases. Mutex guards both halves
+  // (driver thread reads, WS thread writes).
+  std::mutex live_sockets_mu { };
+  std::unordered_set<void*> live_sockets { };
 
   // Lifecycle
   std::atomic<bool> running { true };
@@ -164,32 +174,21 @@ void scylla_init()
 
 }
 
-// Generate a TimeUUID client-side so we know the assigned id up front
-// (and can echo it back to the sender in the broadcast event).
-std::string scylla_insert_message(const std::string& channel_id, const std::string& sender_id, const std::string& content)
+// Returns true iff `ws` is still in the live set. Callers must already
+// be on the WS loop thread (the set is only safe to use as a liveness
+// gate from there; the driver thread sees a stale view).
+bool ws_is_live(WebSocket* ws)
 {
 
-  CassUuid uuid { };
-  cass_uuid_gen_time(gateway.uuid_gen.get(), &uuid);
-
-  OpenSocialNet::Signaling::CassStatementPtr stmt { cass_prepared_bind(gateway.prep_insert_message.get()) };
-  cass_statement_bind_string(stmt.get(), 0, channel_id.c_str());
-  cass_statement_bind_uuid(stmt.get(), 1, uuid);
-  cass_statement_bind_string(stmt.get(), 2, sender_id.c_str());
-  cass_statement_bind_string(stmt.get(), 3, content.c_str());
-
-  // TODO: this blocks the WS event loop. For real load, switch to
-  // cass_future_set_callback() and resume the handler from the
-  // driver's IO thread via uWS::Loop::defer().
-  OpenSocialNet::Signaling::CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
-  cass_future_wait(fut.get());
-
-  char uuid_str[CASS_UUID_STRING_LENGTH] { };
-  cass_uuid_string(uuid, uuid_str);
-  return uuid_str;
+  std::lock_guard<std::mutex> lock { gateway.live_sockets_mu };
+  return gateway.live_sockets.find(ws) != gateway.live_sockets.end();
 
 }
 
+// scylla_user_channels stays synchronous: it runs exactly once per
+// connection (in on_hello) and the result is needed before we can
+// reply Ready, so there's nothing to overlap. Convert later if Hello
+// turns into a hot path.
 std::vector<std::string> scylla_user_channels(const std::string& user_id)
 {
 
@@ -340,6 +339,26 @@ void on_hello(WebSocket* ws, const signaling::Hello& hello)
 
 }
 
+// Per-INSERT continuation state. Heap-allocated so it outlives the
+// scope of on_send_message: the driver owns the lifetime via the
+// raw pointer handed to cass_future_set_callback's user_data, and
+// the callback unique_ptr's it back to free everything on completion.
+struct InsertCtx
+{
+
+  WebSocket* ws { nullptr };
+  uWS::Loop* loop { nullptr };
+  OpenSocialNet::Signaling::CassFuturePtr fut { };
+  std::string message_id { };
+  std::string channel_id { };
+  std::string sender_id { };
+  std::string content { };
+  std::string client_nonce { };
+
+};
+
+void on_insert_complete(CassFuture* /*future*/, void* data);
+
 void on_send_message(WebSocket* ws, const signaling::SendMessage& req)
 {
 
@@ -347,28 +366,105 @@ void on_send_message(WebSocket* ws, const signaling::SendMessage& req)
   if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
   std::cerr << "[send] user=" << sess->user_id << " channel=" << req.channel_id() << " content=" << req.content() << '\n';
 
-  // 1. Persist (source of truth, gives us canonical message_id).
-  const std::string message_id { scylla_insert_message(req.channel_id(), sess->user_id, req.content()) };
+  // Generate the TimeUUID client-side so we know the assigned id
+  // before the INSERT even runs -- the Kafka fanout in the callback
+  // needs to embed it in the broadcast event.
+  CassUuid uuid { };
+  cass_uuid_gen_time(gateway.uuid_gen.get(), &uuid);
+  char uuid_str[CASS_UUID_STRING_LENGTH] { };
+  cass_uuid_string(uuid, uuid_str);
 
-  // 2. Build the broadcast envelope.
-  signaling::Envelope out { };
-  auto* evt = out.mutable_chat_message_event();
-  evt->set_message_id(message_id);
-  evt->set_client_nonce(req.client_nonce());
-  evt->set_channel_id(req.channel_id());
-  evt->set_sender_id(sess->user_id);
-  evt->set_content(req.content());
-  evt->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+  OpenSocialNet::Signaling::CassStatementPtr stmt { cass_prepared_bind(gateway.prep_insert_message.get()) };
+  cass_statement_bind_string(stmt.get(), 0, req.channel_id().c_str());
+  cass_statement_bind_uuid(stmt.get(), 1, uuid);
+  cass_statement_bind_string(stmt.get(), 2, sess->user_id.c_str());
+  cass_statement_bind_string(stmt.get(), 3, req.content().c_str());
 
-  std::string serialized { };
-  out.SerializeToString(&serialized);
+  // Copy everything we'll need in the callback BEFORE returning -- by
+  // the time the driver IO thread fires us, `req` and `sess` are gone.
+  auto ctx = std::make_unique<InsertCtx>();
+  ctx->ws = ws;
+  ctx->loop = uWS::Loop::get();
+  ctx->fut.reset(cass_session_execute(gateway.cass_session.get(), stmt.get()));
+  ctx->message_id = uuid_str;
+  ctx->channel_id = req.channel_id();
+  ctx->sender_id = sess->user_id;
+  ctx->content = req.content();
+  ctx->client_nonce = req.client_nonce();
 
-  // 3. Produce to Kafka. EVERY gateway's consumer (including this one)
-  // will pick it up and call app->publish() locally.
-  gateway.producer->produce(gateway.topic_name, RdKafka::Topic::PARTITION_UA, RdKafka::Producer::MSG_COPY, serialized.data(), serialized.size(), req.channel_id().data(), req.channel_id().size(), 0, nullptr);
-  gateway.producer->poll(0);
+  cass_future_set_callback(ctx->fut.get(), &on_insert_complete, ctx.get());
+  ctx.release();
 
 }
+
+void on_insert_complete(CassFuture* /*future*/, void* data)
+{
+
+  // Runs on the driver's IO thread. Take ownership immediately so the
+  // context (and the CassFuture inside it) is freed even if defer throws.
+  std::unique_ptr<InsertCtx> ctx { static_cast<InsertCtx*>(data) };
+
+  if (cass_future_error_code(ctx->fut.get()) != CASS_OK)
+  {
+
+    const char* err_msg { nullptr };
+    size_t err_len { 0 };
+    cass_future_error_message(ctx->fut.get(), &err_msg, &err_len);
+    std::cerr << "[send] insert failed: " << std::string_view { err_msg, err_len } << '\n';
+    // Don't fan out a message we didn't persist; just drop. The client
+    // will time out its pending nonce and retry.
+    return;
+
+  }
+
+  // Bounce back onto the WS loop before doing anything WS- or Kafka-
+  // related. We move the ctx into the deferred lambda so it survives
+  // until the loop drains it.
+  InsertCtx* raw { ctx.release() };
+  raw->loop->defer([raw]()
+  {
+
+    std::unique_ptr<InsertCtx> c { raw };
+
+    signaling::Envelope out { };
+    auto* evt = out.mutable_chat_message_event();
+    evt->set_message_id(c->message_id);
+    evt->set_client_nonce(c->client_nonce);
+    evt->set_channel_id(c->channel_id);
+    evt->set_sender_id(c->sender_id);
+    evt->set_content(c->content);
+    evt->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+
+    std::string serialized { };
+    out.SerializeToString(&serialized);
+
+    // Produce to Kafka regardless of WS liveness -- the message is
+    // persisted, every other subscriber on every gateway still needs
+    // it. librdkafka's produce is buffered, so this is non-blocking.
+    gateway.producer->produce(gateway.topic_name, RdKafka::Topic::PARTITION_UA, RdKafka::Producer::MSG_COPY, serialized.data(), serialized.size(), c->channel_id.data(), c->channel_id.size(), 0, nullptr);
+    gateway.producer->poll(0);
+
+  });
+
+}
+
+// Per-history-fetch continuation state. Same lifetime trick as InsertCtx:
+// heap-allocated, raw ptr ridden through cass_future_set_callback's
+// user_data slot, freed by the unique_ptr inside the callback.
+struct HistoryCtx
+{
+
+  WebSocket* ws { nullptr };
+  uWS::Loop* loop { nullptr };
+  OpenSocialNet::Signaling::CassFuturePtr fut { };
+  std::string request_id { };
+  std::string channel_id { };
+  std::string before_message_id { };
+  int32_t limit { 0 };
+
+};
+
+void on_history_complete(CassFuture* /*future*/, void* data);
 
 void on_fetch_history(WebSocket* ws, const signaling::FetchHistory& req)
 {
@@ -392,57 +488,93 @@ void on_fetch_history(WebSocket* ws, const signaling::FetchHistory& req)
   cass_statement_bind_uuid(stmt.get(), 1, cursor);
   cass_statement_bind_int32(stmt.get(), 2, limit);
 
-  OpenSocialNet::Signaling::CassFuturePtr fut { cass_session_execute(gateway.cass_session.get(), stmt.get()) };
-  cass_future_wait(fut.get());
+  auto ctx = std::make_unique<HistoryCtx>();
+  ctx->ws = ws;
+  ctx->loop = uWS::Loop::get();
+  ctx->fut.reset(cass_session_execute(gateway.cass_session.get(), stmt.get()));
+  ctx->request_id = req.request_id();
+  ctx->channel_id = req.channel_id();
+  ctx->before_message_id = req.before_message_id();
+  ctx->limit = limit;
 
-  if (cass_future_error_code(fut.get()) != CASS_OK)
+  cass_future_set_callback(ctx->fut.get(), &on_history_complete, ctx.get());
+  ctx.release();
+
+}
+
+void on_history_complete(CassFuture* /*future*/, void* data)
+{
+
+  // On the driver's IO thread. Take ownership of the ctx but DON'T
+  // touch the WebSocket -- that has to happen on the loop thread.
+  HistoryCtx* raw { static_cast<HistoryCtx*>(data) };
+
+  raw->loop->defer([raw]()
   {
 
-    const char* err_msg { nullptr };
-    size_t err_len { 0 };
-    cass_future_error_message(fut.get(), &err_msg, &err_len);
-    std::cerr << "[history] query failed: " << std::string_view { err_msg, err_len } << '\n';
-    send_error(ws, 500, "history fetch failed");
-    return;
+    std::unique_ptr<HistoryCtx> c { raw };
 
-  }
+    // Client could have disconnected while the query was in flight.
+    // Membership check inside the loop is race-free because both
+    // close() and this defer run on the same thread.
+    if (!ws_is_live(c->ws))
+    {
 
-  signaling::Envelope envelope { };
-  auto* resp = envelope.mutable_history_response();
-  resp->set_request_id(req.request_id());
+      std::cerr << "[history] socket gone, dropping response\n";
+      return;
 
-  OpenSocialNet::Signaling::CassResultPtr result { cass_future_get_result(fut.get()) };
-  OpenSocialNet::Signaling::CassIteratorPtr it { cass_iterator_from_result(result.get()) };
-  std::cerr << "[history] channel=" << req.channel_id() << " before=" << req.before_message_id() << " limit=" << limit << " row_count=" << cass_result_row_count(result.get()) << '\n';
-  while (cass_iterator_next(it.get()))
-  {
+    }
 
-    const auto* row = cass_iterator_get_row(it.get());
+    if (cass_future_error_code(c->fut.get()) != CASS_OK)
+    {
 
-    CassUuid uuid { };
-    cass_value_get_uuid(cass_row_get_column(row, 0), &uuid);
-    char uuid_str[CASS_UUID_STRING_LENGTH] { };
-    cass_uuid_string(uuid, uuid_str);
+      const char* err_msg { nullptr };
+      size_t err_len { 0 };
+      cass_future_error_message(c->fut.get(), &err_msg, &err_len);
+      std::cerr << "[history] query failed: " << std::string_view { err_msg, err_len } << '\n';
+      send_error(c->ws, 500, "history fetch failed");
+      return;
 
-    const char* sender { nullptr };
-    size_t sender_len { 0 };
-    cass_value_get_string(cass_row_get_column(row, 1), &sender, &sender_len);
+    }
 
-    const char* content { nullptr };
-    size_t content_len { 0 };
-    cass_value_get_string(cass_row_get_column(row, 2), &content, &content_len);
+    signaling::Envelope envelope { };
+    auto* resp = envelope.mutable_history_response();
+    resp->set_request_id(c->request_id);
 
-    auto* evt = resp->add_msgs();
-    evt->set_message_id(uuid_str);
-    evt->set_channel_id(req.channel_id());
-    evt->set_sender_id(std::string(sender, sender_len));
-    evt->set_content(std::string(content, content_len));
-    evt->set_timestamp_ms(cass_uuid_timestamp(uuid));
+    OpenSocialNet::Signaling::CassResultPtr result { cass_future_get_result(c->fut.get()) };
+    OpenSocialNet::Signaling::CassIteratorPtr it { cass_iterator_from_result(result.get()) };
+    std::cerr << "[history] channel=" << c->channel_id << " before=" << c->before_message_id << " limit=" << c->limit << " row_count=" << cass_result_row_count(result.get()) << '\n';
+    while (cass_iterator_next(it.get()))
+    {
 
-  }
+      const auto* row = cass_iterator_get_row(it.get());
 
-  std::cerr << "[history] sending response with " << resp->msgs_size() << " msgs\n";
-  send_envelope(ws, envelope);
+      CassUuid uuid { };
+      cass_value_get_uuid(cass_row_get_column(row, 0), &uuid);
+      char uuid_str[CASS_UUID_STRING_LENGTH] { };
+      cass_uuid_string(uuid, uuid_str);
+
+      const char* sender { nullptr };
+      size_t sender_len { 0 };
+      cass_value_get_string(cass_row_get_column(row, 1), &sender, &sender_len);
+
+      const char* content { nullptr };
+      size_t content_len { 0 };
+      cass_value_get_string(cass_row_get_column(row, 2), &content, &content_len);
+
+      auto* evt = resp->add_msgs();
+      evt->set_message_id(uuid_str);
+      evt->set_channel_id(c->channel_id);
+      evt->set_sender_id(std::string(sender, sender_len));
+      evt->set_content(std::string(content, content_len));
+      evt->set_timestamp_ms(cass_uuid_timestamp(uuid));
+
+    }
+
+    std::cerr << "[history] sending response with " << resp->msgs_size() << " msgs\n";
+    send_envelope(c->ws, envelope);
+
+  });
 
 }
 
@@ -542,6 +674,12 @@ int main()
     .open = [](WebSocket* ws)
     {
 
+      {
+
+        std::lock_guard<std::mutex> lock { gateway.live_sockets_mu };
+        gateway.live_sockets.insert(ws);
+
+      }
       // uWS zero-inits the Session for us; nothing to do until Hello.
       std::cout << "ws open\n";
 
@@ -552,6 +690,12 @@ int main()
     .close = [](WebSocket* ws, int code, std::string_view)
     {
 
+      {
+
+        std::lock_guard<std::mutex> lock { gateway.live_sockets_mu };
+        gateway.live_sockets.erase(ws);
+
+      }
       // uWS automatically unsubscribes the socket from all topics on
       // close, so we don't need to walk the subscribed list manually.
       std::cout << "ws close (" << code << ")\n";
