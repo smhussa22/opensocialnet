@@ -2,6 +2,7 @@
 
 // c sys headers
 #include <cstdio>
+#include <cstdlib>
 
 // cpp stdlib headers
 #include <atomic>
@@ -19,6 +20,8 @@
 #include <uwebsockets/App.h>
 #include <cassandra.h>
 #include <librdkafka/rdkafkacpp.h>
+#include <openssl/hmac.h>
+#include <openssl/crypto.h>
 
 // project headers
 #include "CassandraDeleters.hh"
@@ -72,6 +75,10 @@ struct Gateway
   // Kafka
   std::unique_ptr<RdKafka::Producer> producer { };
   std::string topic_name { "chat_events" };
+
+  // Auth. Read once at startup from OPENSOCIALNET_AUTH_SECRET. Empty
+  // means "not configured" -- Hello frames are rejected in that case.
+  std::string auth_secret { };
 
   // Lifecycle
   std::atomic<bool> running { true };
@@ -305,6 +312,36 @@ void kafka_consumer_thread()
 
 
 // ============================================================
+// Auth
+// ============================================================
+
+// HMAC-SHA256(secret, user_id) as lowercase hex. Output is always
+// 64 chars; on OpenSSL failure we return an empty string so callers
+// can distinguish that from a valid digest.
+std::string compute_auth_token(const std::string& secret, const std::string& user_id)
+{
+
+  unsigned char mac[EVP_MAX_MD_SIZE] { };
+  unsigned int mac_len { 0 };
+  const auto* out = HMAC(EVP_sha256(), secret.data(), static_cast<int>(secret.size()), reinterpret_cast<const unsigned char*>(user_id.data()), user_id.size(), mac, &mac_len);
+  if (!out) return std::string { };
+
+  std::string hex { };
+  hex.resize(static_cast<size_t>(mac_len) * 2);
+  static constexpr char digits[] { "0123456789abcdef" };
+  for (unsigned int i { 0 }; i < mac_len; ++i)
+  {
+
+    hex[i * 2] = digits[(mac[i] >> 4) & 0xF];
+    hex[i * 2 + 1] = digits[mac[i] & 0xF];
+
+  }
+  return hex;
+
+}
+
+
+// ============================================================
 // WS handlers -- all called from the uWS event loop thread
 // ============================================================
 
@@ -314,8 +351,39 @@ void on_hello(WebSocket* ws, const signaling::Hello& hello)
   // sess is borrowed -- uWS owns the Session inside the WS handle.
   auto* sess = ws->getUserData();
 
-  // TODO: verify hello.auth_token() against an auth service / sessions
-  // table. For v1 we trust user_id.
+  if (gateway.auth_secret.empty())
+  {
+
+    send_error(ws, 401, "auth not configured");
+    ws->close();
+    return;
+
+  }
+
+  if (hello.user_id().empty())
+  {
+
+    send_error(ws, 400, "missing user_id");
+    ws->close();
+    return;
+
+  }
+
+  // Constant-time compare so a network attacker can't time-leak which
+  // prefix of the expected token they got right.
+  const std::string expected { compute_auth_token(gateway.auth_secret, hello.user_id()) };
+  const std::string& got { hello.auth_token() };
+  const bool ok { !expected.empty() && expected.size() == got.size() && CRYPTO_memcmp(expected.data(), got.data(), expected.size()) == 0 };
+  if (!ok)
+  {
+
+    std::cerr << "[auth] denied user=" << hello.user_id() << '\n';
+    send_error(ws, 401, "invalid auth token");
+    ws->close();
+    return;
+
+  }
+
   sess->user_id = hello.user_id();
   sess->session_id = make_session_id();
   sess->authenticated = true;
@@ -524,6 +592,21 @@ int main()
 
   // to verify protobuf library version compatibility; dont rmeove
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  // Read once: every Hello handler reads gateway.auth_secret directly,
+  // and we never reload at runtime.
+  if (const char* secret = std::getenv("OPENSOCIALNET_AUTH_SECRET"); secret && *secret)
+  {
+
+    gateway.auth_secret = secret;
+
+  }
+  else
+  {
+
+    std::cerr << "[auth] WARNING: OPENSOCIALNET_AUTH_SECRET is unset; all Hello frames will be rejected\n";
+
+  }
 
   scylla_init();
   kafka_init();
