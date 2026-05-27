@@ -15,7 +15,7 @@
 #include <string>
 #include <string_view>
 #include <thread>
-#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 // 3rd party headers
@@ -79,12 +79,15 @@ struct Gateway
   std::string topic_name { "chat_events" };
 
   // Async Scylla bookkeeping. Driver callbacks fire on the driver's IO
-  // thread, so before touching a WebSocket* we bounce back to the loop
-  // via Loop::defer and consult this set to confirm the socket is still
-  // alive. open() inserts; close() erases. Mutex guards both halves
-  // (driver thread reads, WS thread writes).
-  std::mutex live_sockets_mu { };
-  std::unordered_set<void*> live_sockets { };
+  // thread; before touching a WebSocket we bounce back to the loop via
+  // Loop::defer and look the socket up by its stable session id. Keying
+  // by session_id (not the raw WS pointer) means we don't accidentally
+  // match a recycled allocation: if a client closes and a brand new
+  // connection grabs the same pointer before our defer drains, the new
+  // connection has a different session_id and the lookup fails.
+  // Populated in on_hello after auth succeeds, erased in .close.
+  std::mutex live_sessions_mu { };
+  std::unordered_map<std::string, WebSocket*> live_sessions { };
 
   // Auth. Read once at startup from OPENSOCIALNET_AUTH_SECRET. Empty
   // means "not configured" -- Hello frames are rejected in that case.
@@ -181,14 +184,18 @@ void scylla_init()
 
 }
 
-// Returns true iff `ws` is still in the live set. Callers must already
-// be on the WS loop thread (the set is only safe to use as a liveness
-// gate from there; the driver thread sees a stale view).
-bool ws_is_live(WebSocket* ws)
+// Returns the current WebSocket* for a session_id, or nullptr if the
+// session is no longer registered. Must be called from the WS loop
+// thread -- both .close (which erases) and any Loop::defer continuation
+// (which calls this) run there, so reading inside that thread is
+// race-free with respect to entries vanishing under our feet.
+WebSocket* session_lookup(const std::string& session_id)
 {
 
-  std::lock_guard<std::mutex> lock { gateway.live_sockets_mu };
-  return gateway.live_sockets.find(ws) != gateway.live_sockets.end();
+  if (session_id.empty()) return nullptr;
+  std::lock_guard<std::mutex> lock { gateway.live_sessions_mu };
+  auto it = gateway.live_sessions.find(session_id);
+  return it != gateway.live_sessions.end() ? it->second : nullptr;
 
 }
 
@@ -386,6 +393,16 @@ void on_hello(WebSocket* ws, const signaling::Hello& hello)
   sess->user_id = hello.user_id();
   sess->session_id = make_session_id();
   sess->authenticated = true;
+
+  // Register the session AFTER auth: async continuations look the socket
+  // up by session_id, so pre-auth connections are deliberately invisible.
+  {
+
+    std::lock_guard<std::mutex> lock { gateway.live_sessions_mu };
+    gateway.live_sessions[sess->session_id] = ws;
+
+  }
+
   std::cerr << "[hello] user=" << sess->user_id << " session=" << sess->session_id << '\n';
 
   signaling::Envelope envelope { };
@@ -414,7 +431,7 @@ void on_hello(WebSocket* ws, const signaling::Hello& hello)
 struct InsertCtx
 {
 
-  WebSocket* ws { nullptr };
+  std::string session_id { }; // stable id of the requesting connection
   uWS::Loop* loop { nullptr };
   OpenSocialNet::Signaling::CassFuturePtr fut { };
   std::string message_id { };
@@ -451,7 +468,7 @@ void on_send_message(WebSocket* ws, const signaling::SendMessage& req)
   // Copy everything we'll need in the callback BEFORE returning -- by
   // the time the driver IO thread fires us, `req` and `sess` are gone.
   auto ctx = std::make_unique<InsertCtx>();
-  ctx->ws = ws;
+  ctx->session_id = sess->session_id;
   ctx->loop = uWS::Loop::get();
   ctx->fut.reset(cass_session_execute(gateway.cass_session.get(), stmt.get()));
   ctx->message_id = uuid_str;
@@ -507,10 +524,11 @@ void on_insert_complete(CassFuture* /*future*/, void* data)
     out.SerializeToString(&serialized);
 
     // Direct echo to the sender (Discord-style instant confirmation) -- only
-    // if the WS is still around. Once subscriptions for self-channels are
-    // wired up, the Kafka fanout will also need to skip the sender to avoid
-    // double-delivery. Today user_channels is empty so that isn't an issue.
-    if (ws_is_live(c->ws)) c->ws->send(serialized, uWS::OpCode::BINARY);
+    // if the session is still around. Once subscriptions for self-channels
+    // are wired up, the Kafka fanout will also need to skip the sender to
+    // avoid double-delivery. Today user_channels is empty so that isn't an
+    // issue.
+    if (WebSocket* ws = session_lookup(c->session_id); ws != nullptr) ws->send(serialized, uWS::OpCode::BINARY);
 
     // Produce to Kafka regardless of WS liveness -- the message is
     // persisted, every other subscriber on every gateway still needs
@@ -528,7 +546,7 @@ void on_insert_complete(CassFuture* /*future*/, void* data)
 struct HistoryCtx
 {
 
-  WebSocket* ws { nullptr };
+  std::string session_id { }; // stable id of the requesting connection
   uWS::Loop* loop { nullptr };
   OpenSocialNet::Signaling::CassFuturePtr fut { };
   std::string request_id { };
@@ -563,7 +581,7 @@ void on_fetch_history(WebSocket* ws, const signaling::FetchHistory& req)
   cass_statement_bind_int32(stmt.get(), 2, limit);
 
   auto ctx = std::make_unique<HistoryCtx>();
-  ctx->ws = ws;
+  ctx->session_id = sess->session_id;
   ctx->loop = uWS::Loop::get();
   ctx->fut.reset(cass_session_execute(gateway.cass_session.get(), stmt.get()));
   ctx->request_id = req.request_id();
@@ -589,12 +607,13 @@ void on_history_complete(CassFuture* /*future*/, void* data)
     std::unique_ptr<HistoryCtx> c { raw };
 
     // Client could have disconnected while the query was in flight.
-    // Membership check inside the loop is race-free because both
-    // close() and this defer run on the same thread.
-    if (!ws_is_live(c->ws))
+    // Lookup by session_id inside the loop thread is race-free because
+    // both .close (which erases) and this defer run on the same thread.
+    WebSocket* ws = session_lookup(c->session_id);
+    if (ws == nullptr)
     {
 
-      std::cerr << "[history] socket gone, dropping response\n";
+      std::cerr << "[history] session gone, dropping response\n";
       return;
 
     }
@@ -606,7 +625,7 @@ void on_history_complete(CassFuture* /*future*/, void* data)
       size_t err_len { 0 };
       cass_future_error_message(c->fut.get(), &err_msg, &err_len);
       std::cerr << "[history] query failed: " << std::string_view { err_msg, err_len } << '\n';
-      send_error(c->ws, 500, "history fetch failed");
+      send_error(ws, 500, "history fetch failed");
       return;
 
     }
@@ -646,7 +665,7 @@ void on_history_complete(CassFuture* /*future*/, void* data)
     }
 
     std::cerr << "[history] sending response with " << resp->msgs_size() << " msgs\n";
-    send_envelope(c->ws, envelope);
+    send_envelope(ws, envelope);
 
   });
 
@@ -760,16 +779,12 @@ int main()
     .maxPayloadLength = 16 * 1024,
     .idleTimeout = 120,
 
-    .open = [](WebSocket* ws)
+    .open = [](WebSocket* /*ws*/)
     {
 
-      {
-
-        std::lock_guard<std::mutex> lock { gateway.live_sockets_mu };
-        gateway.live_sockets.insert(ws);
-
-      }
-      // uWS zero-inits the Session for us; nothing to do until Hello.
+      // Session isn't registered yet -- we don't have a session_id until
+      // Hello succeeds. Pre-auth connections can't be the target of async
+      // continuations anyway, so being invisible to session_lookup is fine.
       std::cout << "ws open\n";
 
     },
@@ -779,10 +794,12 @@ int main()
     .close = [](WebSocket* ws, int code, std::string_view)
     {
 
+      auto* sess = ws->getUserData();
+      if (!sess->session_id.empty())
       {
 
-        std::lock_guard<std::mutex> lock { gateway.live_sockets_mu };
-        gateway.live_sockets.erase(ws);
+        std::lock_guard<std::mutex> lock { gateway.live_sessions_mu };
+        gateway.live_sessions.erase(sess->session_id);
 
       }
       // uWS automatically unsubscribes the socket from all topics on
