@@ -12,6 +12,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 find_package(Protobuf CONFIG REQUIRED)
 find_package(RdKafka CONFIG REQUIRED)
 find_package(unofficial-uwebsockets CONFIG REQUIRED)
+# Needed at link time for HMAC / CRYPTO_memcmp used by the Hello auth path.
+# cassandra-cpp-driver pulls libcrypto at runtime but does not export the
+# symbols, so we have to link it ourselves.
+find_package(OpenSSL REQUIRED)
 
 # cassandra-cpp-driver: built from source into $HOME/local (vcpkg dropped this port).
 # Find the header + .so by hint rather than CMake config since the driver doesn't
@@ -75,6 +79,7 @@ target_link_libraries(signaling_server PRIVATE
         RdKafka::rdkafka++
         unofficial::uwebsockets::uwebsockets
         ${CASSANDRA_LIB}
+        OpenSSL::Crypto
 )
 
 set_target_properties(signaling_server PROPERTIES
