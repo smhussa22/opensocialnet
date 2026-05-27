@@ -363,8 +363,17 @@ void on_send_message(WebSocket* ws, const signaling::SendMessage& req)
   std::string serialized { };
   out.SerializeToString(&serialized);
 
-  // 3. Produce to Kafka. EVERY gateway's consumer (including this one)
-  // will pick it up and call app->publish() locally.
+  // 3a. Direct echo to the sender for instant UI confirmation -- Discord
+  // does this so the sender sees their message before the round trip
+  // through Kafka completes. Once subscriptions for self-channels are
+  // wired up, we'll need to skip the sender on the Kafka fanout side
+  // (e.g. publish with an "exclude session_id" hint) to avoid double-
+  // delivering. Today user_channels is empty so this isn't an issue yet.
+  ws->send(serialized, uWS::OpCode::BINARY);
+
+  // 3b. Produce to Kafka. EVERY gateway's consumer (including this one)
+  // picks it up and calls app->publish() locally to deliver to OTHER
+  // subscribers of this channel on that gateway instance.
   gateway.producer->produce(gateway.topic_name, RdKafka::Topic::PARTITION_UA, RdKafka::Producer::MSG_COPY, serialized.data(), serialized.size(), req.channel_id().data(), req.channel_id().size(), 0, nullptr);
   gateway.producer->poll(0);
 
