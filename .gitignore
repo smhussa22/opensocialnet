@@ -4,3 +4,4 @@ frontend/
 .cmake/
 build/
 cmake-build-debug/
+CLAUDE.md
