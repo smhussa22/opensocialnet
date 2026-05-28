@@ -16,8 +16,10 @@
 
 namespace OpenSocialNet::Video
 {
+
     class VideoDecoder
     {
+
     public:
         VideoDecoder() noexcept = default;
         ~VideoDecoder() = default;
@@ -31,10 +33,10 @@ namespace OpenSocialNet::Video
         bool init() noexcept;
 
         // decodes H.264 bitstream packet into raw YUV420P frame. returns true if frame ready.
-        bool decode_packet(std::span<const std::byte> h264_data, uint8_t** yuv420p_planes, int* strides) noexcept;
+        bool decode_packet(std::span<const std::byte> h264_data, std::uint8_t** yuv420p_planes, int* strides) noexcept;
 
         // flushes remaining frames from decoder. returns true if frame available.
-        bool flush(uint8_t** yuv420p_planes, int* strides) noexcept;
+        bool flush(std::uint8_t** yuv420p_planes, int* strides) noexcept;
 
         // resets decoder state.
         void reset() noexcept;
@@ -47,11 +49,12 @@ namespace OpenSocialNet::Video
         [[nodiscard]] int height() const noexcept;
 
     private:
-        AVCodecContextPtr codec_ctx { };
-        AVPacketPtr packet { };
-        AVFramePtr frame { };
-        int res_width { 0 };
-        int res_height { 0 };
+        AVCodecContextPtr codec_ctx { }; // libavcodec context
+        AVPacketPtr packet { }; // incoming packet buffer
+        AVFramePtr frame { }; // decoded frame buffer
+        int res_width { 0 }; // decoded frame width
+        int res_height { 0 }; // decoded frame height
+
     };
 
 }

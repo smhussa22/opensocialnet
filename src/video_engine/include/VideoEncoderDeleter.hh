@@ -12,15 +12,20 @@
 
 namespace OpenSocialNet::Video
 {
-    struct X264EncoderDeleter {
-        void operator()(::x264_t* encoder) const noexcept {
-            if (encoder) {
-                x264_encoder_close(encoder);
-            }
+
+    struct X264EncoderDeleter
+    {
+
+        void operator()(::x264_t* encoder) const noexcept
+        {
+
+            if (encoder) ::x264_encoder_close(encoder);
+
         }
+
     };
 
-    using X264EncoderPtr = std::unique_ptr<x264_t, X264EncoderDeleter>;
+    using X264EncoderPtr = std::unique_ptr<::x264_t, X264EncoderDeleter>;
 
 }
 

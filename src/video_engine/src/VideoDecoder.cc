@@ -17,25 +17,25 @@ namespace OpenSocialNet::Video
     bool VideoDecoder::init() noexcept
     {
 
-        const AVCodec* codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+        // find H.264 decoder, allocate context, packet, and frame
+        const ::AVCodec* codec { ::avcodec_find_decoder(AV_CODEC_ID_H264) };
         if (!codec) return false;
 
-        AVCodecContext* ctx = avcodec_alloc_context3(codec);
+        ::AVCodecContext* ctx { ::avcodec_alloc_context3(codec) };
         if (!ctx) return false;
         codec_ctx.reset(ctx);
 
-        int result = avcodec_open2(codec_ctx.get(), codec, nullptr);
-        if (result < 0) 
+        int result { ::avcodec_open2(codec_ctx.get(), codec, nullptr) };
+        if (result < 0)
         {
 
             reset();
             return false;
-             
+
         }
 
-        // Allocate packet and frame
-        AVPacket* pkt = av_packet_alloc();
-        if (!pkt) 
+        ::AVPacket* pkt { ::av_packet_alloc() };
+        if (!pkt)
         {
 
             reset();
@@ -44,12 +44,13 @@ namespace OpenSocialNet::Video
         }
         packet.reset(pkt);
 
-        AVFrame* fr = av_frame_alloc();
-        if (!fr) 
+        ::AVFrame* fr { ::av_frame_alloc() };
+        if (!fr)
         {
 
             reset();
             return false;
+
         }
 
         frame.reset(fr);
@@ -57,24 +58,24 @@ namespace OpenSocialNet::Video
 
     }
 
-    bool VideoDecoder::decode_packet(std::span<const std::byte> h264_data, uint8_t** yuv420p_planes, int* strides) noexcept
+    bool VideoDecoder::decode_packet(std::span<const std::byte> h264_data, std::uint8_t** yuv420p_planes, int* strides) noexcept
     {
 
         if (!valid()) return false;
         if (!yuv420p_planes || !strides) return false;
 
-        packet->data = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(h264_data.data()));
+        // send packet to decoder and receive decoded frame
+        packet->data = const_cast<std::uint8_t*>(reinterpret_cast<const std::uint8_t*>(h264_data.data()));
         packet->size = static_cast<int>(h264_data.size());
 
-        int send_result = avcodec_send_packet(codec_ctx.get(), packet.get());
+        int send_result { ::avcodec_send_packet(codec_ctx.get(), packet.get()) };
         if (send_result < 0 && send_result != AVERROR(EAGAIN) && send_result != AVERROR_EOF) return false;
-        
-        int recv_result = avcodec_receive_frame(codec_ctx.get(), frame.get());
-        if (recv_result == AVERROR(EAGAIN) || recv_result == AVERROR_EOF) return false; // Need more data or end of streaM 
-        
+
+        int recv_result { ::avcodec_receive_frame(codec_ctx.get(), frame.get()) };
+        if (recv_result == AVERROR(EAGAIN) || recv_result == AVERROR_EOF) return false;
         if (recv_result < 0) return false;
 
-        if (res_width == 0 || res_height == 0) 
+        if (res_width == 0 || res_height == 0)
         {
 
             res_width = frame->width;
@@ -94,18 +95,18 @@ namespace OpenSocialNet::Video
 
     }
 
-    bool VideoDecoder::flush(uint8_t** yuv420p_planes, int* strides) noexcept
+    bool VideoDecoder::flush(std::uint8_t** yuv420p_planes, int* strides) noexcept
     {
 
         if (!valid()) return false;
         if (!yuv420p_planes || !strides) return false;
 
-        int send_result = avcodec_send_packet(codec_ctx.get(), nullptr);
+        // drain remaining frames from decoder with null packet
+        int send_result { ::avcodec_send_packet(codec_ctx.get(), nullptr) };
         if (send_result < 0) return false;
 
-        int recv_result = avcodec_receive_frame(codec_ctx.get(), frame.get());
+        int recv_result { ::avcodec_receive_frame(codec_ctx.get(), frame.get()) };
         if (recv_result == AVERROR(EAGAIN) || recv_result == AVERROR_EOF) return false;
-
         if (recv_result < 0) return false;
 
         yuv420p_planes[0] = frame->data[0];
@@ -147,7 +148,9 @@ namespace OpenSocialNet::Video
 
     int VideoDecoder::height() const noexcept
     {
+
         return res_height;
+
     }
 
 }

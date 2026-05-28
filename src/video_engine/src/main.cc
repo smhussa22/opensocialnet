@@ -5,111 +5,124 @@
 #include "VideoDecoder.hh"
 #include "VideoRenderer.hh"
 #include <cstdio>
-#include <chrono>
-#include <thread>
+#include <cstdint>
+#include <cstddef>
+#include <vector>
 
-using namespace OpenSocialNet::Video;
+// capture and encode camera frames into H.264, printing per-frame stats
+void sender_pipeline(const char* device = "/dev/video0", int width = 640, int height = 480, int fps = 30)
+{
 
-// Example sender: capture frames, encode to H.264
-void sender_pipeline(const char* device = "/dev/video0", int width = 640, int height = 480, int fps = 30) {
-    VideoCapture capture;
-    VideoEncoder encoder;
+    OpenSocialNet::Video::VideoCapture capture;
+    OpenSocialNet::Video::VideoEncoder encoder;
 
-    printf("Sender: Initializing capture from %s (%dx%d @ %dfps)\n", device, width, height, fps);
-    if (!capture.init(device, width, height, fps)) {
-        printf("Failed to init capture\n");
+    ::printf("Sender: Initializing capture from %s (%dx%d @ %dfps)\n", device, width, height, fps);
+    if (!capture.init(device, width, height, fps))
+    {
+
+        ::printf("Failed to init capture\n");
         return;
+
     }
 
-    printf("Sender: Initializing encoder\n");
-    if (!encoder.init(width, height, fps)) {
-        printf("Failed to init encoder\n");
+    ::printf("Sender: Initializing encoder\n");
+    if (!encoder.init(width, height, fps))
+    {
+
+        ::printf("Failed to init encoder\n");
         return;
+
     }
 
-    // Buffer for YUV420P frame
-    size_t yuv_size = width * height * 3 / 2;
-    uint8_t* yuv_frame = new uint8_t[yuv_size];
+    std::size_t yuv_size { static_cast<std::size_t>(width * height) * 3 / 2 };
+    std::vector<std::uint8_t> yuv_frame(yuv_size);
+    std::vector<std::byte> h264_buf(yuv_size);
 
-    // Buffer for H.264 bitstream
-    uint8_t* h264_buf = new uint8_t[yuv_size];  // conservative upper bound
+    // capture and encode 30 frames; in production send over UDP
+    ::printf("Sender: Capturing and encoding 30 frames...\n");
+    for (std::size_t i { 0 }; i < 30; ++i)
+    {
 
-    printf("Sender: Capturing and encoding 30 frames...\n");
-    for (int i = 0; i < 30; ++i) {
-        // Capture frame
-        size_t bytes_read = capture.capture_frame({yuv_frame, yuv_size});
-        if (bytes_read == 0) {
-            printf("  Frame %d: capture failed\n", i);
+        std::size_t bytes_read { capture.capture_frame({yuv_frame.data(), yuv_size}) };
+        if (bytes_read == 0)
+        {
+
+            ::printf("  Frame %zu: capture failed\n", i);
             continue;
+
         }
 
-        // Encode frame
-        int h264_bytes = encoder.encode_frame(yuv_frame, width, {reinterpret_cast<std::byte*>(h264_buf), yuv_size});
-        if (h264_bytes <= 0) {
-            printf("  Frame %d: encode failed\n", i);
+        int h264_bytes { encoder.encode_frame(yuv_frame.data(), width, {h264_buf.data(), h264_buf.size()}) };
+        if (h264_bytes <= 0)
+        {
+
+            ::printf("  Frame %zu: encode failed\n", i);
             continue;
+
         }
 
-        printf("  Frame %d: %zu bytes captured, %d bytes encoded\n", i, bytes_read, h264_bytes);
+        ::printf("  Frame %zu: %zu bytes captured, %d bytes encoded\n", i, bytes_read, h264_bytes);
 
-        // In a real scenario, this H.264 bitstream would be sent over the network via UDP
-        // For now we just print stats
     }
 
-    // Flush encoder
-    int final_bytes = encoder.flush({reinterpret_cast<std::byte*>(h264_buf), yuv_size});
-    if (final_bytes > 0) {
-        printf("Sender: Flush yielded %d bytes\n", final_bytes);
-    }
+    int final_bytes { encoder.flush({h264_buf.data(), h264_buf.size()}) };
+    if (final_bytes > 0) ::printf("Sender: Flush yielded %d bytes\n", final_bytes);
 
-    printf("Sender: Done\n");
-    delete[] yuv_frame;
-    delete[] h264_buf;
+    ::printf("Sender: Done\n");
+
 }
 
-// Example receiver: decode H.264, render frames
-void receiver_pipeline() {
-    VideoDecoder decoder;
-    VideoRenderer renderer;
+// decode incoming H.264 packets and display frames
+void receiver_pipeline()
+{
 
-    printf("Receiver: Initializing decoder\n");
-    if (!decoder.init()) {
-        printf("Failed to init decoder\n");
+    OpenSocialNet::Video::VideoDecoder decoder;
+    OpenSocialNet::Video::VideoRenderer renderer;
+
+    ::printf("Receiver: Initializing decoder\n");
+    if (!decoder.init())
+    {
+
+        ::printf("Failed to init decoder\n");
         return;
+
     }
 
-    printf("Receiver: Initializing renderer\n");
-    if (!renderer.init(640, 480, "OpenSocialNet Video Receiver")) {
-        printf("Failed to init renderer\n");
+    ::printf("Receiver: Initializing renderer\n");
+    if (!renderer.init(640, 480, "OpenSocialNet Video Receiver"))
+    {
+
+        ::printf("Failed to init renderer\n");
         return;
+
     }
 
-    // In a real scenario, H.264 packets would be received from the network
-    // This is just a placeholder structure
-    printf("Receiver: Ready to decode and display frames\n");
-    printf("Receiver: (Would receive H.264 packets here and call decoder.decode_packet)\n");
+    ::printf("Receiver: Ready to decode and display frames\n");
+    ::printf("Receiver: (Would receive H.264 packets here and call decoder.decode_packet)\n");
+
 }
 
-int main(int argc, char** argv) {
-    printf("VideoEngine Pipeline Test\n");
-    printf("==========================\n\n");
+int main()
+{
 
-    printf("SENDER PIPELINE:\n");
-    printf("---------------\n");
-    // Uncomment to test sender (requires camera)
+    ::printf("VideoEngine Pipeline Test\n");
+    ::printf("==========================\n\n");
+
+    ::printf("SENDER PIPELINE:\n");
+    ::printf("---------------\n");
     // sender_pipeline();
-    printf("(skipped - requires camera device)\n\n");
+    ::printf("(skipped - requires camera device)\n\n");
 
-    printf("RECEIVER PIPELINE:\n");
-    printf("-----------------\n");
-    // Uncomment to test receiver (creates window)
+    ::printf("RECEIVER PIPELINE:\n");
+    ::printf("-----------------\n");
     // receiver_pipeline();
-    printf("(skipped - requires video input)\n");
+    ::printf("(skipped - requires video input)\n");
 
-    printf("\nPipeline structure test complete.\n");
-    printf("In production:\n");
-    printf("  1. Sender: capture → encode → send over UDP\n");
-    printf("  2. Receiver: receive UDP → decode → render\n");
+    ::printf("\nPipeline structure test complete.\n");
+    ::printf("In production:\n");
+    ::printf("  1. Sender: capture → encode → send over UDP\n");
+    ::printf("  2. Receiver: receive UDP → decode → render\n");
 
     return 0;
+
 }

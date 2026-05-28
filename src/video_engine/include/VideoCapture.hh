@@ -15,8 +15,10 @@
 
 namespace OpenSocialNet::Video
 {
+
     class VideoCapture
     {
+
     public:
         VideoCapture() noexcept = default;
         ~VideoCapture() { shutdown(); }
@@ -33,7 +35,7 @@ namespace OpenSocialNet::Video
         void shutdown() noexcept;
 
         // reads next captured frame as YUV420P data. returns frame size in bytes.
-        size_t capture_frame(std::span<uint8_t> frame_buffer) noexcept;
+        std::size_t capture_frame(std::span<std::uint8_t> frame_buffer) noexcept;
 
         // returns whether capture device was successfully initialized.
         [[nodiscard]] bool valid() const noexcept;
@@ -43,12 +45,12 @@ namespace OpenSocialNet::Video
         [[nodiscard]] int height() const noexcept;
 
     private:
-        int device_fd { -1 };
-        uint8_t* buffers[4] { };
-        size_t buffer_lengths[4] { };
-        int num_buffers { 0 };
-        int res_width { 0 };
-        int res_height { 0 };
+        int device_fd { -1 }; // v4l2 device file descriptor
+        std::uint8_t* buffers[4] { }; // mmap'd device buffers
+        std::size_t buffer_lengths[4] { }; // length of each buffer
+        std::size_t num_buffers { 0 }; // number of allocated buffers
+        int res_width { 0 }; // actual capture width
+        int res_height { 0 }; // actual capture height
 
     };
 

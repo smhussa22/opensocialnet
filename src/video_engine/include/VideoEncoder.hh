@@ -16,8 +16,10 @@
 
 namespace OpenSocialNet::Video
 {
+
     class VideoEncoder
     {
+
     public:
         explicit VideoEncoder() noexcept;
         ~VideoEncoder() = default;
@@ -31,7 +33,7 @@ namespace OpenSocialNet::Video
         bool init(int width, int height, int framerate) noexcept;
 
         // encodes a raw YUV420P frame into H.264 bitstream. returns number of bytes written.
-        int encode_frame(const uint8_t* yuv420p_data, int stride, std::span<std::byte> output_h264_bytes) noexcept;
+        int encode_frame(const std::uint8_t* yuv420p_data, int stride, std::span<std::byte> output_h264_bytes) noexcept;
 
         // flushes remaining frames from encoder. returns number of bytes in final packet.
         int flush(std::span<std::byte> output_h264_bytes) noexcept;
@@ -43,10 +45,11 @@ namespace OpenSocialNet::Video
         [[nodiscard]] bool valid() const noexcept;
 
     private:
-        X264EncoderPtr encoder {};
-        x264_picture_t pic_in {};
-        int width_ {0};
-        int height_ {0};
+        X264EncoderPtr encoder { }; // x264 encoder instance
+        ::x264_picture_t pic_in { }; // input picture buffer
+        int width_ { 0 }; // frame width
+        int height_ { 0 }; // frame height
+
     };
 
 }

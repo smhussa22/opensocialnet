@@ -4,10 +4,10 @@
 // c sys headers
 #include <cstddef>
 #include <cstdint>
-#include <fcntl.h> 
-#include <unistd.h>  
-#include <sys/ioctl.h> 
-#include <sys/mman.h> 
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <cstring>
 
 // cpp stdlib headers
@@ -21,13 +21,13 @@
 namespace OpenSocialNet::Video
 {
 
-    bool VideoCapture::init(const char* device_path, int width, int height, int framerate) noexcept 
+    bool VideoCapture::init(const char* device_path, int width, int height, int framerate) noexcept
     {
 
         device_fd = ::open(device_path, O_RDWR);
-        
-        ::v4l2_capability cap {};
-        int verify_status = ::ioctl(device_fd, VIDIOC_QUERYCAP, &cap);
+
+        ::v4l2_capability cap { };
+        int verify_status { ::ioctl(device_fd, VIDIOC_QUERYCAP, &cap) };
         if (verify_status == -1)
         {
 
@@ -44,7 +44,7 @@ namespace OpenSocialNet::Video
 
         }
 
-        ::v4l2_format format {};
+        ::v4l2_format format { };
         format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         format.fmt.pix.width = width;
         format.fmt.pix.height = height;
@@ -59,19 +59,18 @@ namespace OpenSocialNet::Video
 
         }
 
-        // store what was actually set, not what asked for
+        // store what the driver actually set
         res_width = format.fmt.pix.width;
         res_height = format.fmt.pix.height;
 
-        // set framerate
-        ::v4l2_streamparm parm {};
+        ::v4l2_streamparm parm { };
         parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         parm.parm.capture.timeperframe.numerator = 1;
         parm.parm.capture.timeperframe.denominator = framerate;
-        ::ioctl(device_fd, VIDIOC_S_PARM, &parm);  // non-fatal if fails
+        ::ioctl(device_fd, VIDIOC_S_PARM, &parm); // non-fatal if fails
 
-        // request buffers
-        ::v4l2_requestbuffers req {};
+        // request and map mmap buffers
+        ::v4l2_requestbuffers req { };
         req.count = 4;
         req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         req.memory = V4L2_MEMORY_MMAP;
@@ -84,11 +83,10 @@ namespace OpenSocialNet::Video
         }
         num_buffers = req.count;
 
-        // map each buffer
-        for (int i = 0; i < num_buffers; ++i)
+        for (std::size_t i { 0 }; i < num_buffers; ++i)
         {
 
-            ::v4l2_buffer buf {};
+            ::v4l2_buffer buf { };
             buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i;
@@ -101,7 +99,7 @@ namespace OpenSocialNet::Video
             }
 
             buffer_lengths[i] = buf.length;
-            buffers[i] = static_cast<uint8_t*>(::mmap(nullptr, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, device_fd, buf.m.offset));
+            buffers[i] = static_cast<std::uint8_t*>(::mmap(nullptr, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, device_fd, buf.m.offset));
             if (buffers[i] == MAP_FAILED)
             {
 
@@ -113,11 +111,11 @@ namespace OpenSocialNet::Video
 
         }
 
-        // queue all buffers
-        for (int i = 0; i < num_buffers; ++i)
+        // queue all buffers then start streaming
+        for (std::size_t i { 0 }; i < num_buffers; ++i)
         {
 
-            ::v4l2_buffer buf {};
+            ::v4l2_buffer buf { };
             buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i;
@@ -131,8 +129,7 @@ namespace OpenSocialNet::Video
 
         }
 
-        // start streaming
-        ::v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        ::v4l2_buf_type type { V4L2_BUF_TYPE_VIDEO_CAPTURE };
         if (::ioctl(device_fd, VIDIOC_STREAMON, &type) == -1)
         {
 
@@ -145,20 +142,19 @@ namespace OpenSocialNet::Video
 
     }
 
-    void VideoCapture::shutdown() noexcept 
+    void VideoCapture::shutdown() noexcept
     {
 
-        // stop streaming
+        // stop streaming and unmap buffers
         if (device_fd != -1)
         {
 
-            ::v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            ::v4l2_buf_type type { V4L2_BUF_TYPE_VIDEO_CAPTURE };
             ::ioctl(device_fd, VIDIOC_STREAMOFF, &type);
 
         }
 
-        // unmap all buffers
-        for (int i = 0; i < num_buffers; ++i)
+        for (std::size_t i { 0 }; i < num_buffers; ++i)
         {
 
             if (buffers[i] != nullptr)
@@ -171,7 +167,7 @@ namespace OpenSocialNet::Video
 
         }
 
-        // close device
+        // close device and reset state
         if (device_fd != -1)
         {
 
@@ -182,47 +178,45 @@ namespace OpenSocialNet::Video
 
         num_buffers = 0;
         res_width = 0;
-        res_height  = 0;
+        res_height = 0;
 
     }
 
-    size_t VideoCapture::capture_frame(std::span<uint8_t> frame_buffer) noexcept 
+    std::size_t VideoCapture::capture_frame(std::span<std::uint8_t> frame_buffer) noexcept
     {
 
         if (!valid()) return 0;
 
-        // dequeue next filled buffer from kernel
-        ::v4l2_buffer buf {};
-        buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        // dequeue filled buffer, copy data out, requeue for refill
+        ::v4l2_buffer buf { };
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = V4L2_MEMORY_MMAP;
         if (::ioctl(device_fd, VIDIOC_DQBUF, &buf) == -1) return 0;
 
-        // copy frame data out — buf.bytesused is actual bytes in this frame
-        size_t bytes_to_copy = std::min(frame_buffer.size(), static_cast<size_t>(buf.bytesused));
-        memcpy(frame_buffer.data(), buffers[buf.index], bytes_to_copy);
+        std::size_t bytes_to_copy { std::min(frame_buffer.size(), static_cast<std::size_t>(buf.bytesused)) };
+        std::memcpy(frame_buffer.data(), buffers[buf.index], bytes_to_copy);
 
-        // requeue the buffer so kernel can fill it again
         if (::ioctl(device_fd, VIDIOC_QBUF, &buf) == -1) return 0;
 
         return bytes_to_copy;
 
     }
 
-    bool VideoCapture::valid() const noexcept 
+    bool VideoCapture::valid() const noexcept
     {
 
         return device_fd != -1;
 
     }
 
-    int VideoCapture::width() const noexcept 
+    int VideoCapture::width() const noexcept
     {
 
         return res_width;
 
     }
 
-    int VideoCapture::height() const noexcept 
+    int VideoCapture::height() const noexcept
     {
 
         return res_height;
