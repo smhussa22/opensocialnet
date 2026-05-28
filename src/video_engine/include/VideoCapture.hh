@@ -18,7 +18,7 @@ namespace OpenSocialNet::Video
     class VideoCapture
     {
     public:
-        explicit VideoCapture() noexcept;
+        VideoCapture() noexcept = default;
         ~VideoCapture() { shutdown(); }
 
         VideoCapture(const VideoCapture&) = delete;
@@ -26,7 +26,7 @@ namespace OpenSocialNet::Video
         VideoCapture(VideoCapture&&) = delete;
         VideoCapture& operator=(VideoCapture&&) = delete;
 
-        // opens video device and starts capturing. returns true on success.
+        // opens video device, verifies its a capture device, and starts streaming from camera. returns true on success.
         bool init(const char* device_path, int width, int height, int framerate) noexcept;
 
         // stops capture and closes video device.
@@ -43,12 +43,13 @@ namespace OpenSocialNet::Video
         [[nodiscard]] int height() const noexcept;
 
     private:
-        int device_fd {-1};
-        uint8_t* buffers[4] {};
-        size_t buffer_lengths[4] {};
-        int num_buffers {0};
-        int width_ {0};
-        int height_ {0};
+        int device_fd { -1 };
+        uint8_t* buffers[4] { };
+        size_t buffer_lengths[4] { };
+        int num_buffers { 0 };
+        int res_width { 0 };
+        int res_height { 0 };
+
     };
 
 }
