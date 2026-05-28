@@ -9,19 +9,13 @@ find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(X264 REQUIRED IMPORTED_TARGET x264)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavutil libswscale)
-
-# Find SDL3 from vcpkg or local build
-find_package(SDL3 QUIET)
-if(NOT SDL3_FOUND)
-  # Try pkg-config as fallback
-  pkg_check_modules(SDL3 QUIET IMPORTED_TARGET sdl3-3.0)
-endif()
+pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 
 add_library(video_engine STATIC
     src/VideoCapture.cc
     src/VideoEncoder.cc
     src/VideoDecoder.cc
-    # src/VideoRenderer.cc  (requires SDL3, not available)
+    src/VideoRenderer.cc
 )
 
 target_include_directories(video_engine PUBLIC include)
@@ -30,13 +24,8 @@ target_link_libraries(video_engine
     PUBLIC
         PkgConfig::X264
         PkgConfig::FFMPEG
+        PkgConfig::SDL3
 )
-
-if(SDL3_FOUND)
-  target_link_libraries(video_engine PUBLIC SDL3::SDL3)
-elseif(SDL3_FOUND_PKGCONFIG)
-  target_link_libraries(video_engine PUBLIC PkgConfig::SDL3)
-endif()
 
 target_compile_options(video_engine PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -46,3 +35,6 @@ target_link_libraries(test_capture_encode PRIVATE video_engine)
 
 add_executable(test_synthetic src/test_synthetic.cc)
 target_link_libraries(test_synthetic PRIVATE video_engine)
+
+add_executable(test_render src/test_render.cc)
+target_link_libraries(test_render PRIVATE video_engine)

@@ -18,7 +18,7 @@ namespace OpenSocialNet::Video
         if (width <= 0 || height <= 0) return false;
 
         // create SDL window and renderer
-        window = ::SDL_CreateWindow(window_title.c_str(), width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        window = ::SDL_CreateWindow(window_title.c_str(), width, height, SDL_WINDOW_RESIZABLE);
         if (!window)
         {
 
