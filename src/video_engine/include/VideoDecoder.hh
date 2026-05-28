@@ -19,7 +19,7 @@ namespace OpenSocialNet::Video
     class VideoDecoder
     {
     public:
-        explicit VideoDecoder() noexcept;
+        VideoDecoder() noexcept = default;
         ~VideoDecoder() = default;
 
         VideoDecoder(const VideoDecoder&) = delete;
@@ -47,11 +47,11 @@ namespace OpenSocialNet::Video
         [[nodiscard]] int height() const noexcept;
 
     private:
-        AVCodecContextPtr codec_ctx {};
-        AVPacketPtr packet {};
-        AVFramePtr frame {};
-        int width_ {0};
-        int height_ {0};
+        AVCodecContextPtr codec_ctx { };
+        AVPacketPtr packet { };
+        AVFramePtr frame { };
+        int res_width { 0 };
+        int res_height { 0 };
     };
 
 }
