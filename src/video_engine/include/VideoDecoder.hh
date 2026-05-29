@@ -9,7 +9,12 @@
 #include <span>
 
 // 3rd party headers
-#include <libavcodec/avcodec.h>
+extern "C"
+{
+
+    #include <libavcodec/avcodec.h>
+
+}
 
 // project headers
 #include "VideoDecoderDeleter.hh"

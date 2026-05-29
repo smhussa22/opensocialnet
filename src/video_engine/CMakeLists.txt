@@ -38,3 +38,6 @@ target_link_libraries(test_synthetic PRIVATE video_engine)
 
 add_executable(test_render src/test_render.cc)
 target_link_libraries(test_render PRIVATE video_engine)
+
+add_executable(test_roundtrip src/test_roundtrip.cc)
+target_link_libraries(test_roundtrip PRIVATE video_engine)

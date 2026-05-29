@@ -5,9 +5,14 @@
 // cpp stdlib headers
 
 // 3rd party headers
-#include <libavcodec/avcodec.h>
-#include <libavutil/error.h>
-#include <libavutil/frame.h>
+extern "C"
+{
+
+    #include <libavcodec/avcodec.h>
+    #include <libavutil/error.h>
+    #include <libavutil/frame.h>
+
+}
 
 // project headers
 

@@ -5,7 +5,12 @@
 #include <memory>
 
 // 3rd party headers
-#include <libavcodec/avcodec.h>
+extern "C"
+{
+
+    #include <libavcodec/avcodec.h>
+
+}
 
 namespace OpenSocialNet::Video
 {
