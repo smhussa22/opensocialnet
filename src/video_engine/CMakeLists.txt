@@ -10,6 +10,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(X264 REQUIRED IMPORTED_TARGET x264)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavutil libswscale)
 pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+pkg_check_modules(OPUS REQUIRED IMPORTED_TARGET opus)
 
 add_library(video_engine STATIC
     src/VideoCapture.cc
@@ -27,6 +28,7 @@ add_library(video_engine STATIC
 target_include_directories(video_engine PUBLIC
     include
     ../network/include
+    ../audio_engine/include
 )
 
 target_link_libraries(video_engine
@@ -59,3 +61,13 @@ target_link_libraries(video_sender PRIVATE video_engine)
 
 add_executable(video_receiver src/video_receiver.cc)
 target_link_libraries(video_receiver PRIVATE video_engine)
+
+add_executable(audio_video_client
+    src/audio_video_client.cc
+    ../audio_engine/src/AudioStream.cc
+    ../audio_engine/src/AudioCapture.cc
+    ../audio_engine/src/AudioEncoder.cc
+    ../audio_engine/src/AudioDecoder.cc
+)
+target_include_directories(audio_video_client PRIVATE ../audio_engine/include)
+target_link_libraries(audio_video_client PRIVATE video_engine PkgConfig::OPUS)

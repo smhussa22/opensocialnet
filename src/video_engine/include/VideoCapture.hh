@@ -12,6 +12,7 @@
 #include <linux/videodev2.h>
 
 // project headers
+#include "VideoDecoderDeleter.hh"
 
 namespace OpenSocialNet::Video
 {
@@ -51,6 +52,9 @@ namespace OpenSocialNet::Video
         std::size_t num_buffers { 0 }; // number of allocated buffers
         int res_width { 0 }; // actual capture width
         int res_height { 0 }; // actual capture height
+        AVCodecContextPtr mjpeg_ctx { }; // libavcodec MJPEG decoder context
+        AVPacketPtr mjpeg_packet { }; // packet wrapping the mmap'd MJPEG bytes
+        AVFramePtr mjpeg_frame { }; // decoded I420 frame from MJPEG decoder
 
     };
 

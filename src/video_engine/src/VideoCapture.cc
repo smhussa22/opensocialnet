@@ -15,6 +15,14 @@
 
 // 3rd party headers
 #include <linux/videodev2.h>
+extern "C"
+{
+
+#include <libavcodec/avcodec.h>
+#include <libavutil/error.h>
+#include <libavutil/frame.h>
+
+}
 
 // project headers
 
@@ -44,12 +52,12 @@ namespace OpenSocialNet::Video
 
         }
 
-        // ask for YUYV: every UVC camera supports it; we convert to planar I420 on capture
+        // ask for MJPG: ~10x less USB-IP bandwidth than YUYV, decoded by libavcodec into I420
         ::v4l2_format format { };
         format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         format.fmt.pix.width = width;
         format.fmt.pix.height = height;
-        format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+        format.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
         format.fmt.pix.field = V4L2_FIELD_NONE;
 
         if (::ioctl(device_fd, VIDIOC_S_FMT, &format) == -1)
@@ -61,7 +69,7 @@ namespace OpenSocialNet::Video
         }
 
         // refuse if the driver picked a format we don't know how to handle
-        if (format.fmt.pix.pixelformat != V4L2_PIX_FMT_YUYV)
+        if (format.fmt.pix.pixelformat != V4L2_PIX_FMT_MJPEG)
         {
 
             shutdown();
@@ -72,6 +80,24 @@ namespace OpenSocialNet::Video
         // store what the driver actually set
         res_width = format.fmt.pix.width;
         res_height = format.fmt.pix.height;
+
+        // bring up the MJPEG decoder (libavcodec) — produces YUVJ420P which is byte-compatible with I420
+        const ::AVCodec* codec { ::avcodec_find_decoder(AV_CODEC_ID_MJPEG) };
+        if (!codec) { shutdown(); return false; }
+
+        ::AVCodecContext* ctx { ::avcodec_alloc_context3(codec) };
+        if (!ctx) { shutdown(); return false; }
+        mjpeg_ctx.reset(ctx);
+
+        if (::avcodec_open2(mjpeg_ctx.get(), codec, nullptr) < 0) { shutdown(); return false; }
+
+        ::AVPacket* pkt { ::av_packet_alloc() };
+        if (!pkt) { shutdown(); return false; }
+        mjpeg_packet.reset(pkt);
+
+        ::AVFrame* fr { ::av_frame_alloc() };
+        if (!fr) { shutdown(); return false; }
+        mjpeg_frame.reset(fr);
 
         ::v4l2_streamparm parm { };
         parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -177,7 +203,7 @@ namespace OpenSocialNet::Video
 
         }
 
-        // close device and reset state
+        // close device, drop MJPEG decoder, and reset state
         if (device_fd != -1)
         {
 
@@ -185,6 +211,10 @@ namespace OpenSocialNet::Video
             device_fd = -1;
 
         }
+
+        mjpeg_frame.reset();
+        mjpeg_packet.reset();
+        mjpeg_ctx.reset();
 
         num_buffers = 0;
         res_width = 0;
@@ -197,7 +227,7 @@ namespace OpenSocialNet::Video
 
         if (!valid()) return 0;
 
-        // dequeue filled YUYV buffer, convert to planar I420, requeue
+        // dequeue filled MJPEG buffer, decode to I420, requeue
         ::v4l2_buffer buf { };
         buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = V4L2_MEMORY_MMAP;
@@ -215,36 +245,45 @@ namespace OpenSocialNet::Video
 
         }
 
-        // YUYV: each 4 bytes = [Y0 U Y1 V] for 2 horizontal pixels; I420: Y full-res, U/V at quarter-res
-        const std::uint8_t* yuyv { buffers[buf.index] };
+        // feed the mmap'd JPEG bytes through libavcodec; output is YUVJ420P / YUV420P (byte-identical layout to I420)
+        mjpeg_packet->data = buffers[buf.index];
+        mjpeg_packet->size = static_cast<int>(buf.bytesused);
+
+        int send_result { ::avcodec_send_packet(mjpeg_ctx.get(), mjpeg_packet.get()) };
+        if (send_result < 0)
+        {
+
+            ::ioctl(device_fd, VIDIOC_QBUF, &buf);
+            return 0;
+
+        }
+
+        int recv_result { ::avcodec_receive_frame(mjpeg_ctx.get(), mjpeg_frame.get()) };
+        if (recv_result < 0)
+        {
+
+            ::ioctl(device_fd, VIDIOC_QBUF, &buf);
+            return 0;
+
+        }
+
+        // copy each plane row-by-row to strip the decoder's internal padding (linesize >= width)
         std::uint8_t* y_dst { frame_buffer.data() };
         std::uint8_t* u_dst { frame_buffer.data() + y_plane_size };
         std::uint8_t* v_dst { frame_buffer.data() + y_plane_size + uv_plane_size };
 
-        std::size_t yuyv_row_bytes { static_cast<std::size_t>(res_width) * 2 };
         for (std::size_t row { 0 }; row < static_cast<std::size_t>(res_height); ++row)
         {
 
-            const std::uint8_t* row_in { yuyv + row * yuyv_row_bytes };
-            std::uint8_t* row_y { y_dst + row * static_cast<std::size_t>(res_width) };
+            std::memcpy(y_dst + row * static_cast<std::size_t>(res_width), mjpeg_frame->data[0] + row * static_cast<std::size_t>(mjpeg_frame->linesize[0]), static_cast<std::size_t>(res_width));
 
-            for (std::size_t x { 0 }; x < static_cast<std::size_t>(res_width); ++x) row_y[x] = row_in[x * 2];
+        }
 
-            // sample chroma from even rows only (4:2:0 vertical subsampling)
-            if ((row & 1) == 0)
-            {
+        for (std::size_t row { 0 }; row < static_cast<std::size_t>(res_height / 2); ++row)
+        {
 
-                std::uint8_t* row_u { u_dst + (row / 2) * static_cast<std::size_t>(res_width / 2) };
-                std::uint8_t* row_v { v_dst + (row / 2) * static_cast<std::size_t>(res_width / 2) };
-                for (std::size_t x { 0 }; x < static_cast<std::size_t>(res_width / 2); ++x)
-                {
-
-                    row_u[x] = row_in[x * 4 + 1];
-                    row_v[x] = row_in[x * 4 + 3];
-
-                }
-
-            }
+            std::memcpy(u_dst + row * static_cast<std::size_t>(res_width / 2), mjpeg_frame->data[1] + row * static_cast<std::size_t>(mjpeg_frame->linesize[1]), static_cast<std::size_t>(res_width / 2));
+            std::memcpy(v_dst + row * static_cast<std::size_t>(res_width / 2), mjpeg_frame->data[2] + row * static_cast<std::size_t>(mjpeg_frame->linesize[2]), static_cast<std::size_t>(res_width / 2));
 
         }
 
