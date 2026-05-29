@@ -53,3 +53,9 @@ target_link_libraries(test_roundtrip PRIVATE video_engine)
 
 add_executable(test_video_loopback src/test_video_loopback.cc)
 target_link_libraries(test_video_loopback PRIVATE video_engine)
+
+add_executable(video_sender src/video_sender.cc)
+target_link_libraries(video_sender PRIVATE video_engine)
+
+add_executable(video_receiver src/video_receiver.cc)
+target_link_libraries(video_receiver PRIVATE video_engine)
