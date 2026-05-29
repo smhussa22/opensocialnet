@@ -90,8 +90,10 @@ int main()
 
     if (!SDL_Init(SDL_INIT_AUDIO))
     {
+        
         std::cout << "SDL init failed: " << SDL_GetError() << "\n";
         return 1;
+
     }
     std::cout << "[main] SDL init ok\n";
 

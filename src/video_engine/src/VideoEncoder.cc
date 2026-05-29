@@ -27,8 +27,9 @@ namespace OpenSocialNet::Video
         width_ = width;
         height_ = height;
 
+        // ultrafast + zerolatency: no B-frames, no lookahead, encoder emits a frame per input
         ::x264_param_t param { };
-        ::x264_param_default_preset(&param, "veryfast", nullptr);
+        ::x264_param_default_preset(&param, "ultrafast", "zerolatency");
 
         param.i_width = width;
         param.i_height = height;
@@ -37,8 +38,10 @@ namespace OpenSocialNet::Video
         param.rc.i_bitrate = 500;
         param.i_threads = 1;
         param.b_repeat_headers = 1;
+        param.i_keyint_max = framerate; // keyframe every second so receivers can sync quickly
+        param.b_intra_refresh = 0;
 
-        ::x264_param_apply_profile(&param, "main");
+        ::x264_param_apply_profile(&param, "baseline");
 
         ::x264_t* enc { ::x264_encoder_open(&param) };
         if (!enc) return false;

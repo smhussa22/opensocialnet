@@ -46,6 +46,10 @@ namespace OpenSocialNet::Network
         // Returns true if all bytes were sent, false on failure.
         bool send(Packet packet) noexcept;
 
+        // Sends the packet exactly as given (header stays caller-supplied, only converts host byte order).
+        // Use when the caller manages its own ssrc/sequence/timestamp clock, e.g. video.
+        bool send_raw(Packet packet) noexcept;
+
         bool is_open() const noexcept { return socket.is_open(); }
 
 

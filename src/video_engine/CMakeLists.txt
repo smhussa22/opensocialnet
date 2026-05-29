@@ -16,9 +16,18 @@ add_library(video_engine STATIC
     src/VideoEncoder.cc
     src/VideoDecoder.cc
     src/VideoRenderer.cc
+    src/VideoPacketizer.cc
+    src/VideoReassembler.cc
+    ../network/src/UdpSocket.cc
+    ../network/src/UdpSender.cc
+    ../network/src/UdpReceiver.cc
+    ../network/src/PacketJitterBuffer.cc
 )
 
-target_include_directories(video_engine PUBLIC include)
+target_include_directories(video_engine PUBLIC
+    include
+    ../network/include
+)
 
 target_link_libraries(video_engine
     PUBLIC
@@ -41,3 +50,6 @@ target_link_libraries(test_render PRIVATE video_engine)
 
 add_executable(test_roundtrip src/test_roundtrip.cc)
 target_link_libraries(test_roundtrip PRIVATE video_engine)
+
+add_executable(test_video_loopback src/test_video_loopback.cc)
+target_link_libraries(test_video_loopback PRIVATE video_engine)

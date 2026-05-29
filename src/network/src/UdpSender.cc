@@ -83,5 +83,22 @@ namespace OpenSocialNet::Network
         return sent > 0;
     }
 
+    bool UdpSender::send_raw(Packet packet) noexcept
+    {
+
+        // byte-swap caller-supplied header fields in place; payload is opaque bytes
+        std::uint16_t wire_payload_size { packet.header.payload_size };
+
+        packet.header.ssrc         = htonl(packet.header.ssrc);
+        packet.header.timestamp    = htonl(packet.header.timestamp);
+        packet.header.sequence     = htons(packet.header.sequence);
+        packet.header.payload_size = htons(wire_payload_size);
+
+        ssize_t sent { ::sendto(socket.get_socket_fd(), &packet, wire_payload_size + sizeof(PacketHeader), 0, reinterpret_cast<const ::sockaddr*>(&receiver_address), sizeof(receiver_address)) };
+
+        return sent > 0;
+
+    }
+
 };
 

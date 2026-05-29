@@ -8,9 +8,9 @@
 extern "C"
 {
 
-    #include <libavcodec/avcodec.h>
-    #include <libavutil/error.h>
-    #include <libavutil/frame.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/error.h>
+#include <libavutil/frame.h>
 
 }
 

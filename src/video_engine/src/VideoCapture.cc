@@ -44,14 +44,24 @@ namespace OpenSocialNet::Video
 
         }
 
+        // ask for YUYV: every UVC camera supports it; we convert to planar I420 on capture
         ::v4l2_format format { };
         format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         format.fmt.pix.width = width;
         format.fmt.pix.height = height;
-        format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+        format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
         format.fmt.pix.field = V4L2_FIELD_NONE;
 
         if (::ioctl(device_fd, VIDIOC_S_FMT, &format) == -1)
+        {
+
+            shutdown();
+            return false;
+
+        }
+
+        // refuse if the driver picked a format we don't know how to handle
+        if (format.fmt.pix.pixelformat != V4L2_PIX_FMT_YUYV)
         {
 
             shutdown();
@@ -187,18 +197,60 @@ namespace OpenSocialNet::Video
 
         if (!valid()) return 0;
 
-        // dequeue filled buffer, copy data out, requeue for refill
+        // dequeue filled YUYV buffer, convert to planar I420, requeue
         ::v4l2_buffer buf { };
         buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         buf.memory = V4L2_MEMORY_MMAP;
         if (::ioctl(device_fd, VIDIOC_DQBUF, &buf) == -1) return 0;
 
-        std::size_t bytes_to_copy { std::min(frame_buffer.size(), static_cast<std::size_t>(buf.bytesused)) };
-        std::memcpy(frame_buffer.data(), buffers[buf.index], bytes_to_copy);
+        std::size_t y_plane_size { static_cast<std::size_t>(res_width) * static_cast<std::size_t>(res_height) };
+        std::size_t uv_plane_size { static_cast<std::size_t>(res_width / 2) * static_cast<std::size_t>(res_height / 2) };
+        std::size_t i420_size { y_plane_size + 2 * uv_plane_size };
+
+        if (frame_buffer.size() < i420_size)
+        {
+
+            ::ioctl(device_fd, VIDIOC_QBUF, &buf);
+            return 0;
+
+        }
+
+        // YUYV: each 4 bytes = [Y0 U Y1 V] for 2 horizontal pixels; I420: Y full-res, U/V at quarter-res
+        const std::uint8_t* yuyv { buffers[buf.index] };
+        std::uint8_t* y_dst { frame_buffer.data() };
+        std::uint8_t* u_dst { frame_buffer.data() + y_plane_size };
+        std::uint8_t* v_dst { frame_buffer.data() + y_plane_size + uv_plane_size };
+
+        std::size_t yuyv_row_bytes { static_cast<std::size_t>(res_width) * 2 };
+        for (std::size_t row { 0 }; row < static_cast<std::size_t>(res_height); ++row)
+        {
+
+            const std::uint8_t* row_in { yuyv + row * yuyv_row_bytes };
+            std::uint8_t* row_y { y_dst + row * static_cast<std::size_t>(res_width) };
+
+            for (std::size_t x { 0 }; x < static_cast<std::size_t>(res_width); ++x) row_y[x] = row_in[x * 2];
+
+            // sample chroma from even rows only (4:2:0 vertical subsampling)
+            if ((row & 1) == 0)
+            {
+
+                std::uint8_t* row_u { u_dst + (row / 2) * static_cast<std::size_t>(res_width / 2) };
+                std::uint8_t* row_v { v_dst + (row / 2) * static_cast<std::size_t>(res_width / 2) };
+                for (std::size_t x { 0 }; x < static_cast<std::size_t>(res_width / 2); ++x)
+                {
+
+                    row_u[x] = row_in[x * 4 + 1];
+                    row_v[x] = row_in[x * 4 + 3];
+
+                }
+
+            }
+
+        }
 
         if (::ioctl(device_fd, VIDIOC_QBUF, &buf) == -1) return 0;
 
-        return bytes_to_copy;
+        return i420_size;
 
     }
 
