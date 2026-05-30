@@ -30,6 +30,9 @@ FetchContent_MakeAvailable(cpp_httplib)
 add_library(sfu_lib STATIC
     src/SfuPeer.cc
     src/HttpSignalingEndpoint.cc
+    src/Room.cc
+    src/RoomRegistry.cc
+    src/SfuStats.cc
 )
 
 target_include_directories(sfu_lib PUBLIC

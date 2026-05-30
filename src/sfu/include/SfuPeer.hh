@@ -55,11 +55,18 @@ namespace OpenSocialNet::Sfu
         // closes the peer connection, releases tracks, returns to pre-init state.
         void shutdown() noexcept;
 
+        // returns the human-readable identifier assigned by the owning Room. empty until set.
+        [[nodiscard]] std::string_view peer_id() const noexcept;
+
+        // assigns this peer's identifier; called by Room when the peer joins.
+        void set_peer_id(std::string id) noexcept;
+
     private:
         std::shared_ptr<::rtc::PeerConnection> peer_connection { }; // libdatachannel peer
         std::shared_ptr<::rtc::Track> video_echo_track { }; // outgoing video; re-emits incoming RTP
         std::shared_ptr<::rtc::Track> audio_echo_track { }; // outgoing audio; re-emits incoming RTP
         std::string cached_answer_sdp { }; // answer SDP from accept_offer
+        std::string id_str { }; // peer identifier assigned by the owning Room
         std::atomic<bool> connected { false }; // mirrors PeerConnection::State::Connected
 
     };
