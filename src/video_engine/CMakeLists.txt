@@ -5,12 +5,32 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# system deps (apt or pkg-config): x264, FFmpeg, Opus
 find_package(PkgConfig REQUIRED)
-
 pkg_check_modules(X264 REQUIRED IMPORTED_TARGET x264)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavutil libswscale)
-pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 pkg_check_modules(OPUS REQUIRED IMPORTED_TARGET opus)
+
+# fetched at configure time: SDL3 (no apt package on Ubuntu 24.04) and libdatachannel (WebRTC)
+include(FetchContent)
+
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG        release-3.2.x
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(SDL3)
+
+set(NO_TESTS  ON CACHE BOOL "" FORCE)
+set(NO_EXAMPLES ON CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    LibDataChannel
+    GIT_REPOSITORY https://github.com/paullouisageneau/libdatachannel.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(LibDataChannel)
 
 add_library(video_engine STATIC
     src/VideoCapture.cc
@@ -35,7 +55,8 @@ target_link_libraries(video_engine
     PUBLIC
         PkgConfig::X264
         PkgConfig::FFMPEG
-        PkgConfig::SDL3
+        SDL3::SDL3
+        LibDataChannel::LibDataChannel
 )
 
 target_compile_options(video_engine PRIVATE -Wall -Wextra -Wpedantic)

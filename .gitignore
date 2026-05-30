@@ -5,3 +5,4 @@ frontend/
 build/
 cmake-build-debug/
 CLAUDE.md
+goals.md
