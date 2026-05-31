@@ -18,18 +18,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(LibDataChannel)
 
-# cpp-httplib — single-header HTTP server used for the throwaway Layer 1 SDP endpoint.
-FetchContent_Declare(
-    cpp_httplib
-    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-    GIT_TAG        v0.18.5
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(cpp_httplib)
-
 add_library(sfu_lib STATIC
     src/SfuPeer.cc
-    src/HttpSignalingEndpoint.cc
     src/Room.cc
     src/RoomRegistry.cc
     src/SfuStats.cc
@@ -42,7 +32,6 @@ target_include_directories(sfu_lib PUBLIC
 target_link_libraries(sfu_lib
     PUBLIC
         LibDataChannel::LibDataChannel
-        httplib::httplib
 )
 
 target_compile_options(sfu_lib PRIVATE -Wall -Wextra -Wpedantic)

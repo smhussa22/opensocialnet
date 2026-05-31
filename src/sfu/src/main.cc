@@ -1,12 +1,9 @@
 // related headers
 #include "SfuPeer.hh"
-#include "HttpSignalingEndpoint.hh"
 
 // c sys headers
 #include <csignal>
-#include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 
 // cpp stdlib headers
 #include <atomic>
@@ -21,27 +18,13 @@ static std::atomic<bool> running { true };
 
 void on_signal(int) { running = false; }
 
-int main(int argc, char** argv)
+int main()
 {
 
-    std::uint16_t port { argc > 1 ? static_cast<std::uint16_t>(std::atoi(argv[1])) : static_cast<std::uint16_t>(8080) };
-
-    ::printf("sfu: starting on http://0.0.0.0:%u (POST /offer)\n", static_cast<unsigned>(port));
+    ::printf("sfu: starting (no signaling wired up yet; waiting for gRPC)\n");
 
     OpenSocialNet::Sfu::SfuPeer peer { };
-    OpenSocialNet::Sfu::HttpSignalingEndpoint endpoint { };
-
-    if (!peer.init()) { ::printf("peer init failed\n"); return 1; }
-
-    auto on_offer = [&peer](std::string_view sdp_offer) -> std::string
-    {
-
-        if (!peer.accept_offer(sdp_offer)) return { };
-        return peer.answer_sdp();
-
-    };
-
-    if (!endpoint.start(port, on_offer)) { ::printf("http endpoint start failed\n"); return 1; }
+    if (!peer.init()) ::printf("sfu: peer.init() returned false (stub)\n");
 
     std::signal(SIGINT, on_signal);
     std::signal(SIGTERM, on_signal);
@@ -54,7 +37,6 @@ int main(int argc, char** argv)
     }
 
     ::printf("sfu: shutting down\n");
-    endpoint.stop();
     peer.shutdown();
 
     return 0;
