@@ -14,21 +14,26 @@ message Envelope
   {
 
     // ---- client -> server ----
-    Hello          hello          = 10;
-    Heartbeat      heartbeat      = 11;
-    SendMessage    send_message   = 12;
-    FetchHistory   fetch_history  = 13;
-    JoinVoice      join_voice     = 14;
-    LeaveVoice     leave_voice    = 15;
+    Hello          hello                = 10;
+    Heartbeat      heartbeat            = 11;
+    SendMessage    send_message         = 12;
+    FetchHistory   fetch_history        = 13;
+    JoinVoice      join_voice           = 14;
+    LeaveVoice     leave_voice          = 15;
+    Sdp            sdp_offer            = 16; // browser publishes its SDP offer to the SFU
+    IceCandidate   ice_candidate        = 17; // browser trickles one of its ICE candidates
 
     // ---- server -> client ----
-    Ready             ready              = 30;
-    HeartbeatAck      heartbeat_ack      = 31;
-    ChatMessageEvent  chat_message_event = 32;
-    HistoryResponse   history_response   = 33;
-    VoicePeerJoined   voice_peer_joined  = 34;
-    VoicePeerLeft     voice_peer_left    = 35;
-    ErrorEvent        error              = 36;
+    Ready             ready                = 30;
+    HeartbeatAck      heartbeat_ack        = 31;
+    ChatMessageEvent  chat_message_event   = 32;
+    HistoryResponse   history_response     = 33;
+    VoicePeerJoined   voice_peer_joined    = 34;
+    VoicePeerLeft     voice_peer_left      = 35;
+    ErrorEvent        error                = 36;
+    Sdp               sdp_answer           = 37; // server returns SFU's SDP answer
+    IceCandidate      server_ice_candidate = 38; // server trickles one of the SFU's ICE candidates
+    PeerReady         peer_ready           = 39; // SFU PeerConnection has reached Connected
 
   }
 
@@ -127,6 +132,37 @@ message VoicePeerLeft
 
   string channel_id = 1;
   string user_id    = 2;
+
+}
+
+// ---- WebRTC signaling (browser <-> SFU via the gateway) ----
+// The gateway relays these between the browser's WebSocket connection and
+// the SFU's gRPC control plane. The audio/video bytes themselves never
+// touch the gateway — they flow directly browser <-> SFU over the WebRTC
+// transport once SDP + ICE complete.
+
+message Sdp
+{
+
+  string room_id = 1; // channel / room the SDP applies to
+  string sdp     = 2; // raw SDP text blob
+  string type    = 3; // "offer" or "answer"
+
+}
+
+message IceCandidate
+{
+
+  string room_id   = 1; // channel / room this candidate belongs to
+  string candidate = 2; // one ICE candidate line (e.g. "candidate:842163049 1 udp ...")
+  string mid       = 3; // SDP media-line identifier the candidate applies to ("0", "1", ...)
+
+}
+
+message PeerReady
+{
+
+  string room_id = 1; // channel / room whose SFU side has reached Connected
 
 }
 
