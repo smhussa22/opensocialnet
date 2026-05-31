@@ -27,6 +27,7 @@
 
 // project headers
 #include "CassandraDeleters.hh"
+#include "SfuClient.hh"
 #include "proto/signaling.pb.h"
 
 
@@ -92,6 +93,10 @@ struct Gateway
   // Auth. Read once at startup from OPENSOCIALNET_AUTH_SECRET. Empty
   // means "not configured" -- Hello frames are rejected in that case.
   std::string auth_secret { };
+
+  // gRPC client to the SFU control plane. One stub for the process lifetime;
+  // gRPC handles concurrency internally so it is shared across handlers.
+  std::unique_ptr<OpenSocialNet::Signaling::SfuClient> sfu_client { };
 
   // Lifecycle
   std::atomic<bool> running { true };
@@ -698,6 +703,111 @@ void on_leave_voice(WebSocket* ws, const signaling::LeaveVoice& req)
 
 }
 
+// Derive the SFU-side peer_id for a connection. The SFU treats (room_id,
+// peer_id) as the routing key; we combine the user_id with the per-connection
+// session_id so two tabs from the same user end up as distinct peers.
+std::string make_peer_id(const Session& sess)
+{
+
+  return sess.user_id + ":" + sess.session_id;
+
+}
+
+// Browser pushed an SDP offer. Forward it to the SFU and relay the answer
+// back on the same WS. Synchronous call: AddPeer is one-shot per browser
+// and not on the chat hot path.
+void on_sdp_offer(WebSocket* ws, const signaling::Sdp& offer)
+{
+
+  auto* sess = ws->getUserData();
+  if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+  if (gateway.sfu_client == nullptr) { send_error(ws, 503, "sfu unavailable"); return; }
+
+  const std::string peer_id { make_peer_id(*sess) };
+  signaling::Sdp answer { };
+  std::string err { };
+  if (!gateway.sfu_client->add_peer(offer.room_id(), peer_id, offer, &answer, &err))
+  {
+
+    std::cerr << "[sfu] AddPeer failed: " << err << '\n';
+    send_error(ws, 502, "sfu add_peer failed");
+    return;
+
+  }
+
+  signaling::Envelope envelope { };
+  *envelope.mutable_sdp_answer() = answer;
+  send_envelope(ws, envelope);
+
+}
+
+// Browser trickled a local ICE candidate. Fire-and-forget into the SFU.
+void on_ice_candidate(WebSocket* ws, const signaling::IceCandidate& candidate)
+{
+
+  auto* sess = ws->getUserData();
+  if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+  if (gateway.sfu_client == nullptr) return;
+
+  const std::string peer_id { make_peer_id(*sess) };
+  gateway.sfu_client->add_remote_ice_candidate(candidate.room_id(), peer_id, candidate);
+
+}
+
+// Dispatched off the SFU event-stream reader thread. We bounce the WS write
+// back to the loop thread (uWS requires it) via Loop::defer, the same pattern
+// the Scylla async continuations use. Look up the socket by session_id inside
+// the deferred lambda so a disconnect mid-event is race-free.
+void on_sfu_peer_event(const ::sfu_control::PeerEvent& event)
+{
+
+  // The peer_id encoding is "user_id:session_id" -- extract the session id
+  // suffix so we can find the WS in live_sessions.
+  const std::string& peer_id { event.peer_id() };
+  const auto colon { peer_id.rfind(':') };
+  if (colon == std::string::npos) { std::cerr << "[sfu] malformed peer_id: " << peer_id << '\n'; return; }
+  std::string session_id { peer_id.substr(colon + 1) };
+  std::string room_id { event.room_id() };
+
+  auto* loop = uWS::Loop::get();
+  if (loop == nullptr) return;
+
+  if (event.has_local_ice_candidate())
+  {
+
+    signaling::IceCandidate ice { event.local_ice_candidate() };
+    loop->defer([session_id = std::move(session_id), ice = std::move(ice)]() mutable
+    {
+
+      WebSocket* ws { session_lookup(session_id) };
+      if (ws == nullptr) return;
+      signaling::Envelope envelope { };
+      *envelope.mutable_server_ice_candidate() = std::move(ice);
+      send_envelope(ws, envelope);
+
+    });
+    return;
+
+  }
+
+  if (event.has_peer_ready() && event.peer_ready())
+  {
+
+    loop->defer([session_id = std::move(session_id), room_id = std::move(room_id)]()
+    {
+
+      WebSocket* ws { session_lookup(session_id) };
+      if (ws == nullptr) return;
+      signaling::Envelope envelope { };
+      envelope.mutable_peer_ready()->set_room_id(room_id);
+      send_envelope(ws, envelope);
+
+    });
+
+  }
+
+}
+
 // Top-level dispatcher: parse the frame, switch on which oneof case is set.
 // This switch is literally the entire protocol surface area of the gateway.
 void on_message(WebSocket* ws, std::string_view data, uWS::OpCode op)
@@ -722,6 +832,8 @@ void on_message(WebSocket* ws, std::string_view data, uWS::OpCode op)
     case signaling::Envelope::kFetchHistory: on_fetch_history(ws, envelope.fetch_history()); break;
     case signaling::Envelope::kJoinVoice: on_join_voice(ws, envelope.join_voice()); break;
     case signaling::Envelope::kLeaveVoice: on_leave_voice(ws, envelope.leave_voice()); break;
+    case signaling::Envelope::kSdpOffer: on_sdp_offer(ws, envelope.sdp_offer()); break;
+    case signaling::Envelope::kIceCandidate: on_ice_candidate(ws, envelope.ice_candidate()); break;
 
     case signaling::Envelope::kHeartbeat:
     {
@@ -767,6 +879,12 @@ int main()
 
   scylla_init();
   kafka_init();
+
+  // SFU gRPC control-plane client. One stub for the process lifetime; gRPC
+  // handles concurrency. The event stream runs on its own background thread
+  // and bounces WS writes back onto the uWS loop via Loop::defer.
+  gateway.sfu_client = std::make_unique<OpenSocialNet::Signaling::SfuClient>("127.0.0.1:50051");
+  gateway.sfu_client->start_event_stream(&on_sfu_peer_event);
 
   std::thread consumer_thread { kafka_consumer_thread };
 
@@ -821,6 +939,7 @@ int main()
 
   // Shutdown
   gateway.running.store(false);
+  if (gateway.sfu_client) gateway.sfu_client->shutdown();
   consumer_thread.join();
   return 0;
 

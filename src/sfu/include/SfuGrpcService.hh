@@ -3,10 +3,15 @@
 
 // related headers
 #include "RoomRegistry.hh"
+#include "SfuPeer.hh"
 
 // c sys headers
 
 // cpp stdlib headers
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 // 3rd party headers
 #include <grpcpp/grpcpp.h>
@@ -23,9 +28,10 @@ namespace OpenSocialNet::Sfu
     // on its WebSocket gateway. each method translates a control-plane request
     // into RoomRegistry / SfuPeer operations and synthesizes the response.
     //
-    // thread-safety: gRPC dispatches each RPC on a worker thread; the
-    // RoomRegistry handles its own locking. service methods themselves stay
-    // stateless.
+    // thread-safety: gRPC dispatches each RPC on a worker thread; the flat peer
+    // map below is protected by peers_mutex. the RoomRegistry handles its own
+    // locking and is currently unused (Layer 1 keeps a flat map; multi-tenant
+    // rooms come in a later layer).
     class SfuGrpcService final : public ::sfu_control::SfuControl::Service
     {
 
@@ -40,25 +46,25 @@ namespace OpenSocialNet::Sfu
         SfuGrpcService& operator=(SfuGrpcService&&) = delete;
 
         // builds the rtc::PeerConnection for (room_id, peer_id), applies the
-        // browser's SDP offer, returns the SFU's answer SDP. stub: returns OK
-        // with an empty answer.
+        // browser's SDP offer, returns the SFU's answer SDP. idempotent on
+        // peer_id; re-calling replaces any prior peer registered under the key.
         ::grpc::Status AddPeer(::grpc::ServerContext* ctx, const ::sfu_control::AddPeerRequest* req, ::sfu_control::AddPeerResponse* resp) override;
 
-        // tears down the peer; if the room is empty afterwards, destroys it.
-        // stub: returns OK with no side effects.
+        // tears down the peer; returns OK whether or not the peer existed.
         ::grpc::Status RemovePeer(::grpc::ServerContext* ctx, const ::sfu_control::RemovePeerRequest* req, ::sfu_control::RemovePeerResponse* resp) override;
 
         // trickles a browser-side ICE candidate into the named peer.
-        // stub: returns OK with no side effects.
         ::grpc::Status AddRemoteIceCandidate(::grpc::ServerContext* ctx, const ::sfu_control::AddRemoteIceCandidateRequest* req, ::sfu_control::AddRemoteIceCandidateResponse* resp) override;
 
         // server-streaming RPC; the SFU pushes locally-gathered ICE candidates
         // and PeerReady events for the calling signaling_server to forward to
-        // browsers. stub: returns OK immediately without writing.
+        // browsers. Layer 1 stub: returns OK immediately without writing.
         ::grpc::Status StreamPeerEvents(::grpc::ServerContext* ctx, const ::sfu_control::StreamPeerEventsRequest* req, ::grpc::ServerWriter<::sfu_control::PeerEvent>* writer) override;
 
     private:
-        RoomRegistry& registry; // injected registry; lifetime owned by main()
+        RoomRegistry& registry; // injected registry; lifetime owned by main(). unused in Layer 1, reserved for multi-tenant routing.
+        std::unordered_map<std::string, std::unique_ptr<SfuPeer>> peers { }; // flat peer_id -> SfuPeer map for Layer 1
+        mutable std::mutex peers_mutex { }; // guards the peers map across gRPC worker threads
 
     };
 
