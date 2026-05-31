@@ -1,0 +1,110 @@
+syntax = "proto3";
+package sfu_control;
+
+// Control-plane interface between the signaling_server (gRPC client) and the
+// SFU (gRPC server). The signaling_server's WebSocket gateway translates
+// browser-side Protobuf envelopes (Sdp / IceCandidate / JoinVoice / etc.)
+// into these RPCs. The actual audio/video bytes never touch this path —
+// they flow directly browser <-> SFU over WebRTC's encrypted UDP transport
+// once SDP + ICE have completed via these calls.
+//
+// Reuses signaling.Sdp and signaling.IceCandidate so the gateway can shuttle
+// envelope bodies straight through without remapping.
+
+import "signaling.proto";
+
+service SfuControl
+{
+
+    // Hand a browser's SDP offer to the SFU. The SFU builds a libdatachannel
+    // PeerConnection for (room_id, peer_id), applies the offer, and returns
+    // its answer SDP. Idempotent on (room_id, peer_id) — re-calling replaces
+    // the previous peer registered under that key.
+    rpc AddPeer(AddPeerRequest) returns (AddPeerResponse);
+
+    // Tear down a peer connection and drop the peer from its room. If the
+    // room becomes empty, RoomRegistry destroys it.
+    rpc RemovePeer(RemovePeerRequest) returns (RemovePeerResponse);
+
+    // Trickle a remote (browser-side) ICE candidate into the named peer.
+    rpc AddRemoteIceCandidate(AddRemoteIceCandidateRequest) returns (AddRemoteIceCandidateResponse);
+
+    // Server-streaming subscription to events the SFU emits: locally-gathered
+    // ICE candidates (which the gateway forwards to the browser as
+    // IceCandidate envelopes) and PeerReady when the peer connection reaches
+    // Connected. Typically one stream per signaling_server instance for the
+    // lifetime of the process.
+    rpc StreamPeerEvents(StreamPeerEventsRequest) returns (stream PeerEvent);
+
+}
+
+message AddPeerRequest
+{
+
+    string room_id = 1; // logical channel / room
+    string peer_id = 2; // unique within the room (typically user_id + session)
+    signaling.Sdp offer = 3; // browser's SDP offer
+
+}
+
+message AddPeerResponse
+{
+
+    signaling.Sdp answer = 1; // SFU's SDP answer
+
+}
+
+message RemovePeerRequest
+{
+
+    string room_id = 1;
+    string peer_id = 2;
+
+}
+
+message RemovePeerResponse
+{
+
+
+
+}
+
+message AddRemoteIceCandidateRequest
+{
+
+    string room_id = 1;
+    string peer_id = 2;
+    signaling.IceCandidate candidate = 3;
+
+}
+
+message AddRemoteIceCandidateResponse
+{
+
+
+
+}
+
+message StreamPeerEventsRequest
+{
+
+
+
+}
+
+// Multiplexed event the SFU emits on the StreamPeerEvents stream.
+message PeerEvent
+{
+
+    string room_id = 1; // room this event belongs to
+    string peer_id = 2; // peer this event belongs to
+
+    oneof event
+    {
+
+        signaling.IceCandidate local_ice_candidate = 3; // SFU-side gathered candidate; route to browser
+        bool                   peer_ready          = 4; // peer connection reached Connected
+
+    }
+
+}

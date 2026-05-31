@@ -45,9 +45,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpulse-dev \
         # libdatachannel build prerequisites (TLS + SCTP build via FetchContent)
         libssl-dev \
-        # signaling_server deps
+        # signaling_server + SFU deps (Protobuf + gRPC for inter-service control plane)
         protobuf-compiler \
         libprotobuf-dev \
+        protobuf-compiler-grpc \
+        libgrpc++-dev \
         librdkafka-dev \
         libuwebsockets-dev \
         # debug tools
