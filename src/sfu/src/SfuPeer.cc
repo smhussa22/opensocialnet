@@ -21,31 +21,28 @@ namespace OpenSocialNet::Sfu
     bool SfuPeer::accept_offer(std::string_view sdp_offer) noexcept
     {
 
-        (void)sdp_offer;
-        return false;
+        
 
     }
 
     bool SfuPeer::add_remote_ice_candidate(std::string_view candidate, std::string_view mid) noexcept
     {
 
-        (void)candidate;
-        (void)mid;
-        return false;
+        
 
     }
 
     std::string SfuPeer::answer_sdp() const noexcept
     {
 
-        return cached_answer_sdp;
+        
 
     }
 
     bool SfuPeer::is_connected() const noexcept
     {
 
-        return connected.load(std::memory_order_acquire);
+        
 
     }
 
@@ -59,14 +56,14 @@ namespace OpenSocialNet::Sfu
     std::string_view SfuPeer::peer_id() const noexcept
     {
 
-        return id_str;
+        
 
     }
 
     void SfuPeer::set_peer_id(std::string id) noexcept
     {
 
-        id_str = std::move(id);
+        
 
     }
 
