@@ -19,35 +19,31 @@ namespace OpenSocialNet::Sfu
 
     }
 
-    bool Room::add_peer(std::shared_ptr<SfuPeer> peer) noexcept
+    bool Room::add_peer(std::shared_ptr<SfuPeer>) noexcept
     {
 
-        (void)peer;
         return false;
 
     }
 
-    bool Room::remove_peer(std::string_view peer_id) noexcept
+    bool Room::remove_peer(std::string_view) noexcept
     {
 
-        (void)peer_id;
         return false;
 
     }
 
-    void Room::forward_video_rtp(std::string_view source_peer_id, std::span<const std::byte> rtp_bytes) noexcept
+    void Room::forward_video_rtp(std::string_view, std::span<const std::byte>) noexcept
     {
 
-        (void)source_peer_id;
-        (void)rtp_bytes;
+
 
     }
 
-    void Room::forward_audio_rtp(std::string_view source_peer_id, std::span<const std::byte> rtp_bytes) noexcept
+    void Room::forward_audio_rtp(std::string_view, std::span<const std::byte>) noexcept
     {
 
-        (void)source_peer_id;
-        (void)rtp_bytes;
+
 
     }
 

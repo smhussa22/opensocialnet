@@ -100,11 +100,11 @@ namespace OpenSocialNet::Sfu
             // any candidates not yet gathered will trickle out via the onLocalCandidate
             // callback registered in init(), so the answer's a=candidate: lines being
             // partial here is fine and expected.
-            peer_connection->setRemoteDescription(::rtc::Description(std::string(sdp_offer), ::rtc::Description::Type::Offer));
+            peer_connection->setRemoteDescription(::rtc::Description { std::string { sdp_offer }, ::rtc::Description::Type::Offer });
 
             auto local_desc { peer_connection->localDescription() };
             if (!local_desc) return false;
-            cached_answer_sdp = std::string(*local_desc);
+            cached_answer_sdp = std::string { *local_desc };
 
             return true;
 
@@ -126,7 +126,7 @@ namespace OpenSocialNet::Sfu
         try
         {
 
-            peer_connection->addRemoteCandidate(::rtc::Candidate(std::string(candidate), std::string(mid)));
+            peer_connection->addRemoteCandidate(::rtc::Candidate { std::string { candidate }, std::string { mid } });
             return true;
 
         }

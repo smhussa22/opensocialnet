@@ -11,26 +11,23 @@
 namespace OpenSocialNet::Sfu
 {
 
-    Room* RoomRegistry::get_or_create(std::string_view room_id) noexcept
+    Room* RoomRegistry::get_or_create(std::string_view) noexcept
     {
 
-        (void)room_id;
         return nullptr;
 
     }
 
-    Room* RoomRegistry::find(std::string_view room_id) noexcept
+    Room* RoomRegistry::find(std::string_view) noexcept
     {
 
-        (void)room_id;
         return nullptr;
 
     }
 
-    bool RoomRegistry::destroy_if_empty(std::string_view room_id) noexcept
+    bool RoomRegistry::destroy_if_empty(std::string_view) noexcept
     {
 
-        (void)room_id;
         return false;
 
     }

@@ -24,10 +24,8 @@ namespace OpenSocialNet::Sfu
 
     }
 
-    ::grpc::Status SfuGrpcService::AddPeer(::grpc::ServerContext* ctx, const ::sfu_control::AddPeerRequest* req, ::sfu_control::AddPeerResponse* resp)
+    ::grpc::Status SfuGrpcService::AddPeer(::grpc::ServerContext*, const ::sfu_control::AddPeerRequest* req, ::sfu_control::AddPeerResponse* resp)
     {
-
-        (void)ctx;
 
         const std::string& peer_id { req->peer_id() };
         const std::string& room_id { req->room_id() };
@@ -62,10 +60,10 @@ namespace OpenSocialNet::Sfu
 
         });
 
-        if (!new_peer->init()) return ::grpc::Status(::grpc::StatusCode::INTERNAL, "peer init failed");
+        if (!new_peer->init()) return ::grpc::Status { ::grpc::StatusCode::INTERNAL, "peer init failed" };
 
         // apply the browser SDP offer outside the map mutex would be nicer, but for Layer 1 simplicity do it inline
-        if (!new_peer->accept_offer(offer_sdp)) return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT, "accept_offer failed");
+        if (!new_peer->accept_offer(offer_sdp)) return ::grpc::Status { ::grpc::StatusCode::INVALID_ARGUMENT, "accept_offer failed" };
 
         // grab the cached answer before transferring ownership into the map
         std::string answer { new_peer->answer_sdp() };
@@ -101,11 +99,8 @@ namespace OpenSocialNet::Sfu
 
     }
 
-    ::grpc::Status SfuGrpcService::RemovePeer(::grpc::ServerContext* ctx, const ::sfu_control::RemovePeerRequest* req, ::sfu_control::RemovePeerResponse* resp)
+    ::grpc::Status SfuGrpcService::RemovePeer(::grpc::ServerContext*, const ::sfu_control::RemovePeerRequest* req, ::sfu_control::RemovePeerResponse*)
     {
-
-        (void)ctx;
-        (void)resp;
 
         const std::string& peer_id { req->peer_id() };
 
@@ -131,11 +126,8 @@ namespace OpenSocialNet::Sfu
 
     }
 
-    ::grpc::Status SfuGrpcService::AddRemoteIceCandidate(::grpc::ServerContext* ctx, const ::sfu_control::AddRemoteIceCandidateRequest* req, ::sfu_control::AddRemoteIceCandidateResponse* resp)
+    ::grpc::Status SfuGrpcService::AddRemoteIceCandidate(::grpc::ServerContext*, const ::sfu_control::AddRemoteIceCandidateRequest* req, ::sfu_control::AddRemoteIceCandidateResponse*)
     {
-
-        (void)ctx;
-        (void)resp;
 
         const std::string& peer_id { req->peer_id() };
         const std::string& candidate { req->candidate().candidate() };
@@ -147,7 +139,7 @@ namespace OpenSocialNet::Sfu
 
             std::lock_guard<std::mutex> guard { peers_mutex };
             auto it { peers.find(peer_id) };
-            if (it == peers.end()) return ::grpc::Status(::grpc::StatusCode::NOT_FOUND, "no such peer");
+            if (it == peers.end()) return ::grpc::Status { ::grpc::StatusCode::NOT_FOUND, "no such peer" };
             target = it->second.get();
 
         }
@@ -158,10 +150,8 @@ namespace OpenSocialNet::Sfu
 
     }
 
-    ::grpc::Status SfuGrpcService::StreamPeerEvents(::grpc::ServerContext* ctx, const ::sfu_control::StreamPeerEventsRequest* req, ::grpc::ServerWriter<::sfu_control::PeerEvent>* writer)
+    ::grpc::Status SfuGrpcService::StreamPeerEvents(::grpc::ServerContext* ctx, const ::sfu_control::StreamPeerEventsRequest*, ::grpc::ServerWriter<::sfu_control::PeerEvent>* writer)
     {
-
-        (void)req;
 
         // drain pending events to the client until the RPC is cancelled or shutdown is requested.
         // gRPC ServerContext::IsCancelled is checked on a periodic wait_for timeout because the
@@ -170,7 +160,7 @@ namespace OpenSocialNet::Sfu
         {
 
             std::unique_lock<std::mutex> lock { events_mutex };
-            events_cv.wait_for(lock, std::chrono::seconds(1), [this]
+            events_cv.wait_for(lock, std::chrono::seconds { 1 }, [this]
             {
 
                 return !events.empty() || stream_shutdown.load();
