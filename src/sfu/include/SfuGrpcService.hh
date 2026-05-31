@@ -8,6 +8,9 @@
 // c sys headers
 
 // cpp stdlib headers
+#include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -61,10 +64,40 @@ namespace OpenSocialNet::Sfu
         // browsers. Layer 1 stub: returns OK immediately without writing.
         ::grpc::Status StreamPeerEvents(::grpc::ServerContext* ctx, const ::sfu_control::StreamPeerEventsRequest* req, ::grpc::ServerWriter<::sfu_control::PeerEvent>* writer) override;
 
+        // signals the StreamPeerEvents loop to exit promptly on process shutdown.
+        // safe to call before the destructor; idempotent.
+        void request_stream_shutdown() noexcept;
+
     private:
+        // one event the SFU side wants to deliver to the signaling_server gateway,
+        // tagged with the peer it concerns so the gateway can demux to the right WS.
+        struct PendingEvent
+        {
+
+            enum class Kind { IceCandidate, PeerReady };
+
+            std::string peer_id { }; // owning peer's id
+            Kind kind { }; // discriminator: ICE candidate vs peer-ready
+            std::string candidate { }; // populated when kind == IceCandidate
+            std::string mid { }; // populated when kind == IceCandidate
+
+        };
+
+        // appends an event to the queue and wakes any waiting StreamPeerEvents loop.
+        // safe to call from libdatachannel callback threads.
+        void push_event(PendingEvent event) noexcept;
+
         RoomRegistry& registry; // injected registry; lifetime owned by main(). unused in Layer 1, reserved for multi-tenant routing.
         std::unordered_map<std::string, std::unique_ptr<SfuPeer>> peers { }; // flat peer_id -> SfuPeer map for Layer 1
         mutable std::mutex peers_mutex { }; // guards the peers map across gRPC worker threads
+
+        // trickle-ICE event plumbing — single shared queue drained by StreamPeerEvents.
+        // signaling_server runs one long-lived subscription per process; that subscription
+        // is the consumer that fans events back out to browsers over their WebSockets.
+        std::mutex events_mutex { }; // guards the events deque
+        std::condition_variable events_cv { }; // wakes StreamPeerEvents when an event arrives or shutdown is requested
+        std::deque<PendingEvent> events { }; // pending events queued by SfuPeer callbacks
+        std::atomic<bool> stream_shutdown { false }; // tells StreamPeerEvents loop to exit
 
     };
 

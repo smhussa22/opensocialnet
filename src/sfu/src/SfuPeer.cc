@@ -3,8 +3,6 @@
 // c sys headers
 
 // cpp stdlib headers
-#include <chrono>
-#include <future>
 #include <utility>
 
 // 3rd party headers
@@ -26,14 +24,32 @@ namespace OpenSocialNet::Sfu
 
             peer_connection = std::make_shared<::rtc::PeerConnection>(config);
 
-            // mirror the underlying connection state into the atomic connected flag
-            peer_connection->onStateChange([this](::rtc::PeerConnection::State state)
+            // mirror connection state into the atomic flag; fire the one-shot peer_ready callback
+            // on the first transition to Connected so subscribers (gRPC StreamPeerEvents) can
+            // notify the browser via Envelope.peer_ready
+            auto ready_fired { std::make_shared<std::atomic<bool>>(false) };
+            peer_connection->onStateChange([this, ready_fired](::rtc::PeerConnection::State state)
             {
 
-                if (state == ::rtc::PeerConnection::State::Connected) connected.store(true);
+                if (state == ::rtc::PeerConnection::State::Connected)
+                {
+
+                    connected.store(true);
+                    if (peer_ready_handler && !ready_fired->exchange(true)) peer_ready_handler();
+
+                }
                 else if (state == ::rtc::PeerConnection::State::Disconnected) connected.store(false);
                 else if (state == ::rtc::PeerConnection::State::Failed) connected.store(false);
                 else if (state == ::rtc::PeerConnection::State::Closed) connected.store(false);
+
+            });
+
+            // trickle ICE: forward every locally-gathered candidate out to subscribers as it arrives.
+            // libdatachannel calls this on its own thread; the handler is responsible for thread-safety.
+            peer_connection->onLocalCandidate([this](::rtc::Candidate candidate)
+            {
+
+                if (ice_candidate_handler) ice_candidate_handler(candidate.candidate(), candidate.mid());
 
             });
 
@@ -80,34 +96,11 @@ namespace OpenSocialNet::Sfu
         try
         {
 
-            // wire up a per-offer gathering-complete promise BEFORE setRemoteDescription so we
-            // can't race the gathering callback firing before we install the waiter
-            auto gathering_done { std::make_shared<std::promise<void>>() };
-            std::future<void> gathering_future { gathering_done->get_future() };
-            auto already_signalled { std::make_shared<std::atomic<bool>>(false) };
-
-            peer_connection->onGatheringStateChange([gathering_done, already_signalled](::rtc::PeerConnection::GatheringState state)
-            {
-
-                if (state != ::rtc::PeerConnection::GatheringState::Complete) return;
-                if (already_signalled->exchange(true)) return;
-                gathering_done->set_value();
-
-            });
-
-            // cover the (unlikely) case where gathering already completed before the callback was installed
-            if (peer_connection->gatheringState() == ::rtc::PeerConnection::GatheringState::Complete)
-            {
-
-                if (!already_signalled->exchange(true)) gathering_done->set_value();
-
-            }
-
-            // hand the browser's offer to libdatachannel; it will auto-generate the matching answer
+            // trickle ICE: hand the offer to libdatachannel and read the answer immediately.
+            // any candidates not yet gathered will trickle out via the onLocalCandidate
+            // callback registered in init(), so the answer's a=candidate: lines being
+            // partial here is fine and expected.
             peer_connection->setRemoteDescription(::rtc::Description(std::string(sdp_offer), ::rtc::Description::Type::Offer));
-
-            // non-trickle ICE: block until all candidates are gathered, then read the full local SDP
-            if (gathering_future.wait_for(std::chrono::seconds(10)) != std::future_status::ready) return false;
 
             auto local_desc { peer_connection->localDescription() };
             if (!local_desc) return false;
@@ -192,6 +185,20 @@ namespace OpenSocialNet::Sfu
     {
 
         id_str = std::move(id);
+
+    }
+
+    void SfuPeer::set_local_ice_candidate_handler(IceCandidateHandler handler) noexcept
+    {
+
+        ice_candidate_handler = std::move(handler);
+
+    }
+
+    void SfuPeer::set_peer_ready_handler(PeerReadyHandler handler) noexcept
+    {
+
+        peer_ready_handler = std::move(handler);
 
     }
 

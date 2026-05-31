@@ -8,6 +8,7 @@
 
 // cpp stdlib headers
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -61,6 +62,19 @@ namespace OpenSocialNet::Sfu
         // assigns this peer's identifier; called by Room when the peer joins.
         void set_peer_id(std::string id) noexcept;
 
+        // trickle ICE event handlers — register BEFORE calling init() so the
+        // libdatachannel callbacks installed inside init() have somewhere to
+        // dispatch to. handlers run on libdatachannel internal threads; they
+        // must be short and thread-safe.
+        using IceCandidateHandler = std::function<void(std::string_view candidate, std::string_view mid)>;
+        using PeerReadyHandler = std::function<void()>;
+
+        // invoked for each locally-gathered ICE candidate libdatachannel emits.
+        void set_local_ice_candidate_handler(IceCandidateHandler handler) noexcept;
+
+        // invoked once when the peer connection first reaches Connected.
+        void set_peer_ready_handler(PeerReadyHandler handler) noexcept;
+
     private:
         std::shared_ptr<::rtc::PeerConnection> peer_connection { }; // libdatachannel peer
         std::shared_ptr<::rtc::Track> video_echo_track { }; // outgoing video; re-emits incoming RTP
@@ -68,6 +82,8 @@ namespace OpenSocialNet::Sfu
         std::string cached_answer_sdp { }; // answer SDP from accept_offer
         std::string id_str { }; // peer identifier assigned by the owning Room
         std::atomic<bool> connected { false }; // mirrors PeerConnection::State::Connected
+        IceCandidateHandler ice_candidate_handler { }; // optional — pushed on each onLocalCandidate
+        PeerReadyHandler peer_ready_handler { }; // optional — pushed once when state transitions to Connected
 
     };
 

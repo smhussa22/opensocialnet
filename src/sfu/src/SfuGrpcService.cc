@@ -3,6 +3,7 @@
 // c sys headers
 
 // cpp stdlib headers
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -32,9 +33,35 @@ namespace OpenSocialNet::Sfu
         const std::string& room_id { req->room_id() };
         const std::string& offer_sdp { req->offer().sdp() };
 
-        // construct / reset the peer entry under the map mutex; gRPC dispatches each RPC on its own worker thread
+        // construct the peer; gRPC dispatches each RPC on its own worker thread
         std::unique_ptr<SfuPeer> new_peer { std::make_unique<SfuPeer>() };
         new_peer->set_peer_id(peer_id);
+
+        // wire trickle-ICE callbacks BEFORE init() so libdatachannel's onLocalCandidate
+        // and onStateChange routes here. handlers run on libdatachannel threads;
+        // push_event takes the events_mutex briefly and is safe from any thread.
+        std::string captured_peer_id { peer_id };
+        new_peer->set_local_ice_candidate_handler([this, captured_peer_id](std::string_view cand, std::string_view mid)
+        {
+
+            PendingEvent ev { };
+            ev.peer_id = captured_peer_id;
+            ev.kind = PendingEvent::Kind::IceCandidate;
+            ev.candidate.assign(cand.data(), cand.size());
+            ev.mid.assign(mid.data(), mid.size());
+            push_event(std::move(ev));
+
+        });
+        new_peer->set_peer_ready_handler([this, captured_peer_id]()
+        {
+
+            PendingEvent ev { };
+            ev.peer_id = captured_peer_id;
+            ev.kind = PendingEvent::Kind::PeerReady;
+            push_event(std::move(ev));
+
+        });
+
         if (!new_peer->init()) return ::grpc::Status(::grpc::StatusCode::INTERNAL, "peer init failed");
 
         // apply the browser SDP offer outside the map mutex would be nicer, but for Layer 1 simplicity do it inline
@@ -134,11 +161,78 @@ namespace OpenSocialNet::Sfu
     ::grpc::Status SfuGrpcService::StreamPeerEvents(::grpc::ServerContext* ctx, const ::sfu_control::StreamPeerEventsRequest* req, ::grpc::ServerWriter<::sfu_control::PeerEvent>* writer)
     {
 
-        // TODO(Layer 2): wire SfuPeer local-ICE / PeerReady callbacks into this stream so the gateway can forward them to the browser
-        (void)ctx;
         (void)req;
-        (void)writer;
+
+        // drain pending events to the client until the RPC is cancelled or shutdown is requested.
+        // gRPC ServerContext::IsCancelled is checked on a periodic wait_for timeout because the
+        // condition_variable isn't notified on RPC cancellation by itself.
+        while (!ctx->IsCancelled() && !stream_shutdown.load())
+        {
+
+            std::unique_lock<std::mutex> lock { events_mutex };
+            events_cv.wait_for(lock, std::chrono::seconds(1), [this]
+            {
+
+                return !events.empty() || stream_shutdown.load();
+
+            });
+
+            while (!events.empty())
+            {
+
+                PendingEvent ev { std::move(events.front()) };
+                events.pop_front();
+                lock.unlock();
+
+                ::sfu_control::PeerEvent out { };
+                out.set_peer_id(ev.peer_id);
+
+                if (ev.kind == PendingEvent::Kind::IceCandidate)
+                {
+
+                    ::signaling::IceCandidate* ice { out.mutable_local_ice_candidate() };
+                    ice->set_candidate(std::move(ev.candidate));
+                    ice->set_mid(std::move(ev.mid));
+
+                }
+                else
+                {
+
+                    out.set_peer_ready(true);
+
+                }
+
+                if (!writer->Write(out)) return ::grpc::Status::OK;
+
+                lock.lock();
+
+            }
+
+        }
+
         return ::grpc::Status::OK;
+
+    }
+
+    void SfuGrpcService::push_event(PendingEvent event) noexcept
+    {
+
+        {
+
+            std::lock_guard<std::mutex> guard { events_mutex };
+            events.push_back(std::move(event));
+
+        }
+
+        events_cv.notify_one();
+
+    }
+
+    void SfuGrpcService::request_stream_shutdown() noexcept
+    {
+
+        stream_shutdown.store(true);
+        events_cv.notify_all();
 
     }
 
