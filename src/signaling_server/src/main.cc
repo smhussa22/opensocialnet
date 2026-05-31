@@ -251,7 +251,7 @@ void kafka_init()
 
   std::string err { };
   std::unique_ptr<RdKafka::Conf> conf { RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL) };
-  conf->set("bootstrap.servers", "localhost:9092", err);
+  conf->set("bootstrap.servers", "localhost:19092", err);
 
   // Wrap immediately so there's no raw-pointer window even on the error path.
   gateway.producer.reset(RdKafka::Producer::create(conf.get(), err));
@@ -275,7 +275,7 @@ void kafka_consumer_thread()
 
   std::string err { };
   std::unique_ptr<RdKafka::Conf> conf { RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL) };
-  conf->set("bootstrap.servers", "localhost:9092", err);
+  conf->set("bootstrap.servers", "localhost:19092", err);
 
   const auto now = std::chrono::system_clock::now().time_since_epoch().count();
   conf->set("group.id", "gateway-" + std::to_string(now), err);
