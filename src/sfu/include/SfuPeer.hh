@@ -75,6 +75,19 @@ namespace OpenSocialNet::Sfu
         // invoked once when the peer connection first reaches Connected.
         void set_peer_ready_handler(PeerReadyHandler handler) noexcept;
 
+        // give a peer a way to know which room it is in
+        using RtpHandler = std::function<void(::rtc::message_variant data)>;
+
+        // Room calls these to push outbound media to this peer's browser.
+        // writes go to the outgoing track libdatachannel created during the
+        // SDP offer/answer exchange. no-op if the relevant track isn't open.
+        void set_audio_rtp_handler (RtpHandler handler) noexcept;
+        void set_video_rtp_handler (RtpHandler handler) noexcept;
+
+        // 
+        void send_audio_rtp (::rtc::message_variant data) noexcept;
+        void send_video_rtp (::rtc::message_variant data) noexcept;
+
     private:
         std::shared_ptr<::rtc::PeerConnection> peer_connection { }; // libdatachannel peer
         std::shared_ptr<::rtc::Track> video_echo_track { }; // outgoing video; re-emits incoming RTP
@@ -84,6 +97,8 @@ namespace OpenSocialNet::Sfu
         std::atomic<bool> connected { false }; // mirrors PeerConnection::State::Connected
         IceCandidateHandler ice_candidate_handler { }; // optional — pushed on each onLocalCandidate
         PeerReadyHandler peer_ready_handler { }; // optional — pushed once when state transitions to Connected
+        RtpHandler audio_rtp_handler { }; // inboud video invoked from onTrack's onMessage
+        RtpHandler video_rtp_handler { }; // inbound audio invoked from onTrack's onMessage
 
     };
 

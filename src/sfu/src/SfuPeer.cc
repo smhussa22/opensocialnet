@@ -63,14 +63,14 @@ namespace OpenSocialNet::Sfu
                 if (kind == "video") video_echo_track = track;
                 else if (kind == "audio") audio_echo_track = track;
 
-                // re-emit every received RTP packet on the same bidirectional track
-                std::weak_ptr<::rtc::Track> weak_track { track };
-                track->onMessage([weak_track](::rtc::message_variant data)
+                // hand inbound rtp off to whoever registered as handler
+                // handler is sfugrpcservicer w/ room, peer id and forwards into teh room
+                track->onMessage([this, kind](::rtc::message_variant data)
                 {
-
-                    auto t { weak_track.lock() };
-                    if (t && t->isOpen()) t->send(std::move(data));
-
+                    
+                    if (kind == "video" && video_rtp_handler) video_rtp_handler(std::move(data));
+                    else if (kind == "audio" && audio_rtp_handler) audio_rtp_handler(std::move(data));
+                    
                 });
 
             });
@@ -199,6 +199,55 @@ namespace OpenSocialNet::Sfu
     {
 
         peer_ready_handler = std::move(handler);
+
+    }
+
+    void SfuPeer::set_audio_rtp_handler (RtpHandler handler) noexcept
+    {
+
+        audio_rtp_handler = std::move(handler);
+
+    }
+
+    void SfuPeer::set_video_rtp_handler (RtpHandler handler) noexcept
+    {
+
+        video_rtp_handler = std::move(handler);
+
+    }
+
+    void SfuPeer::send_audio_rtp (::rtc::message_variant data) noexcept
+    {
+
+        try
+        {
+
+            if (audio_echo_track && audio_echo_track->isOpen()) audio_echo_track->send(std::move(data));
+
+        }
+        catch(...)
+        {
+
+
+        }
+
+
+    }
+
+    void SfuPeer::send_video_rtp (::rtc::message_variant data) noexcept
+    {
+
+        try
+        {
+
+            if (video_echo_track and video_echo_track->isOpen()) video_echo_track->send(std::move(data));
+
+        }
+        catch(...)
+        {
+
+
+        }
 
     }
 
