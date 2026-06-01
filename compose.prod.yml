@@ -1,0 +1,91 @@
+# Production stack — everything for OpenSocialNet on a single host.
+#
+# Brings up: scylla (chat persistence), zookeeper + kafka (event bus),
+# signaling_server (WebSocket gateway), and sfu (WebRTC media server).
+# A TLS-terminating reverse proxy + TURN server are intentionally
+# omitted for now; those come in a follow-up once the basic stack
+# proves itself on EC2.
+#
+# Build + bring up (from repo root):
+#   docker compose -f compose.prod.yml build
+#   docker compose -f compose.prod.yml up -d
+#
+# Tear down:
+#   docker compose -f compose.prod.yml down
+#
+# Set OPENSOCIALNET_AUTH_SECRET in a .env file next to this compose
+# file (or export it in the shell before running compose), otherwise
+# signaling_server will reject every Hello frame.
+
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    depends_on:
+      - zookeeper
+    ports:
+      # external 19092 to dodge the Hyper-V port exclusion range that
+      # blocks 9092 on Windows hosts. internal listener also on 19092
+      # so signaling_server connecting from another container sees the
+      # same address it would from the host.
+      - "19092:19092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:19092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: unless-stopped
+
+  scylla:
+    image: scylladb/scylla:5.4
+    ports:
+      - "9042:9042"
+    command:
+      - --smp=1
+      - --memory=750M
+      - --overprovisioned=1
+      - --developer-mode=1
+    volumes:
+      - scylla-data:/var/lib/scylla
+    restart: unless-stopped
+
+  sfu:
+    build:
+      context: .
+      dockerfile: src/sfu/Dockerfile
+    image: opensocialnet-sfu
+    # 50051 is the gRPC SfuControl port the signaling_server connects to.
+    # the UDP range carries WebRTC media (SRTP) to/from browsers; it
+    # must be reachable from the public internet on the host.
+    ports:
+      - "50051:50051"
+      - "50000-60000:50000-60000/udp"
+    restart: unless-stopped
+
+  signaling_server:
+    build:
+      context: .
+      dockerfile: src/signaling_server/Dockerfile
+    image: opensocialnet-signaling
+    depends_on:
+      - scylla
+      - kafka
+      - sfu
+    environment:
+      OPENSOCIALNET_AUTH_SECRET: "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET in env / .env}"
+    ports:
+      # browsers connect to ws://host:9001/gateway (no TLS yet).
+      # Once nginx fronts this with Let's Encrypt the host port stays
+      # 9001 but only the proxy talks to it on the internal network.
+      - "9001:9001"
+    restart: unless-stopped
+
+volumes:
+  scylla-data:

@@ -26,7 +26,15 @@ void on_signal(int) { shutdown_requested.store(true); }
 int main()
 {
 
-    constexpr const char* listen_address { "127.0.0.1:50051" };
+    // unbuffered stdout — without this, printf is line-buffered on a tty
+    // but block-buffered when stdout is piped (e.g. captured by Docker's
+    // log driver), so startup messages never appear in `docker logs`.
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+
+    // listen on all interfaces so peer containers (signaling_server) and
+    // host-network probes can reach the gRPC service. 50051 is also
+    // declared in src/sfu/Dockerfile's EXPOSE list and in compose.prod.yml.
+    constexpr const char* listen_address { "0.0.0.0:50051" };
 
     OpenSocialNet::Sfu::RoomRegistry registry { };
     OpenSocialNet::Sfu::SfuGrpcService service { registry };

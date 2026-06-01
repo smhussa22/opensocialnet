@@ -16,8 +16,7 @@
 namespace OpenSocialNet::Sfu
 {
 
-    SfuGrpcService::SfuGrpcService(RoomRegistry& registry_ref) noexcept
-        : registry { registry_ref }
+    SfuGrpcService::SfuGrpcService(RoomRegistry& registry_ref) noexcept : registry { registry_ref }
     {
 
 

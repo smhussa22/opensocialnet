@@ -1,0 +1,26 @@
+# keep local build / IDE state out of the Docker build context so
+# COPY doesn't shadow the container's clean cmake build directories.
+
+**/build/
+**/cmake-build-debug/
+**/.cmake/
+**/.git/
+**/.gitignore
+**/.idea/
+**/.vscode/
+**/.clang-format
+
+**/node_modules/
+**/.next/
+**/dist/
+**/out/
+
+# WSL / OS junk
+**/.DS_Store
+**/.Trash-*
+**/Thumbs.db
+
+# personal docs
+goals.md
+CLAUDE.md
+.commit_msg.tmp
