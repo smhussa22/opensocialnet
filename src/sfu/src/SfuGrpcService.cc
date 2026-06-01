@@ -1,5 +1,8 @@
 #include "SfuGrpcService.hh"
 
+// related headers
+#include "Room.hh"
+
 // c sys headers
 
 // cpp stdlib headers
@@ -8,6 +11,9 @@
 #include <mutex>
 #include <string>
 #include <utility>
+
+// 3rd party headers
+#include <rtc/rtc.hpp>
 
 // 3rd party headers
 
@@ -30,13 +36,20 @@ namespace OpenSocialNet::Sfu
         const std::string& room_id { req->room_id() };
         const std::string& offer_sdp { req->offer().sdp() };
 
-        // construct the peer; gRPC dispatches each RPC on its own worker thread
-        std::unique_ptr<SfuPeer> new_peer { std::make_unique<SfuPeer>() };
+        // construct the peer; gRPC dispatches each RPC on its own worker thread.
+        // shared_ptr because Room co-owns the peer for the lifetime of its membership.
+        std::shared_ptr<SfuPeer> new_peer { std::make_shared<SfuPeer>() };
         new_peer->set_peer_id(peer_id);
 
-        // wire trickle-ICE callbacks BEFORE init() so libdatachannel's onLocalCandidate
-        // and onStateChange routes here. handlers run on libdatachannel threads;
-        // push_event takes the events_mutex briefly and is safe from any thread.
+        // resolve / create the target room up front so the rtp handler closures can
+        // capture a stable Room* by value (Room lives in registry's unordered_map
+        // and we don't destroy rooms inside RemovePeer, so the pointer stays alive).
+        Room* room { registry.get_or_create(room_id) };
+        if (room == nullptr) return ::grpc::Status { ::grpc::StatusCode::INTERNAL, "room get_or_create returned null" };
+
+        // wire callbacks BEFORE init() so libdatachannel's onLocalCandidate,
+        // onStateChange and onTrack routes here. handlers run on libdatachannel
+        // worker threads and must be short / thread-safe.
         std::string captured_peer_id { peer_id };
         new_peer->set_local_ice_candidate_handler([this, captured_peer_id](std::string_view cand, std::string_view mid)
         {
@@ -59,34 +72,64 @@ namespace OpenSocialNet::Sfu
 
         });
 
+        // multi-room fan-out: when this peer's browser sends RTP, hand it to the
+        // room which forwards to every other peer's outgoing tracks.
+        new_peer->set_video_rtp_handler([room, captured_peer_id](::rtc::message_variant data)
+        {
+
+            room->forward_video_rtp(captured_peer_id, std::move(data));
+
+        });
+        new_peer->set_audio_rtp_handler([room, captured_peer_id](::rtc::message_variant data)
+        {
+
+            room->forward_audio_rtp(captured_peer_id, std::move(data));
+
+        });
+
         if (!new_peer->init()) return ::grpc::Status { ::grpc::StatusCode::INTERNAL, "peer init failed" };
 
         // apply the browser SDP offer outside the map mutex would be nicer, but for Layer 1 simplicity do it inline
         if (!new_peer->accept_offer(offer_sdp)) return ::grpc::Status { ::grpc::StatusCode::INVALID_ARGUMENT, "accept_offer failed" };
 
-        // grab the cached answer before transferring ownership into the map
+        // grab the cached answer before handing peer ownership off to the maps + room
         std::string answer { new_peer->answer_sdp() };
 
-        // swap into the map under the mutex; shut down any prior peer for idempotency
+        // idempotency: if a peer with this id already exists, evict it from its
+        // current room and shut it down before inserting the new one.
+        std::shared_ptr<SfuPeer> evicted { };
+        std::string evicted_room_id { };
         {
 
-            std::lock_guard<std::mutex> guard { peers_mutex };
+            std::scoped_lock guard { peers_mutex };
+
             auto it { peers.find(peer_id) };
             if (it != peers.end())
             {
 
-                if (it->second != nullptr) it->second->shutdown();
-                it->second = std::move(new_peer);
+                evicted = std::move(it->second);
+                auto room_it { peer_room.find(peer_id) };
+                if (room_it != peer_room.end()) evicted_room_id = std::move(room_it->second);
+                peers.erase(it);
+                peer_room.erase(peer_id);
 
             }
-            else
-            {
 
-                peers.emplace(peer_id, std::move(new_peer));
-
-            }
+            peers.emplace(peer_id, new_peer);
+            peer_room.emplace(peer_id, room_id);
 
         }
+
+        if (evicted != nullptr)
+        {
+
+            Room* old_room { evicted_room_id.empty() ? nullptr : registry.find(evicted_room_id) };
+            if (old_room != nullptr) old_room->remove_peer(peer_id);
+            evicted->shutdown();
+
+        }
+
+        room->add_peer(new_peer);
 
         // populate the response Sdp message
         ::signaling::Sdp* answer_msg { resp->mutable_answer() };
@@ -103,11 +146,15 @@ namespace OpenSocialNet::Sfu
 
         const std::string& peer_id { req->peer_id() };
 
-        // pull the peer out of the map under the mutex, then shut it down once the lock is released
-        std::unique_ptr<SfuPeer> evicted { };
+        // pull the peer + its room_id out under the mutex, then do the work without holding it.
+        // the shared_ptr keeps the peer alive past the lock release; the room map keeps the
+        // Room* valid because we don't destroy rooms in this path (Layer 1 simplicity).
+        std::shared_ptr<SfuPeer> evicted { };
+        std::string evicted_room_id { };
         {
 
-            std::lock_guard<std::mutex> guard { peers_mutex };
+            std::scoped_lock guard { peers_mutex };
+
             auto it { peers.find(peer_id) };
             if (it != peers.end())
             {
@@ -117,9 +164,23 @@ namespace OpenSocialNet::Sfu
 
             }
 
+            auto room_it { peer_room.find(peer_id) };
+            if (room_it != peer_room.end())
+            {
+
+                evicted_room_id = std::move(room_it->second);
+                peer_room.erase(room_it);
+
+            }
+
         }
 
-        if (evicted != nullptr) evicted->shutdown();
+        if (evicted == nullptr) return ::grpc::Status::OK;
+
+        Room* room { evicted_room_id.empty() ? nullptr : registry.find(evicted_room_id) };
+        if (room != nullptr) room->remove_peer(peer_id);
+
+        evicted->shutdown();
 
         return ::grpc::Status::OK;
 
@@ -132,14 +193,16 @@ namespace OpenSocialNet::Sfu
         const std::string& candidate { req->candidate().candidate() };
         const std::string& mid { req->candidate().mid() };
 
-        // look the peer up under the mutex, then invoke without holding the lock so concurrent RPCs on other peers do not stall
-        SfuPeer* target { nullptr };
+        // copy the shared_ptr out under the lock so the peer stays alive while we call into
+        // libdatachannel without holding peers_mutex (the call may take a meaningful slice
+        // of time and would otherwise stall other RPCs).
+        std::shared_ptr<SfuPeer> target { };
         {
 
-            std::lock_guard<std::mutex> guard { peers_mutex };
+            std::scoped_lock guard { peers_mutex };
             auto it { peers.find(peer_id) };
             if (it == peers.end()) return ::grpc::Status { ::grpc::StatusCode::NOT_FOUND, "no such peer" };
-            target = it->second.get();
+            target = it->second;
 
         }
 

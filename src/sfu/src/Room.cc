@@ -11,39 +11,83 @@
 namespace OpenSocialNet::Sfu
 {
 
-    Room::Room(std::string id) noexcept
-        : room_id { std::move(id) }
+    Room::Room(std::string id) noexcept : room_id { std::move(id) }
     {
 
 
 
     }
 
-    bool Room::add_peer(std::shared_ptr<SfuPeer>) noexcept
+    bool Room::add_peer(std::shared_ptr<SfuPeer> peer) noexcept
     {
 
-        return false;
+        if (!peer) return false;
+        
+        std::scoped_lock lock { peers_mutex };
+        peers.push_back(std::move(peer));
+        return true;
 
     }
 
-    bool Room::remove_peer(std::string_view) noexcept
+    bool Room::remove_peer(std::string_view peer_id) noexcept
     {
 
-        return false;
+        std::scoped_lock lock { peers_mutex };
+
+        // find the first peer whos peer id matches the peer id we want to remove
+        auto it { std::find_if(peers.begin(), peers.end(), [peer_id](const std::shared_ptr<SfuPeer>& p) { return p && p->peer_id() == peer_id; } ) };
+        if (it == peers.end()) return false;
+
+        peers.erase(it);
+        return true;
 
     }
 
-    void Room::forward_video_rtp(std::string_view, std::span<const std::byte>) noexcept
+    void Room::forward_video_rtp(std::string_view source_peer_id, ::rtc::message_variant data) noexcept
     {
 
+        // lock snapshot dont iterate when holding peers mutex since send_video_rtp doesnt net work io
+        std::vector<std::shared_ptr<SfuPeer>> snapshot { };
 
+        {
+
+            std::scoped_lock lock { peers_mutex };
+            snapshot = peers;
+
+        }
+
+        for (auto& peer : snapshot)
+        {
+
+            if (!peer) continue;
+            if (peer->peer_id() == source_peer_id) continue;
+            peer->send_video_rtp(data);
+
+        }
 
     }
 
-    void Room::forward_audio_rtp(std::string_view, std::span<const std::byte>) noexcept
+    void Room::forward_audio_rtp(std::string_view source_peer_id, ::rtc::message_variant data) noexcept
     {
 
+        // lock snapshot dont iterate when holding peers mutex since send_video_rtp doesnt net work io
+        std::vector<std::shared_ptr<SfuPeer>> snapshot { };
 
+        {
+
+            std::scoped_lock lock { peers_mutex };
+            snapshot = peers;
+
+        }
+
+        for (auto& peer : snapshot)
+        {
+
+            if (!peer) continue;
+            if (peer->peer_id() == source_peer_id) continue;
+            peer->send_audio_rtp(data);
+
+        }
 
     }
 

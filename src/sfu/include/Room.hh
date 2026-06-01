@@ -5,17 +5,17 @@
 #include "SfuPeer.hh"
 
 // c sys headers
-#include <cstddef>
 
 // cpp stdlib headers
 #include <memory>
 #include <mutex>
-#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+#include <algorithm>
 
 // 3rd party headers
+#include <rtc/rtc.hpp>
 
 // project headers
 
@@ -48,10 +48,10 @@ namespace OpenSocialNet::Sfu
 
         // dispatches an inbound video RTP packet from source_peer_id to every other peer.
         // hot path; will live in a dedicated forwarding thread once Layer 3 lands.
-        void forward_video_rtp(std::string_view source_peer_id, std::span<const std::byte> rtp_bytes) noexcept;
+        void forward_video_rtp(std::string_view source_peer_id, ::rtc::message_variant data) noexcept;
 
         // same as forward_video_rtp but for audio. cheaper (smaller packets, higher rate).
-        void forward_audio_rtp(std::string_view source_peer_id, std::span<const std::byte> rtp_bytes) noexcept;
+        void forward_audio_rtp(std::string_view source_peer_id, ::rtc::message_variant data) noexcept;
 
         // returns this room's identifier (the key it lives under in RoomRegistry).
         [[nodiscard]] std::string_view id() const noexcept;

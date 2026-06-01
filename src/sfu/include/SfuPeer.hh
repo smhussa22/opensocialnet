@@ -83,8 +83,6 @@ namespace OpenSocialNet::Sfu
         // SDP offer/answer exchange. no-op if the relevant track isn't open.
         void set_audio_rtp_handler (RtpHandler handler) noexcept;
         void set_video_rtp_handler (RtpHandler handler) noexcept;
-
-        // 
         void send_audio_rtp (::rtc::message_variant data) noexcept;
         void send_video_rtp (::rtc::message_variant data) noexcept;
 

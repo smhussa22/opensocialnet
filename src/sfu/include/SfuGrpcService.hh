@@ -31,10 +31,10 @@ namespace OpenSocialNet::Sfu
     // on its WebSocket gateway. each method translates a control-plane request
     // into RoomRegistry / SfuPeer operations and synthesizes the response.
     //
-    // thread-safety: gRPC dispatches each RPC on a worker thread; the flat peer
-    // map below is protected by peers_mutex. the RoomRegistry handles its own
-    // locking and is currently unused (Layer 1 keeps a flat map; multi-tenant
-    // rooms come in a later layer).
+    // thread-safety: gRPC dispatches each RPC on a worker thread; the peer
+    // tracking map below is protected by peers_mutex. each SfuPeer is also
+    // co-owned by its Room (via shared_ptr) so peer lifetime survives a brief
+    // window where RemovePeer races against an in-flight forwarding call.
     class SfuGrpcService final : public ::sfu_control::SfuControl::Service
     {
 
@@ -87,9 +87,13 @@ namespace OpenSocialNet::Sfu
         // safe to call from libdatachannel callback threads.
         void push_event(PendingEvent event) noexcept;
 
-        RoomRegistry& registry; // injected registry; lifetime owned by main(). unused in Layer 1, reserved for multi-tenant routing.
-        std::unordered_map<std::string, std::unique_ptr<SfuPeer>> peers { }; // flat peer_id -> SfuPeer map for Layer 1
-        mutable std::mutex peers_mutex { }; // guards the peers map across gRPC worker threads
+        // remembers which room each peer joined so RemovePeer can find the
+        // Room without the caller having to repeat the room_id. value is the
+        // room_id the peer was added to in AddPeer.
+        RoomRegistry& registry; // injected registry; lifetime owned by main(). holds the rooms peers fan out to.
+        std::unordered_map<std::string, std::shared_ptr<SfuPeer>> peers { }; // peer_id -> SfuPeer; co-owned with Room
+        std::unordered_map<std::string, std::string> peer_room { }; // peer_id -> room_id, populated on AddPeer
+        mutable std::mutex peers_mutex { }; // guards both maps across gRPC worker threads
 
         // trickle-ICE event plumbing — single shared queue drained by StreamPeerEvents.
         // signaling_server runs one long-lived subscription per process; that subscription
