@@ -1,9 +1,12 @@
 # signaling_server image — uWebSockets gateway + gRPC client to SFU.
 #
-# Heavier than the SFU image because vcpkg builds protobuf / grpc /
-# uwebsockets / librdkafka from source (~15-20 min first build, cached
-# in layers thereafter), and the scylla cpp-driver isn't in any
-# package manager so we build it from source.
+# Multi-stage: a heavy builder stage runs scylla-cpp-driver from source
+# and vcpkg install of grpc / protobuf / librdkafka / uwebsockets,
+# producing ~15 GB of build intermediates. A slim runtime stage copies
+# only the signaling_server binary + the two .so files it actually
+# needs, leaving the final image around a few hundred MB instead of
+# 10+ GB. Previously the Dockerfile was single-stage and the buildtrees
+# ended up baked into the published image, blowing out disk on EC2.
 #
 # build (from repo root):
 #   docker build -f src/signaling_server/Dockerfile -t opensocialnet-signaling .
@@ -13,7 +16,8 @@
 #       -p 9001:9001 \
 #       opensocialnet-signaling
 
-FROM ubuntu:24.04
+# ---------- builder ----------
+FROM ubuntu:24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -102,6 +106,32 @@ RUN cmake -S . -B build \
         -DCMAKE_TOOLCHAIN_FILE=/opt/vcpkg/scripts/buildsystems/vcpkg.cmake \
     && cmake --build build --parallel "$(nproc)"
 
+# ---------- runtime ----------
+FROM ubuntu:24.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# minimal runtime deps. vcpkg builds protobuf / grpc / librdkafka /
+# uwebsockets / openssl as static libs that already linked into the
+# signaling_server binary, so we only need libuv (cassandra-cpp-driver
+# runtime dep), libstdc++/libgcc, and ca-certificates here.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        libuv1 \
+        libstdc++6 \
+        libgcc-s1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# bring across the binary + the cassandra/scylla shared objects + the
+# ld.so.conf entry that points at the multiarch path. ldconfig wires up
+# the loader cache so libcassandra.so resolves at runtime without
+# needing LD_LIBRARY_PATH.
+COPY --from=builder /workspace/src/signaling_server/build/signaling_server /usr/local/bin/signaling_server
+COPY --from=builder /usr/local/lib/x86_64-linux-gnu/libscylla-cpp-driver.so* /usr/local/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/local/lib/libcassandra.so* /usr/local/lib/
+COPY --from=builder /etc/ld.so.conf.d/scylla-cpp-driver.conf /etc/ld.so.conf.d/scylla-cpp-driver.conf
+RUN ldconfig
+
 # 9001: WebSocket gateway browsers connect to.
 EXPOSE 9001
 
@@ -109,4 +139,4 @@ EXPOSE 9001
 # rejects every Hello frame if it's unset. Caller must set it.
 ENV OPENSOCIALNET_AUTH_SECRET=""
 
-ENTRYPOINT ["/workspace/src/signaling_server/build/signaling_server"]
+ENTRYPOINT ["/usr/local/bin/signaling_server"]
