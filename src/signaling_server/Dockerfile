@@ -84,10 +84,14 @@ RUN /opt/vcpkg/vcpkg install \
 
 WORKDIR /workspace
 
-# bring in the signaling_server source + the proto file the SFU shares.
-# the SFU's proto isn't strictly required here, but the repo layout
-# treats signaling.proto as the canonical home for the wire envelopes.
+# bring in the signaling_server source plus the SFU's gRPC service .proto.
+# the signaling_server is a gRPC client of the SFU and its CMakeLists runs
+# protoc against sfu_control.proto to generate the SfuControl stubs; the
+# file lives in the SFU's source tree and is referenced via the relative
+# path ../sfu/proto/sfu_control.proto, so we have to surface it at the
+# matching layout inside the build context.
 COPY src/signaling_server/ ./src/signaling_server/
+COPY src/sfu/proto/sfu_control.proto ./src/sfu/proto/
 
 WORKDIR /workspace/src/signaling_server
 
