@@ -449,6 +449,11 @@ namespace OpenSocialNet::Signaling
 
         }
 
+        // remember which room this peer joined so .close can tell the SFU to
+        // remove it on disconnect. only set after AddPeer succeeded so the
+        // close handler doesn't try to remove a peer the SFU never accepted.
+        sess->current_room_id = offer.room_id();
+
         ::signaling::Envelope envelope { };
         *envelope.mutable_sdp_answer() = answer;
         send_envelope(ws, envelope);

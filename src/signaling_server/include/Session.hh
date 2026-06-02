@@ -28,6 +28,7 @@ namespace OpenSocialNet::Signaling
         std::string user_id { }; // authenticated app-level user id, set in on_hello
         std::string session_id { }; // stable per-connection id used for async lookups
         bool authenticated { false }; // flipped true once Hello + auth succeeds
+        std::string current_room_id { }; // populated by on sdp offer; non empty means the peer is in the sfu and .close must call SfuClient::remove_pper
 
     };
 

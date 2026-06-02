@@ -21,7 +21,6 @@
 #include "SfuClient.hh"
 #include "proto/signaling.pb.h"
 
-
 int main()
 {
 
@@ -109,6 +108,20 @@ int main()
         {
 
             auto* sess = ws->getUserData();
+
+            // if this session ever sent an Sdp offer, the SFU created a SfuPeer
+            // for it that we now need to tell to drop. otherwise the peer leaks
+            // its slot in Room::peers and its outgoing tracks forever. fire and
+            // forget — even if the SFU is unreachable, local cleanup still has
+            // to run. peer_id mirrors make_peer_id in EnvelopeHandlers.cc.
+            if (sess->authenticated && !sess->current_room_id.empty() && state.sfu != nullptr)
+            {
+
+                const std::string peer_id { sess->user_id + ":" + sess->session_id };
+                state.sfu->remove_peer(sess->current_room_id, peer_id);
+
+            }
+
             if (!sess->session_id.empty()) state.sessions->remove(sess->session_id);
             // uWS automatically unsubscribes the socket from all topics on
             // close, so we don't need to walk the subscribed list manually.
