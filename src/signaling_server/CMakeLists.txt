@@ -78,6 +78,11 @@ add_custom_target(generate_proto
 
 add_executable(signaling_server
         src/main.cc
+        src/Auth.cc
+        src/EnvelopeHandlers.cc
+        src/KafkaBus.cc
+        src/ScyllaClient.cc
+        src/Session.cc
         src/SfuClient.cc
         ${GENERATED_DIR}/signaling.pb.cc
         ${GENERATED_DIR}/sfu_control.pb.cc
