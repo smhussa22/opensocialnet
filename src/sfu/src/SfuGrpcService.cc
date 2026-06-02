@@ -11,6 +11,10 @@
 #include <mutex>
 #include <string>
 #include <utility>
+// TODO(C++23 std::print): GCC 13 on Ubuntu 24.04 doesn't ship <print> yet
+// (lands in GCC 14 / libstdc++ 14). Once the build's toolchain bumps to
+// gcc-14, replace the printf calls below with std::println per
+// CLAUDE.md rule 16.
 
 // 3rd party headers
 #include <rtc/rtc.hpp>
@@ -35,6 +39,8 @@ namespace OpenSocialNet::Sfu
         const std::string& peer_id { req->peer_id() };
         const std::string& room_id { req->room_id() };
         const std::string& offer_sdp { req->offer().sdp() };
+
+        std::printf("sfu: AddPeer room=%s peer=%s\n", room_id.c_str(), peer_id.c_str());
 
         // construct the peer; gRPC dispatches each RPC on its own worker thread.
         // shared_ptr because Room co-owns the peer for the lifetime of its membership.
@@ -145,6 +151,8 @@ namespace OpenSocialNet::Sfu
     {
 
         const std::string& peer_id { req->peer_id() };
+
+        std::printf("sfu: RemovePeer peer=%s\n", peer_id.c_str());
 
         // pull the peer + its room_id out under the mutex, then do the work without holding it.
         // the shared_ptr keeps the peer alive past the lock release; the room map keeps the
