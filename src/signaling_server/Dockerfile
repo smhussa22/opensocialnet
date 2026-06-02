@@ -39,10 +39,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# scylla cpp-driver. installs libcassandra.so + cassandra.h into
-# /usr/local, where the signaling_server's find_path / find_library
-# pick them up by default (matches the local-dev convention of
-# installing into ~/local).
+# scylla cpp-driver. The Scylla fork (a) installs the library under the
+# Debian multiarch path /usr/local/lib/x86_64-linux-gnu/, and (b) renames
+# it from libcassandra.so to libscylla-cpp-driver.so. The signaling_server's
+# CMakeLists still uses find_library(... cassandra ...) per the local-dev
+# convention, so we drop libcassandra.so + .so.2 symlinks at /usr/local/lib
+# pointing at the real shared objects. The Scylla fork is API/ABI compatible
+# with the original DataStax driver — those symlinks are a supported drop-in.
 WORKDIR /opt
 RUN git clone --depth 1 https://github.com/scylladb/cpp-driver.git scylla-cpp-driver \
     && cd scylla-cpp-driver \
@@ -55,6 +58,9 @@ RUN git clone --depth 1 https://github.com/scylladb/cpp-driver.git scylla-cpp-dr
         -DCASS_BUILD_TESTS=OFF \
     && cmake --build build --parallel "$(nproc)" \
     && cmake --install build \
+    && ln -sf /usr/local/lib/x86_64-linux-gnu/libscylla-cpp-driver.so /usr/local/lib/libcassandra.so \
+    && ln -sf /usr/local/lib/x86_64-linux-gnu/libscylla-cpp-driver.so.2 /usr/local/lib/libcassandra.so.2 \
+    && echo "/usr/local/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/scylla-cpp-driver.conf \
     && ldconfig \
     && rm -rf /opt/scylla-cpp-driver
 
