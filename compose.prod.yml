@@ -80,6 +80,12 @@ services:
       - sfu
     environment:
       OPENSOCIALNET_AUTH_SECRET: "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET in env / .env}"
+      # Container DNS names on the udptcp_default compose network. signaling_server
+      # ships with localhost defaults (laptop-dev convention); these overrides
+      # point it at the sibling containers when running inside compose.
+      SCYLLA_HOST: scylla
+      KAFKA_BOOTSTRAP: kafka:19092
+      SFU_ADDR: sfu:50051
     ports:
       # browsers connect to ws://host:9001/gateway (no TLS yet).
       # Once nginx fronts this with Let's Encrypt the host port stays

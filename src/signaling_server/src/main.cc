@@ -43,18 +43,31 @@ int main()
 
     }
 
-    // Scylla connection + prepared statements.
+    // small env-or-default helper: env var wins if set + non-empty, else use the fallback.
+    const auto env_or = [](const char* name, const char* fallback) -> std::string
+    {
+
+        const char* value { std::getenv(name) };
+        return (value != nullptr && *value != '\0') ? std::string { value } : std::string { fallback };
+
+    };
+
+    // Scylla connection + prepared statements. SCYLLA_HOST overrides the default
+    // (localhost for laptop dev, "scylla" container-DNS name in compose.prod.yml).
     OpenSocialNet::Signaling::ScyllaClient scylla { };
-    scylla.init("127.0.0.1");
+    scylla.init(env_or("SCYLLA_HOST", "127.0.0.1"));
 
     // Kafka producer; consumer thread is started once we have the App.
+    // KAFKA_BOOTSTRAP overrides the default ("localhost:19092" for laptop dev,
+    // "kafka:19092" for the docker compose network).
     OpenSocialNet::Signaling::KafkaBus kafka { };
-    kafka.init("localhost:19092");
+    kafka.init(env_or("KAFKA_BOOTSTRAP", "localhost:19092"));
 
     // SFU gRPC control-plane client. One stub for the process lifetime; gRPC
     // handles concurrency. The event stream runs on its own background thread
     // and bounces WS writes back onto the uWS loop via Loop::defer.
-    auto sfu = std::make_unique<OpenSocialNet::Signaling::SfuClient>("127.0.0.1:50051");
+    // SFU_ADDR overrides the default ("127.0.0.1:50051" laptop, "sfu:50051" compose).
+    auto sfu = std::make_unique<OpenSocialNet::Signaling::SfuClient>(env_or("SFU_ADDR", "127.0.0.1:50051"));
 
     // Live session_id -> WS map.
     OpenSocialNet::Signaling::SessionRegistry sessions { };
@@ -79,7 +92,7 @@ int main()
     state.app = &app;
 
     // Start the Kafka consumer once we have an App handle to publish into.
-    kafka.start_consumer(&app, "localhost:19092");
+    kafka.start_consumer(&app, env_or("KAFKA_BOOTSTRAP", "localhost:19092"));
 
     app.ws<OpenSocialNet::Signaling::Session>("/gateway",
     {
