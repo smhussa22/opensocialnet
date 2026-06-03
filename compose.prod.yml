@@ -1,55 +1,65 @@
 # Production stack — everything for OpenSocialNet on a single host.
 #
-# Brings up: scylla (chat persistence), zookeeper + kafka (event bus),
-# signaling_server (WebSocket gateway), and sfu (WebRTC media server).
-# A TLS-terminating reverse proxy + TURN server are intentionally
-# omitted for now; those come in a follow-up once the basic stack
-# proves itself on EC2.
+# Every service runs in network_mode: host. No Docker port-mapping, no
+# bridge network, no per-port iptables rules. This avoids the failure
+# mode we hit deploying with a 50000-60000/udp port forward (Docker
+# took 30+ min to install 10000 NAT rules and wedged its own daemon
+# in the process). Host networking means each container's listening
+# socket binds directly on the EC2 instance's network namespace.
 #
-# Build + bring up (from repo root):
-#   docker compose -f compose.prod.yml build
+# Side-effects of host networking:
+# - All inter-service traffic goes through 127.0.0.1 / localhost.
+#   signaling_server's defaults (127.0.0.1:9042 / localhost:19092 /
+#   127.0.0.1:50051) work as-is — no env-var overrides needed.
+# - The EC2 security group must allow:
+#     22/tcp     SSH
+#     9001/tcp   WebSocket gateway (browsers connect here)
+#     50000-50200/udp  WebRTC media (browsers connect here)
+#   Nothing else needs to be public; gRPC, Scylla, Kafka are all
+#   loopback-only from this host's perspective.
+#
+# Deploy assumes images are loaded from a tarball (built on a dev
+# laptop and shipped via scp). The `build:` declarations remain so
+# `docker compose build` still works locally, but compose won't
+# rebuild on EC2 if the image already exists.
+#
+# Bring up:
+#   export OPENSOCIALNET_AUTH_SECRET=devsecret123
 #   docker compose -f compose.prod.yml up -d
-#
 # Tear down:
 #   docker compose -f compose.prod.yml down
-#
-# Set OPENSOCIALNET_AUTH_SECRET in a .env file next to this compose
-# file (or export it in the shell before running compose), otherwise
-# signaling_server will reject every Hello frame.
 
 services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
+    network_mode: host
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
     restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
+    network_mode: host
     depends_on:
       - zookeeper
-    ports:
-      # external 19092 to dodge the Hyper-V port exclusion range that
-      # blocks 9092 on Windows hosts. internal listener also on 19092
-      # so signaling_server connecting from another container sees the
-      # same address it would from the host.
-      - "19092:19092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # zookeeper is on the same host now, so localhost:2181 (no DNS).
+      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:19092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092
+      # advertised address is what kafka tells clients to reconnect to.
+      # with host networking, clients (signaling_server on same host)
+      # reach kafka over localhost. avoid 9092 because Hyper-V's Windows
+      # port exclusion blocks it for cross-tool dev use.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      # auto-create topics on first produce/subscribe so signaling_server's
-      # chat_events consumer doesn't error forever before the first message.
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     restart: unless-stopped
 
   scylla:
     image: scylladb/scylla:5.4
-    ports:
-      - "9042:9042"
+    network_mode: host
     command:
       - --smp=1
       - --memory=750M
@@ -64,15 +74,11 @@ services:
       context: .
       dockerfile: src/sfu/Dockerfile
     image: opensocialnet-sfu
-    # 50051 is the gRPC SfuControl port the signaling_server connects to.
-    # the UDP range carries WebRTC media (SRTP) to/from browsers; it
-    # must be reachable from the public internet on the host.
-    ports:
-      - "50051:50051"
-      # 200 UDP ports for WebRTC media. matches the portRangeBegin/End in
-      # SfuPeer::init. forwarding 10000 ports made compose hang on EC2
-      # because docker has to install one iptables NAT rule per port.
-      - "50000-50200:50000-50200/udp"
+    network_mode: host
+    # WebRTC media binds inside the range SfuPeer::init configures
+    # (50000-50200). No `ports:` line needed — the container shares the
+    # host's network namespace, so libdatachannel binds directly on the
+    # public EC2 interface. The security group opens 50000-50200/udp.
     restart: unless-stopped
 
   signaling_server:
@@ -80,26 +86,18 @@ services:
       context: .
       dockerfile: src/signaling_server/Dockerfile
     image: opensocialnet-signaling
+    network_mode: host
     depends_on:
       - scylla
       - kafka
       - sfu
     environment:
+      # Caller must set this in env / .env; signaling_server rejects every
+      # Hello frame if the secret is empty.
       OPENSOCIALNET_AUTH_SECRET: "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET in env / .env}"
-      # Container DNS names on the udptcp_default compose network. signaling_server
-      # ships with localhost defaults (laptop-dev convention); these overrides
-      # point it at the sibling containers when running inside compose.
-      SCYLLA_HOST: scylla
-      KAFKA_BOOTSTRAP: kafka:19092
-      # gRPC's default resolver expects `dns:///` for hostname targets;
-      # bare host:port works only for IP literals. The local-dev default
-      # in main.cc is 127.0.0.1:50051 which doesn't need this prefix.
-      SFU_ADDR: dns:///sfu:50051
-    ports:
-      # browsers connect to ws://host:9001/gateway (no TLS yet).
-      # Once nginx fronts this with Let's Encrypt the host port stays
-      # 9001 but only the proxy talks to it on the internal network.
-      - "9001:9001"
+      # main.cc's defaults (SCYLLA_HOST=127.0.0.1, KAFKA_BOOTSTRAP=localhost:19092,
+      # SFU_ADDR=127.0.0.1:50051) all resolve correctly under host networking,
+      # so no overrides here.
     restart: unless-stopped
 
 volumes:
