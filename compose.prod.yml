@@ -41,6 +41,9 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:19092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # auto-create topics on first produce/subscribe so signaling_server's
+      # chat_events consumer doesn't error forever before the first message.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     restart: unless-stopped
 
   scylla:
@@ -85,7 +88,10 @@ services:
       # point it at the sibling containers when running inside compose.
       SCYLLA_HOST: scylla
       KAFKA_BOOTSTRAP: kafka:19092
-      SFU_ADDR: sfu:50051
+      # gRPC's default resolver expects `dns:///` for hostname targets;
+      # bare host:port works only for IP literals. The local-dev default
+      # in main.cc is 127.0.0.1:50051 which doesn't need this prefix.
+      SFU_ADDR: dns:///sfu:50051
     ports:
       # browsers connect to ws://host:9001/gateway (no TLS yet).
       # Once nginx fronts this with Let's Encrypt the host port stays
