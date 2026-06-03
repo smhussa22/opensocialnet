@@ -69,7 +69,10 @@ services:
     # must be reachable from the public internet on the host.
     ports:
       - "50051:50051"
-      - "50000-60000:50000-60000/udp"
+      # 200 UDP ports for WebRTC media. matches the portRangeBegin/End in
+      # SfuPeer::init. forwarding 10000 ports made compose hang on EC2
+      # because docker has to install one iptables NAT rule per port.
+      - "50000-50200:50000-50200/udp"
     restart: unless-stopped
 
   signaling_server:

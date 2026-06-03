@@ -18,9 +18,16 @@ namespace OpenSocialNet::Sfu
         try
         {
 
-            // build the libdatachannel PeerConnection with a public STUN server
+            // build the libdatachannel PeerConnection with a public STUN server.
+            // narrow the UDP port range libdatachannel binds for ICE so Docker
+            // doesn't have to install 10000+ iptables NAT rules on container
+            // start (the default ephemeral range made `docker compose up`
+            // hang for minutes on EC2). 200 ports = up to ~100 concurrent
+            // peers — plenty for a single-instance deploy.
             ::rtc::Configuration config { };
             config.iceServers.emplace_back("stun:stun.l.google.com:19302");
+            config.portRangeBegin = 50000;
+            config.portRangeEnd = 50200;
 
             peer_connection = std::make_shared<::rtc::PeerConnection>(config);
 
