@@ -472,6 +472,72 @@ namespace OpenSocialNet::Signaling
 
     }
 
+    void on_screen_share_update(GatewayState& state, WebSocket* ws, const ::signaling::ScreenShareUpdate& update)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        // a client can only update screen share for the room it already
+        // joined via sdp_offer. drops cross-room spoofs silently rather
+        // than leaking room membership through an error.
+        if (sess->current_room_id.empty()) { send_error(ws, 409, "no active voice room"); return; }
+        if (update.room_id() != sess->current_room_id) { send_error(ws, 403, "room mismatch"); return; }
+        if (update.mid().empty()) { send_error(ws, 400, "mid required"); return; }
+
+        const std::string sharer_peer_id { make_peer_id(*sess) };
+        const std::string room_id { sess->current_room_id };
+        const std::string sharer_session_id { sess->session_id };
+
+        // tell the SFU which mid is the screen track so onTrack dispatches
+        // its inbound RTP through the screen handler. must precede the
+        // browser's renegotiated SDP offer; client guarantees that ordering.
+        if (state.sfu != nullptr) state.sfu->mark_screen_share(room_id, sharer_peer_id, update.mid(), update.sharing());
+
+        // fan the update out to every OTHER session currently in the same
+        // room so their UIs can show / hide the "<peer> is sharing" tile
+        // and (eventually) negotiate a consumer-side screen track.
+        if (state.sessions == nullptr) return;
+
+        ::signaling::ScreenShareUpdate fanned { update };
+        fanned.set_peer_id(sharer_peer_id);
+
+        state.sessions->for_each([&](const std::string& session_id, WebSocket* peer_ws)
+        {
+
+            if (peer_ws == nullptr) return;
+            if (session_id == sharer_session_id) return;
+            const Session* peer_sess { peer_ws->getUserData() };
+            if (peer_sess == nullptr) return;
+            if (peer_sess->current_room_id != room_id) return;
+
+            ::signaling::Envelope envelope { };
+            *envelope.mutable_peer_screen_share() = fanned;
+            send_envelope(peer_ws, envelope);
+
+        });
+
+    }
+
+    void on_client_sdp_answer(GatewayState& state, WebSocket* ws, const ::signaling::Sdp& answer)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+        if (state.sfu == nullptr) { send_error(ws, 503, "sfu unavailable"); return; }
+
+        // an answer is only meaningful in the context of a room we already
+        // joined via sdp_offer. drop cross-room spoofs without leaking which
+        // rooms exist.
+        if (sess->current_room_id.empty()) { send_error(ws, 409, "no active voice room"); return; }
+        if (answer.room_id() != sess->current_room_id) { send_error(ws, 403, "room mismatch"); return; }
+        if (answer.sdp().empty()) { send_error(ws, 400, "empty sdp"); return; }
+
+        const std::string peer_id { make_peer_id(*sess) };
+        state.sfu->accept_renegotiation_answer(answer.room_id(), peer_id, answer);
+
+    }
+
     void on_sfu_peer_event(GatewayState& state, const ::sfu_control::PeerEvent& event)
     {
 
@@ -499,6 +565,24 @@ namespace OpenSocialNet::Signaling
                 if (ws == nullptr) return;
                 ::signaling::Envelope envelope { };
                 *envelope.mutable_server_ice_candidate() = std::move(ice);
+                send_envelope(ws, envelope);
+
+            });
+            return;
+
+        }
+
+        if (event.has_renegotiation_offer())
+        {
+
+            ::signaling::Sdp offer { event.renegotiation_offer() };
+            loop->defer([sessions, session_id = std::move(session_id), offer = std::move(offer)]() mutable
+            {
+
+                WebSocket* ws { sessions->lookup(session_id) };
+                if (ws == nullptr) return;
+                ::signaling::Envelope envelope { };
+                *envelope.mutable_server_sdp_offer() = std::move(offer);
                 send_envelope(ws, envelope);
 
             });
@@ -541,14 +625,45 @@ namespace OpenSocialNet::Signaling
         switch (envelope.payload_case())
         {
 
-            case ::signaling::Envelope::kHello: on_hello(state, ws, envelope.hello()); break;
-            case ::signaling::Envelope::kSendMessage: on_send_message(state, ws, envelope.send_message()); break;
-            case ::signaling::Envelope::kFetchHistory: on_fetch_history(state, ws, envelope.fetch_history()); break;
-            case ::signaling::Envelope::kJoinVoice: on_join_voice(ws, envelope.join_voice()); break;
-            case ::signaling::Envelope::kLeaveVoice: on_leave_voice(ws, envelope.leave_voice()); break;
-            case ::signaling::Envelope::kSdpOffer: on_sdp_offer(state, ws, envelope.sdp_offer()); break;
-            case ::signaling::Envelope::kIceCandidate: on_ice_candidate(state, ws, envelope.ice_candidate()); break;
-            case ::signaling::Envelope::kHeartbeat: on_heartbeat(ws, envelope.heartbeat()); break;
+            case ::signaling::Envelope::kHello: 
+                on_hello(state, ws, envelope.hello()); 
+                break;
+
+            case ::signaling::Envelope::kSendMessage: 
+                on_send_message(state, ws, envelope.send_message()); 
+                break;
+
+            case ::signaling::Envelope::kFetchHistory: 
+                on_fetch_history(state, ws, envelope.fetch_history()); 
+                break;
+
+            case ::signaling::Envelope::kJoinVoice: 
+                on_join_voice(ws, envelope.join_voice()); 
+                break;
+
+            case ::signaling::Envelope::kLeaveVoice: 
+                on_leave_voice(ws, envelope.leave_voice()); 
+                break;
+
+            case ::signaling::Envelope::kSdpOffer:
+                on_sdp_offer(state, ws, envelope.sdp_offer());
+                break;
+
+            case ::signaling::Envelope::kClientSdpAnswer:
+                on_client_sdp_answer(state, ws, envelope.client_sdp_answer());
+                break;
+
+            case ::signaling::Envelope::kScreenShareUpdate:
+                on_screen_share_update(state, ws, envelope.screen_share_update());
+                break;
+
+            case ::signaling::Envelope::kIceCandidate:
+                on_ice_candidate(state, ws, envelope.ice_candidate());
+                break;
+                
+            case ::signaling::Envelope::kHeartbeat: 
+                on_heartbeat(ws, envelope.heartbeat()); 
+                break;
 
             default:
                 send_error(ws, 400, "unsupported payload");

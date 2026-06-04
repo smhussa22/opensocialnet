@@ -54,6 +54,18 @@ namespace OpenSocialNet::Signaling
         // Synchronous RemovePeer; only the status is needed.
         void remove_peer(const std::string& room_id, const std::string& peer_id);
 
+        // Sync MarkScreenShare. Tells the SFU to dispatch RTP arriving on the
+        // given mid through SfuPeer's screen handler instead of the camera
+        // handler. Called from on_screen_share_update right before the
+        // browser renegotiates its SDP offer.
+        void mark_screen_share(const std::string& room_id, const std::string& peer_id, const std::string& mid, bool sharing);
+
+        // Sync AcceptRenegotiationAnswer. Hands the browser's SDP answer back
+        // to the SFU, closing the loop on an SFU-initiated renegotiation
+        // (currently the screen-share consumer track grow). Called from
+        // on_client_sdp_answer.
+        void accept_renegotiation_answer(const std::string& room_id, const std::string& peer_id, const ::signaling::Sdp& answer);
+
         // Kicks off the background reader thread that consumes PeerEvents
         // from the SFU and invokes `handler` for each. Safe to call once.
         void start_event_stream(EventHandler handler);

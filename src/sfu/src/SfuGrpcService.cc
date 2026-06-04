@@ -26,7 +26,7 @@
 namespace OpenSocialNet::Sfu
 {
 
-    SfuGrpcService::SfuGrpcService(RoomRegistry& registry_ref) noexcept : registry { registry_ref }
+    SfuGrpcService::SfuGrpcService(RoomRegistry& registry_ref, SfuStats& stats_ref) noexcept : registry { registry_ref }, m_stats { stats_ref }
     {
 
 
@@ -57,10 +57,12 @@ namespace OpenSocialNet::Sfu
         // onStateChange and onTrack routes here. handlers run on libdatachannel
         // worker threads and must be short / thread-safe.
         std::string captured_peer_id { peer_id };
-        new_peer->set_local_ice_candidate_handler([this, captured_peer_id](std::string_view cand, std::string_view mid)
+        std::string captured_room_id { room_id };
+        new_peer->set_local_ice_candidate_handler([this, captured_peer_id, captured_room_id](std::string_view cand, std::string_view mid)
         {
 
             PendingEvent ev { };
+            ev.room_id = captured_room_id;
             ev.peer_id = captured_peer_id;
             ev.kind = PendingEvent::Kind::IceCandidate;
             ev.candidate.assign(cand.data(), cand.size());
@@ -68,12 +70,24 @@ namespace OpenSocialNet::Sfu
             push_event(std::move(ev));
 
         });
-        new_peer->set_peer_ready_handler([this, captured_peer_id]()
+        new_peer->set_peer_ready_handler([this, captured_peer_id, captured_room_id]()
         {
 
             PendingEvent ev { };
+            ev.room_id = captured_room_id;
             ev.peer_id = captured_peer_id;
             ev.kind = PendingEvent::Kind::PeerReady;
+            push_event(std::move(ev));
+
+        });
+        new_peer->set_renegotiation_offer_handler([this, captured_peer_id, captured_room_id](std::string sdp)
+        {
+
+            PendingEvent ev { };
+            ev.room_id = captured_room_id;
+            ev.peer_id = captured_peer_id;
+            ev.kind = PendingEvent::Kind::RenegotiationOffer;
+            ev.sdp = std::move(sdp);
             push_event(std::move(ev));
 
         });
@@ -90,6 +104,12 @@ namespace OpenSocialNet::Sfu
         {
 
             room->forward_audio_rtp(captured_peer_id, std::move(data));
+
+        });
+        new_peer->set_screen_video_rtp_handler([room, captured_peer_id](::rtc::message_variant data)
+        {
+
+            room->forward_screen_video_rtp(captured_peer_id, std::move(data));
 
         });
 
@@ -132,6 +152,13 @@ namespace OpenSocialNet::Sfu
             Room* old_room { evicted_room_id.empty() ? nullptr : registry.find(evicted_room_id) };
             if (old_room != nullptr) old_room->remove_peer(peer_id);
             evicted->shutdown();
+
+        }
+        else
+        {
+
+            // brand-new peer_id, not a replacement — bump the gauge.
+            m_stats.inc_active_peers();
 
         }
 
@@ -189,6 +216,7 @@ namespace OpenSocialNet::Sfu
         if (room != nullptr) room->remove_peer(peer_id);
 
         evicted->shutdown();
+        m_stats.dec_active_peers();
 
         return ::grpc::Status::OK;
 
@@ -245,14 +273,25 @@ namespace OpenSocialNet::Sfu
                 lock.unlock();
 
                 ::sfu_control::PeerEvent out { };
+                out.set_room_id(ev.room_id);
                 out.set_peer_id(ev.peer_id);
 
                 if (ev.kind == PendingEvent::Kind::IceCandidate)
                 {
 
                     ::signaling::IceCandidate* ice { out.mutable_local_ice_candidate() };
+                    ice->set_room_id(ev.room_id);
                     ice->set_candidate(std::move(ev.candidate));
                     ice->set_mid(std::move(ev.mid));
+
+                }
+                else if (ev.kind == PendingEvent::Kind::RenegotiationOffer)
+                {
+
+                    ::signaling::Sdp* sdp { out.mutable_renegotiation_offer() };
+                    sdp->set_room_id(ev.room_id);
+                    sdp->set_sdp(std::move(ev.sdp));
+                    sdp->set_type("offer");
 
                 }
                 else
@@ -269,6 +308,91 @@ namespace OpenSocialNet::Sfu
             }
 
         }
+
+        return ::grpc::Status::OK;
+
+    }
+
+    ::grpc::Status SfuGrpcService::MarkScreenShare(::grpc::ServerContext*, const ::sfu_control::MarkScreenShareRequest* req, ::sfu_control::MarkScreenShareResponse*)
+    {
+
+        const std::string& peer_id { req->peer_id() };
+        const std::string& room_id { req->room_id() };
+        const std::string& mid { req->mid() };
+        const bool sharing { req->sharing() };
+
+        std::printf("sfu: MarkScreenShare room=%s peer=%s mid=%s sharing=%d\n", room_id.c_str(), peer_id.c_str(), mid.c_str(), sharing ? 1 : 0);
+
+        // copy the shared_ptr out under the lock so the peer stays alive past the call
+        std::shared_ptr<SfuPeer> target { };
+        {
+
+            std::scoped_lock guard { peers_mutex };
+            auto it { peers.find(peer_id) };
+            if (it == peers.end()) return ::grpc::Status { ::grpc::StatusCode::NOT_FOUND, "no such peer" };
+            target = it->second;
+
+        }
+
+        if (target == nullptr) return ::grpc::Status { ::grpc::StatusCode::INTERNAL, "peer entry was null" };
+
+        if (sharing) target->mark_mid_as_screen(mid);
+        else target->unmark_mid_as_screen(mid);
+
+        // consumer-side renegotiation fanout: grow an outbound screen track on
+        // every OTHER peer in the room so each viewer can receive forwarded
+        // screen RTP. each peer emits a RenegotiationOffer back through its
+        // event handler; the gateway ships those to browsers as
+        // server_sdp_offer; browsers answer via client_sdp_answer which lands
+        // here as AcceptRenegotiationAnswer. NB: late joiners that haven't
+        // joined the room yet are not handled — they'd need an analogous
+        // renegotiation triggered from AddPeer if any sharer is active. TODO.
+        if (sharing)
+        {
+
+            Room* room { registry.find(room_id) };
+            if (room != nullptr)
+            {
+
+                auto snapshot { room->snapshot_peers() };
+                for (auto& peer : snapshot)
+                {
+
+                    if (!peer) continue;
+                    if (peer->peer_id() == peer_id) continue;
+                    peer->start_screen_consumer_renegotiation();
+
+                }
+
+            }
+
+        }
+
+        return ::grpc::Status::OK;
+
+    }
+
+    ::grpc::Status SfuGrpcService::AcceptRenegotiationAnswer(::grpc::ServerContext*, const ::sfu_control::AcceptRenegotiationAnswerRequest* req, ::sfu_control::AcceptRenegotiationAnswerResponse*)
+    {
+
+        const std::string& peer_id { req->peer_id() };
+        const std::string& answer_sdp { req->answer().sdp() };
+
+        std::printf("sfu: AcceptRenegotiationAnswer peer=%s sdp_size=%zu\n", peer_id.c_str(), answer_sdp.size());
+
+        std::shared_ptr<SfuPeer> target { };
+        {
+
+            std::scoped_lock guard { peers_mutex };
+            auto it { peers.find(peer_id) };
+            if (it == peers.end()) return ::grpc::Status { ::grpc::StatusCode::NOT_FOUND, "no such peer" };
+            target = it->second;
+
+        }
+
+        if (target == nullptr) return ::grpc::Status { ::grpc::StatusCode::INTERNAL, "peer entry was null" };
+
+        if (!target->accept_renegotiation_answer(answer_sdp)) return ::grpc::Status { ::grpc::StatusCode::INVALID_ARGUMENT, "accept_renegotiation_answer failed" };
 
         return ::grpc::Status::OK;
 

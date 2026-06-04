@@ -18,25 +18,37 @@ namespace OpenSocialNet::Sfu
 {
 
     // lock-free SFU-wide counters bumped from any thread (the forwarding hot
-    // path lives in a libdatachannel callback thread, so increments must be
-    // atomic). snapshot() returns a consistent struct copy for /stats endpoints,
-    // Kafka stats events, or unit tests. addressable from the goals.md
-    // "Observability" + "Low-latency systems thinking" categories.
+    // path lives in a libdatachannel callback thread, plus gRPC worker threads
+    // service RoomRegistry mutations), so every increment is an atomic relaxed
+    // fetch_add — nothing waits on these values, they're pure counters used
+    // for /stats endpoints, Kafka stats events, log_snapshot() and future
+    // Prometheus exposition. snapshot() returns a non-transactional copy:
+    // individual fields are eventually-consistent rather than locked.
+    // addresses goals.md "Observability" + "Low-latency systems thinking".
     class SfuStats
     {
 
     public:
+        // POD mirror of every counter, populated by snapshot(). consumers read
+        // this struct without touching any atomics so they can format / log /
+        // serialize freely.
         struct Snapshot
         {
 
-            std::uint64_t peers_connected { 0 }; // running count of successful PeerConnection completions
-            std::uint64_t peers_disconnected { 0 }; // count of clean or unclean PeerConnection terminations
-            std::uint64_t rooms_created { 0 }; // RoomRegistry::get_or_create that actually allocated
-            std::uint64_t rooms_destroyed { 0 }; // destroy_if_empty that actually freed
-            std::uint64_t packets_forwarded { 0 }; // RTP packets handed to outgoing tracks
-            std::uint64_t bytes_forwarded { 0 }; // sum of forwarded packet sizes
-            std::uint64_t packets_dropped { 0 }; // packets discarded (queue full, bad sequence, etc.)
-            std::uint64_t bytes_dropped { 0 }; // sum of dropped packet sizes
+            std::uint64_t rtp_video_packets_in { 0 }; // incoming video RTP from browsers
+            std::uint64_t rtp_video_packets_out { 0 }; // outgoing video RTP fanned to browsers
+            std::uint64_t rtp_audio_packets_in { 0 }; // incoming audio RTP from browsers
+            std::uint64_t rtp_audio_packets_out { 0 }; // outgoing audio RTP fanned to browsers
+            std::uint64_t rtp_screen_packets_in { 0 }; // incoming screen-share video RTP
+            std::uint64_t rtp_screen_packets_out { 0 }; // outgoing screen-share video RTP
+            std::uint64_t rtp_video_bytes_in { 0 }; // total bytes of incoming video RTP payloads
+            std::uint64_t rtp_video_bytes_out { 0 }; // total bytes of outgoing video RTP payloads
+            std::uint64_t rtp_audio_bytes_in { 0 }; // total bytes of incoming audio RTP payloads
+            std::uint64_t rtp_audio_bytes_out { 0 }; // total bytes of outgoing audio RTP payloads
+            std::uint64_t rtp_screen_bytes_in { 0 }; // total bytes of incoming screen RTP payloads
+            std::uint64_t rtp_screen_bytes_out { 0 }; // total bytes of outgoing screen RTP payloads
+            std::uint64_t active_peers { 0 }; // current peer count (gauge, inc/dec on AddPeer/RemovePeer)
+            std::uint64_t active_rooms { 0 }; // current room count (gauge, inc/dec on RoomRegistry alloc/free)
 
         };
 
@@ -48,37 +60,57 @@ namespace OpenSocialNet::Sfu
         SfuStats(SfuStats&&) = delete;
         SfuStats& operator=(SfuStats&&) = delete;
 
-        // bumps the connected-peer counter; call when a PeerConnection reaches Connected.
-        void note_peer_connected() noexcept;
+        // bumps rtp_video_packets_in by 1 and rtp_video_bytes_in by bytes.
+        void add_rtp_video_in(std::size_t bytes) noexcept;
 
-        // bumps the disconnected-peer counter; call on clean or unclean teardown.
-        void note_peer_disconnected() noexcept;
+        // bumps rtp_video_packets_out by 1 and rtp_video_bytes_out by bytes.
+        void add_rtp_video_out(std::size_t bytes) noexcept;
 
-        // bumps the room-created counter; call when RoomRegistry actually allocates a Room.
-        void note_room_created() noexcept;
+        // bumps rtp_audio_packets_in by 1 and rtp_audio_bytes_in by bytes.
+        void add_rtp_audio_in(std::size_t bytes) noexcept;
 
-        // bumps the room-destroyed counter; call when destroy_if_empty frees a Room.
-        void note_room_destroyed() noexcept;
+        // bumps rtp_audio_packets_out by 1 and rtp_audio_bytes_out by bytes.
+        void add_rtp_audio_out(std::size_t bytes) noexcept;
 
-        // records one successfully forwarded RTP packet and its size in bytes.
-        void note_packet_forwarded(std::size_t bytes) noexcept;
+        // bumps rtp_screen_packets_in by 1 and rtp_screen_bytes_in by bytes.
+        void add_rtp_screen_in(std::size_t bytes) noexcept;
 
-        // records one dropped RTP packet and its size in bytes (queue full, malformed, ratelimited, etc.).
-        void note_packet_dropped(std::size_t bytes) noexcept;
+        // bumps rtp_screen_packets_out by 1 and rtp_screen_bytes_out by bytes.
+        void add_rtp_screen_out(std::size_t bytes) noexcept;
 
-        // returns a non-atomic snapshot. counters may move while we read them, so
-        // individual fields are eventually-consistent rather than transactional.
+        // active_peers gauge — call from Room::add_peer / Room::remove_peer.
+        void inc_active_peers() noexcept;
+        void dec_active_peers() noexcept;
+
+        // active_rooms gauge — call from RoomRegistry when a Room is alloc'd / freed.
+        void inc_active_rooms() noexcept;
+        void dec_active_rooms() noexcept;
+
+        // returns a non-atomic snapshot. counters may move while we read them,
+        // so individual fields are eventually-consistent rather than transactional.
         [[nodiscard]] Snapshot snapshot() const noexcept;
 
+        // grabs snapshot() and prints it via std::printf as a single compact line.
+        // TODO: switch to std::print / std::println once GCC 14+ / libstdc++14 is
+        // available on the deploy box (Ubuntu 24.04 currently ships GCC 13 without
+        // <print> — see the matching TODO in SfuGrpcService.cc).
+        void log_snapshot() const noexcept;
+
     private:
-        std::atomic<std::uint64_t> peers_connected_count { 0 }; // total PeerConnections that reached Connected
-        std::atomic<std::uint64_t> peers_disconnected_count { 0 }; // total PeerConnections that have terminated
-        std::atomic<std::uint64_t> rooms_created_count { 0 }; // total Room allocations through RoomRegistry
-        std::atomic<std::uint64_t> rooms_destroyed_count { 0 }; // total Room frees through RoomRegistry
-        std::atomic<std::uint64_t> packets_forwarded_count { 0 }; // RTP packets successfully written to an outbound track
-        std::atomic<std::uint64_t> bytes_forwarded_count { 0 }; // sum of sizes of forwarded RTP packets
-        std::atomic<std::uint64_t> packets_dropped_count { 0 }; // RTP packets discarded before forwarding
-        std::atomic<std::uint64_t> bytes_dropped_count { 0 }; // sum of sizes of dropped RTP packets
+        std::atomic<std::uint64_t> rtp_video_packets_in { 0 }; // incoming video RTP from browsers
+        std::atomic<std::uint64_t> rtp_video_packets_out { 0 }; // outgoing video RTP fanned to browsers
+        std::atomic<std::uint64_t> rtp_audio_packets_in { 0 }; // incoming audio RTP from browsers
+        std::atomic<std::uint64_t> rtp_audio_packets_out { 0 }; // outgoing audio RTP fanned to browsers
+        std::atomic<std::uint64_t> rtp_screen_packets_in { 0 }; // incoming screen-share video RTP
+        std::atomic<std::uint64_t> rtp_screen_packets_out { 0 }; // outgoing screen-share video RTP
+        std::atomic<std::uint64_t> rtp_video_bytes_in { 0 }; // total bytes of incoming video RTP payloads
+        std::atomic<std::uint64_t> rtp_video_bytes_out { 0 }; // total bytes of outgoing video RTP payloads
+        std::atomic<std::uint64_t> rtp_audio_bytes_in { 0 }; // total bytes of incoming audio RTP payloads
+        std::atomic<std::uint64_t> rtp_audio_bytes_out { 0 }; // total bytes of outgoing audio RTP payloads
+        std::atomic<std::uint64_t> rtp_screen_bytes_in { 0 }; // total bytes of incoming screen RTP payloads
+        std::atomic<std::uint64_t> rtp_screen_bytes_out { 0 }; // total bytes of outgoing screen RTP payloads
+        std::atomic<std::uint64_t> active_peers { 0 }; // current peer count (gauge)
+        std::atomic<std::uint64_t> active_rooms { 0 }; // current room count (gauge)
 
     };
 

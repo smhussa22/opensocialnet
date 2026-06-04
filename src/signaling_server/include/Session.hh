@@ -6,9 +6,11 @@
 // c sys headers
 
 // cpp stdlib headers
+#include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 // 3rd party headers
 #include <uwebsockets/App.h>
@@ -60,6 +62,14 @@ namespace OpenSocialNet::Signaling
         // the session is no longer registered. Must be called from the WS
         // loop thread to be race-free with .close erasures.
         WebSocket* lookup(const std::string& session_id);
+
+        // Snapshots the (session_id, WebSocket*) pairs under the registry
+        // lock, then invokes `fn` for each WITHOUT holding the lock. Caller
+        // is expected to run on the uWS loop thread so that dereferencing
+        // each ws (to read Session userdata) is race-free with concurrent
+        // .close erasures. Used by fanout paths like on_screen_share_update
+        // that need to find every session in a given room.
+        void for_each(const std::function<void(const std::string&, WebSocket*)>& fn);
 
     private:
 

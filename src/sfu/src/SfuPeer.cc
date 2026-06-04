@@ -60,6 +60,20 @@ namespace OpenSocialNet::Sfu
 
             });
 
+            // local description firehose. fires for BOTH the initial answer (in
+            // response to the browser's first offer applied via accept_offer)
+            // AND any later SFU-initiated offer (start_screen_consumer_renegotiation).
+            // we only route the Offer flavour out — Answers go back to the browser
+            // via accept_offer's synchronous localDescription() read, so emitting
+            // them here would double-deliver.
+            peer_connection->onLocalDescription([this](::rtc::Description desc)
+            {
+
+                if (desc.type() != ::rtc::Description::Type::Offer) return;
+                if (renegotiation_offer_handler) renegotiation_offer_handler(std::string { desc });
+
+            });
+
             // echo: when a remote track arrives, wire its inbound RTP back out the same track
             peer_connection->onTrack([this](std::shared_ptr<::rtc::Track> track)
             {
@@ -67,17 +81,43 @@ namespace OpenSocialNet::Sfu
                 // cache the track by media kind for later shutdown / fan-out
                 ::rtc::Description::Media media { track->description() };
                 const std::string kind { media.type() };
+                const std::string mid { media.mid() };
+
                 if (kind == "video") video_echo_track = track;
                 else if (kind == "audio") audio_echo_track = track;
 
                 // hand inbound rtp off to whoever registered as handler
-                // handler is sfugrpcservicer w/ room, peer id and forwards into teh room
-                track->onMessage([this, kind](::rtc::message_variant data)
+                // handler is sfugrpcservicer w/ room, peer id and forwards into teh room.
+                // for video tracks we additionally peek into screen_mids: if signaling has
+                // labelled this mid as a screen capture (via mark_mid_as_screen, called
+                // before the renegotiated SDP offer arrived), the inbound RTP goes through
+                // the screen handler instead of the camera handler so consumers don't
+                // overwrite their camera tile.
+                track->onMessage([this, kind, mid](::rtc::message_variant data)
                 {
-                    
-                    if (kind == "video" && video_rtp_handler) video_rtp_handler(std::move(data));
-                    else if (kind == "audio" && audio_rtp_handler) audio_rtp_handler(std::move(data));
-                    
+
+                    if (kind == "video")
+                    {
+
+                        bool is_screen { false };
+                        {
+
+                            std::scoped_lock guard { screen_mids_mutex };
+                            is_screen = screen_mids.find(mid) != screen_mids.end();
+
+                        }
+
+                        if (is_screen && screen_video_rtp_handler) screen_video_rtp_handler(std::move(data));
+                        else if (video_rtp_handler) video_rtp_handler(std::move(data));
+
+                    }
+                    else if (kind == "audio" && audio_rtp_handler)
+                    {
+
+                        audio_rtp_handler(std::move(data));
+
+                    }
+
                 });
 
             });
@@ -176,8 +216,10 @@ namespace OpenSocialNet::Sfu
 
         video_echo_track.reset();
         audio_echo_track.reset();
+        screen_video_track.reset();
         peer_connection.reset();
         connected.store(false);
+        renegotiation_in_flight.store(false);
 
     }
 
@@ -253,6 +295,143 @@ namespace OpenSocialNet::Sfu
         catch(...)
         {
 
+
+        }
+
+    }
+
+    // ---- screen share ----
+    // Sharer side: mark_mid_as_screen + the screen-aware onTrack dispatch in
+    // init() route inbound RTP on the marked mid to screen_video_rtp_handler.
+    // Consumer side: start_screen_consumer_renegotiation grows an outbound
+    // screen track and drives an SFU-initiated SDP offer; accept_renegotiation_answer
+    // closes the cycle when the browser's answer arrives.
+
+    void SfuPeer::set_screen_video_rtp_handler (RtpHandler handler) noexcept
+    {
+
+        screen_video_rtp_handler = std::move(handler);
+
+    }
+
+    void SfuPeer::send_screen_video_rtp (::rtc::message_variant data) noexcept
+    {
+
+        try
+        {
+
+            if (screen_video_track && screen_video_track->isOpen()) screen_video_track->send(std::move(data));
+
+        }
+        catch (...)
+        {
+
+
+
+        }
+
+    }
+
+    void SfuPeer::mark_mid_as_screen (std::string mid) noexcept
+    {
+
+        if (mid.empty()) return;
+        std::scoped_lock guard { screen_mids_mutex };
+        screen_mids.insert(std::move(mid));
+
+    }
+
+    void SfuPeer::unmark_mid_as_screen (const std::string& mid) noexcept
+    {
+
+        if (mid.empty()) return;
+        std::scoped_lock guard { screen_mids_mutex };
+        screen_mids.erase(mid);
+
+    }
+
+    bool SfuPeer::has_screen_track () const noexcept
+    {
+
+        return screen_video_track && screen_video_track->isOpen();
+
+    }
+
+    // ---- SFU-initiated renegotiation ----
+
+    void SfuPeer::set_renegotiation_offer_handler (RenegotiationOfferHandler handler) noexcept
+    {
+
+        renegotiation_offer_handler = std::move(handler);
+
+    }
+
+    bool SfuPeer::start_screen_consumer_renegotiation () noexcept
+    {
+
+        if (!peer_connection) return false;
+
+        // glare guard — refuse to overlap two SFU-initiated renegotiations.
+        // accept_renegotiation_answer flips this back to false on success.
+        bool expected { false };
+        if (!renegotiation_in_flight.compare_exchange_strong(expected, true)) return false;
+
+        try
+        {
+
+            // idempotent: if we already have a screen track from a prior cycle,
+            // skip the addTrack and just re-fire setLocalDescription so the
+            // browser gets a fresh offer (e.g. on reconnect / glare retry).
+            if (!screen_video_track)
+            {
+
+                ::rtc::Description::Video media { "screen", ::rtc::Description::Direction::SendOnly };
+                // libdatachannel needs a payload type registered on the m-line
+                // for SDP generation to succeed. VP8 / 96 matches what the
+                // existing camera echo tracks ride on (browsers default-offer
+                // VP8 at PT 96), so the SFU's screen forward is wire-compatible
+                // with whatever payload format the sharer's RTP arrives as.
+                media.addVP8Codec(96);
+                screen_video_track = peer_connection->addTrack(media);
+
+            }
+
+            // explicit setLocalDescription on top of the addTrack causes
+            // libdatachannel to (re)emit the local SDP as an Offer through
+            // onLocalDescription, which we route to renegotiation_offer_handler.
+            peer_connection->setLocalDescription();
+            return true;
+
+        }
+        catch (...)
+        {
+
+            renegotiation_in_flight.store(false);
+            return false;
+
+        }
+
+    }
+
+    bool SfuPeer::accept_renegotiation_answer (std::string_view sdp_answer) noexcept
+    {
+
+        if (!peer_connection) return false;
+
+        try
+        {
+
+            peer_connection->setRemoteDescription(::rtc::Description { std::string { sdp_answer }, ::rtc::Description::Type::Answer });
+            renegotiation_in_flight.store(false);
+            return true;
+
+        }
+        catch (...)
+        {
+
+            // leave in_flight set so callers can see something is wrong;
+            // shutdown() will clear it when the peer is torn down.
+            return false;
 
         }
 

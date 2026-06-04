@@ -4,6 +4,7 @@
 // related headers
 #include "RoomRegistry.hh"
 #include "SfuPeer.hh"
+#include "SfuStats.hh"
 
 // c sys headers
 
@@ -39,8 +40,11 @@ namespace OpenSocialNet::Sfu
     {
 
     public:
-        // borrowing reference; the registry must outlive the service.
-        explicit SfuGrpcService(RoomRegistry& registry) noexcept;
+        // borrowing references; the registry and stats must outlive the service.
+        // stats is shared with RoomRegistry / Room so per-packet counter
+        // updates from the forwarding path and per-connection updates from
+        // gRPC worker threads land on the same aggregate.
+        SfuGrpcService(RoomRegistry& registry, SfuStats& stats) noexcept;
         ~SfuGrpcService() override = default;
 
         SfuGrpcService(const SfuGrpcService&) = delete;
@@ -64,9 +68,28 @@ namespace OpenSocialNet::Sfu
         // browsers. Layer 1 stub: returns OK immediately without writing.
         ::grpc::Status StreamPeerEvents(::grpc::ServerContext* ctx, const ::sfu_control::StreamPeerEventsRequest* req, ::grpc::ServerWriter<::sfu_control::PeerEvent>* writer) override;
 
+        // labels a SDP mid on the named peer as carrying screen-capture video.
+        // signaling_server calls this right before the browser sends its
+        // renegotiated SDP offer; the SFU then routes that track's inbound
+        // RTP through SfuPeer's screen handler. When sharing=true also drives
+        // SFU-initiated SDP renegotiation on every OTHER peer in the room so
+        // each viewer grows an outbound screen track they can receive the
+        // forwarded RTP on.
+        ::grpc::Status MarkScreenShare(::grpc::ServerContext* ctx, const ::sfu_control::MarkScreenShareRequest* req, ::sfu_control::MarkScreenShareResponse* resp) override;
+
+        // closes the loop on an SFU-initiated renegotiation: the gateway
+        // forwards the browser's SDP answer here, and we apply it to the
+        // named peer so the new track becomes live.
+        ::grpc::Status AcceptRenegotiationAnswer(::grpc::ServerContext* ctx, const ::sfu_control::AcceptRenegotiationAnswerRequest* req, ::sfu_control::AcceptRenegotiationAnswerResponse* resp) override;
+
         // signals the StreamPeerEvents loop to exit promptly on process shutdown.
         // safe to call before the destructor; idempotent.
         void request_stream_shutdown() noexcept;
+
+        // process-wide counter aggregate; a future stats thread / Kafka emitter
+        // grabs snapshots through this accessor without touching internals.
+        [[nodiscard]] const SfuStats& stats() const noexcept { return m_stats; }
+        [[nodiscard]] SfuStats& stats() noexcept { return m_stats; }
 
     private:
         // one event the SFU side wants to deliver to the signaling_server gateway,
@@ -74,12 +97,14 @@ namespace OpenSocialNet::Sfu
         struct PendingEvent
         {
 
-            enum class Kind { IceCandidate, PeerReady };
+            enum class Kind { IceCandidate, PeerReady, RenegotiationOffer };
 
+            std::string room_id { }; // owning peer's room; surfaces on the wire as PeerEvent.room_id
             std::string peer_id { }; // owning peer's id
-            Kind kind { }; // discriminator: ICE candidate vs peer-ready
+            Kind kind { }; // discriminator: ICE candidate vs peer-ready vs renegotiation offer
             std::string candidate { }; // populated when kind == IceCandidate
             std::string mid { }; // populated when kind == IceCandidate
+            std::string sdp { }; // populated when kind == RenegotiationOffer — the SFU-initiated offer SDP
 
         };
 
@@ -102,6 +127,11 @@ namespace OpenSocialNet::Sfu
         std::condition_variable events_cv { }; // wakes StreamPeerEvents when an event arrives or shutdown is requested
         std::deque<PendingEvent> events { }; // pending events queued by SfuPeer callbacks
         std::atomic<bool> stream_shutdown { false }; // tells StreamPeerEvents loop to exit
+
+        // borrowed counter aggregate; owned by main(). bumped here from gRPC
+        // worker threads (active_peers gauge) and shared with Room for the
+        // RTP packet+byte totals.
+        SfuStats& m_stats;
 
     };
 

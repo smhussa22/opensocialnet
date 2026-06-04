@@ -11,6 +11,13 @@
 namespace OpenSocialNet::Sfu
 {
 
+    RoomRegistry::RoomRegistry(SfuStats& stats) noexcept : m_stats { stats }
+    {
+
+
+
+    }
+
     Room* RoomRegistry::get_or_create(std::string_view room_id) noexcept
     {
 
@@ -19,7 +26,8 @@ namespace OpenSocialNet::Sfu
         auto it { rooms.find(std::string { room_id }) };
         if (it != rooms.end()) return it->second.get();
 
-        auto inserted { rooms.emplace(std::string { room_id }, std::make_unique<Room>(std::string { room_id })) };
+        auto inserted { rooms.emplace(std::string { room_id }, std::make_unique<Room>(std::string { room_id }, m_stats)) };
+        m_stats.inc_active_rooms();
         return inserted.first->second.get();
 
     }
@@ -45,6 +53,7 @@ namespace OpenSocialNet::Sfu
         if (!it->second->empty()) return false;
 
         rooms.erase(it);
+        m_stats.dec_active_rooms();
         return true;
 
     }

@@ -22,6 +22,8 @@ message Envelope
     LeaveVoice     leave_voice          = 15;
     Sdp            sdp_offer            = 16; // browser publishes its SDP offer to the SFU
     IceCandidate   ice_candidate        = 17; // browser trickles one of its ICE candidates
+    ScreenShareUpdate screen_share_update = 18; // browser toggles its own screen share on/off
+    Sdp            client_sdp_answer    = 19; // browser's SDP answer to an SFU-initiated renegotiation offer
 
     // ---- server -> client ----
     Ready             ready                = 30;
@@ -34,6 +36,8 @@ message Envelope
     Sdp               sdp_answer           = 37; // server returns SFU's SDP answer
     IceCandidate      server_ice_candidate = 38; // server trickles one of the SFU's ICE candidates
     PeerReady         peer_ready           = 39; // SFU PeerConnection has reached Connected
+    ScreenShareUpdate peer_screen_share    = 40; // another peer in the room started/stopped sharing
+    Sdp               server_sdp_offer     = 41; // SFU-initiated renegotiation offer (e.g. growing a screen consumer track); browser answers via client_sdp_answer
 
   }
 
@@ -163,6 +167,36 @@ message PeerReady
 {
 
   string room_id = 1; // channel / room whose SFU side has reached Connected
+
+}
+
+// ---- screen share ----
+// Browsers add a screen track to the existing PeerConnection via
+// getDisplayMedia + addTrack, which triggers SDP renegotiation. The SFU
+// can't tell from the SDP alone whether a new video m-line is a camera
+// or a screen capture, so the client labels it explicitly via this
+// envelope BEFORE sending the renegotiated offer:
+//   client -> server: ScreenShareUpdate { room_id, mid, peer_id="", sharing=true }
+//   server -> SFU:    MarkScreenShare gRPC (peer_id, mid, sharing)
+//   server -> other peers in room: ScreenShareUpdate { room_id, mid, peer_id=<sharer>, sharing=true }
+// Other peers use this to render the screen track in a dedicated tile
+// instead of overwriting the camera tile.
+
+enum MediaKind
+{
+
+  MEDIA_KIND_CAMERA = 0; // default for any video track that isn't explicitly screen-marked
+  MEDIA_KIND_SCREEN = 1;
+
+}
+
+message ScreenShareUpdate
+{
+
+  string room_id = 1; // channel / room the screen track lives in
+  string mid     = 2; // SDP media-line identifier of the screen track ("2", "3", ...)
+  string peer_id = 3; // empty when client -> server; populated by server when fanned out to other peers
+  bool   sharing = 4; // true when the sharer turns it on; false on stop
 
 }
 

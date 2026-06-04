@@ -3,6 +3,7 @@
 
 // related headers
 #include "Room.hh"
+#include "SfuStats.hh"
 
 // c sys headers
 #include <cstddef>
@@ -30,7 +31,10 @@ namespace OpenSocialNet::Sfu
     {
 
     public:
-        RoomRegistry() noexcept = default;
+        // stats is a borrowed reference (owned by main()); it is passed into
+        // every Room we allocate AND bumped here on inc/dec_active_rooms so
+        // the room gauge tracks allocation lifetime.
+        explicit RoomRegistry(SfuStats& stats) noexcept;
         ~RoomRegistry() = default;
 
         RoomRegistry(const RoomRegistry&) = delete;
@@ -52,6 +56,7 @@ namespace OpenSocialNet::Sfu
         [[nodiscard]] std::size_t room_count() const noexcept;
 
     private:
+        SfuStats& m_stats; // bumped on alloc / free; also threaded into each Room
         mutable std::mutex rooms_mutex { }; // guards rooms map across get/destroy
         std::unordered_map<std::string, std::unique_ptr<Room>> rooms { }; // owned rooms keyed by id
 

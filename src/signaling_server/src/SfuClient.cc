@@ -88,6 +88,37 @@ namespace OpenSocialNet::Signaling
 
     }
 
+    void SfuClient::mark_screen_share(const std::string& room_id, const std::string& peer_id, const std::string& mid, bool sharing)
+    {
+
+        ::sfu_control::MarkScreenShareRequest request { };
+        request.set_room_id(room_id);
+        request.set_peer_id(peer_id);
+        request.set_mid(mid);
+        request.set_sharing(sharing);
+
+        ::sfu_control::MarkScreenShareResponse response { };
+        ::grpc::ClientContext context { };
+        const ::grpc::Status status { m_stub->MarkScreenShare(&context, request, &response) };
+        if (!status.ok()) std::cerr << "[sfu] MarkScreenShare failed: " << status.error_message() << '\n';
+
+    }
+
+    void SfuClient::accept_renegotiation_answer(const std::string& room_id, const std::string& peer_id, const ::signaling::Sdp& answer)
+    {
+
+        ::sfu_control::AcceptRenegotiationAnswerRequest request { };
+        request.set_room_id(room_id);
+        request.set_peer_id(peer_id);
+        *request.mutable_answer() = answer;
+
+        ::sfu_control::AcceptRenegotiationAnswerResponse response { };
+        ::grpc::ClientContext context { };
+        const ::grpc::Status status { m_stub->AcceptRenegotiationAnswer(&context, request, &response) };
+        if (!status.ok()) std::cerr << "[sfu] AcceptRenegotiationAnswer failed: " << status.error_message() << '\n';
+
+    }
+
     void SfuClient::start_event_stream(EventHandler handler)
     {
 

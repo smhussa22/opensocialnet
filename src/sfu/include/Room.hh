@@ -3,6 +3,7 @@
 
 // related headers
 #include "SfuPeer.hh"
+#include "SfuStats.hh"
 
 // c sys headers
 
@@ -30,8 +31,9 @@ namespace OpenSocialNet::Sfu
     {
 
     public:
-        // constructs an empty room with the given identifier.
-        explicit Room(std::string room_id) noexcept;
+        // constructs an empty room with the given identifier. stats is a
+        // borrowed reference (owned by main()), bumped on every forward.
+        Room(std::string room_id, SfuStats& stats) noexcept;
         ~Room() = default;
 
         Room(const Room&) = delete;
@@ -53,6 +55,20 @@ namespace OpenSocialNet::Sfu
         // same as forward_video_rtp but for audio. cheaper (smaller packets, higher rate).
         void forward_audio_rtp(std::string_view source_peer_id, ::rtc::message_variant data) noexcept;
 
+        // forwards an inbound screen-capture RTP packet to every peer in the room
+        // except the source. parallel to forward_video_rtp but routes through
+        // SfuPeer::send_screen_video_rtp so consumers render it in a screen tile
+        // instead of overwriting their camera tile. peers without a screen
+        // consumer track yet (i.e. before consumer-side renegotiation has run)
+        // silently drop — see SfuPeer::send_screen_video_rtp for the open
+        // renegotiation TODO.
+        void forward_screen_video_rtp(std::string_view source_peer_id, ::rtc::message_variant data) noexcept;
+
+        // copy of the current participants under the peers mutex so callers can
+        // iterate without holding the lock. SfuGrpcService uses this to drive
+        // screen-share consumer renegotiation across every peer in the room.
+        [[nodiscard]] std::vector<std::shared_ptr<SfuPeer>> snapshot_peers() const noexcept;
+
         // returns this room's identifier (the key it lives under in RoomRegistry).
         [[nodiscard]] std::string_view id() const noexcept;
 
@@ -64,6 +80,7 @@ namespace OpenSocialNet::Sfu
 
     private:
         std::string room_id { }; // human-readable channel identifier
+        SfuStats& m_stats; // process-wide counter aggregate; bumped per-packet in forward_*_rtp
         mutable std::mutex peers_mutex { }; // guards peers vector against concurrent add/remove during forwarding
         std::vector<std::shared_ptr<SfuPeer>> peers { }; // current participants
 

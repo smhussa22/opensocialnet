@@ -1,6 +1,7 @@
 // related headers
 #include "RoomRegistry.hh"
 #include "SfuGrpcService.hh"
+#include "SfuStats.hh"
 
 // c sys headers
 #include <csignal>
@@ -36,8 +37,11 @@ int main()
     // declared in src/sfu/Dockerfile's EXPOSE list and in compose.prod.yml.
     constexpr const char* listen_address { "0.0.0.0:50051" };
 
-    OpenSocialNet::Sfu::RoomRegistry registry { };
-    OpenSocialNet::Sfu::SfuGrpcService service { registry };
+    // ownership tree: stats is at the root because RoomRegistry, Room (via
+    // RoomRegistry) and SfuGrpcService all hold borrowing references to it.
+    OpenSocialNet::Sfu::SfuStats stats { };
+    OpenSocialNet::Sfu::RoomRegistry registry { stats };
+    OpenSocialNet::Sfu::SfuGrpcService service { registry, stats };
 
     ::grpc::ServerBuilder builder { };
     builder.AddListeningPort(listen_address, ::grpc::InsecureServerCredentials());
@@ -57,6 +61,24 @@ int main()
 
     ::printf("sfu: gRPC SfuControl listening on %s\n", listen_address);
 
+    // periodic stats emitter. logs once every 10s so docker logs / EC2
+    // CloudWatch tail shows a heartbeat of (rooms, peers, RTP volume) without
+    // any external scraping. exits when shutdown_requested flips.
+    std::thread stats_thread { [&stats]()
+    {
+
+        constexpr auto stats_period { std::chrono::seconds { 10 } };
+        while (!shutdown_requested.load(std::memory_order_acquire))
+        {
+
+            std::this_thread::sleep_for(stats_period);
+            if (shutdown_requested.load(std::memory_order_acquire)) break;
+            stats.log_snapshot();
+
+        }
+
+    } };
+
     // poll the shutdown flag from main thread; calling Server::Shutdown from
     // a signal handler deadlocks inside absl::Mutex (lock-ordering check).
     while (!shutdown_requested.load(std::memory_order_acquire))
@@ -68,6 +90,7 @@ int main()
 
     ::printf("sfu: shutting down\n");
     server->Shutdown();
+    stats_thread.join();
     return 0;
 
 }

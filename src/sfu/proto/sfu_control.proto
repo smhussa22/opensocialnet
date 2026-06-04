@@ -36,6 +36,25 @@ service SfuControl
     // lifetime of the process.
     rpc StreamPeerEvents(StreamPeerEventsRequest) returns (stream PeerEvent);
 
+    // Tell the SFU that a specific SDP m-line on a given peer carries
+    // screen-capture video. The next SDP renegotiation from that browser
+    // will bring the new track up; this RPC must arrive BEFORE the
+    // renegotiated offer so onTrack can dispatch the inbound RTP to the
+    // screen forwarder rather than the camera forwarder. When sharing=false
+    // the SFU forgets the mid so any future re-use of that m-line falls
+    // back to the camera path. Also triggers an SFU-initiated renegotiation
+    // on every OTHER peer in the room when sharing=true so they grow an
+    // outbound screen track to receive the share through; those peers will
+    // each emit a PeerEvent.renegotiation_offer back on the StreamPeerEvents
+    // stream that the signaling_server forwards as server_sdp_offer.
+    rpc MarkScreenShare(MarkScreenShareRequest) returns (MarkScreenShareResponse);
+
+    // Browser's SDP answer to an SFU-initiated renegotiation offer that was
+    // shipped down via PeerEvent.renegotiation_offer / server_sdp_offer. The
+    // SFU finalizes the renegotiation by calling setRemoteDescription with
+    // this answer; the new track is fully usable from this point on.
+    rpc AcceptRenegotiationAnswer(AcceptRenegotiationAnswerRequest) returns (AcceptRenegotiationAnswerResponse);
+
 }
 
 message AddPeerRequest
@@ -92,6 +111,39 @@ message StreamPeerEventsRequest
 
 }
 
+message MarkScreenShareRequest
+{
+
+    string room_id = 1;
+    string peer_id = 2;
+    string mid     = 3; // SDP media-line identifier of the screen track
+    bool   sharing = 4; // true when starting, false when stopping
+
+}
+
+message MarkScreenShareResponse
+{
+
+
+
+}
+
+message AcceptRenegotiationAnswerRequest
+{
+
+    string        room_id = 1;
+    string        peer_id = 2;
+    signaling.Sdp answer  = 3; // browser's SDP answer to an SFU-initiated offer
+
+}
+
+message AcceptRenegotiationAnswerResponse
+{
+
+
+
+}
+
 // Multiplexed event the SFU emits on the StreamPeerEvents stream.
 message PeerEvent
 {
@@ -104,6 +156,7 @@ message PeerEvent
 
         signaling.IceCandidate local_ice_candidate = 3; // SFU-side gathered candidate; route to browser
         bool                   peer_ready          = 4; // peer connection reached Connected
+        signaling.Sdp          renegotiation_offer = 5; // SFU-initiated SDP offer (e.g. growing a screen consumer track); gateway forwards as server_sdp_offer
 
     }
 

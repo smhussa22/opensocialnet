@@ -43,6 +43,25 @@ namespace OpenSocialNet::Signaling
 
     }
 
+    void SessionRegistry::for_each(const std::function<void(const std::string&, WebSocket*)>& fn)
+    {
+
+        // snapshot under lock; iterate outside so fn can safely call back
+        // into the registry (lookup / remove) without re-entrant deadlock,
+        // and so a slow fn doesn't stall other gateway threads.
+        std::vector<std::pair<std::string, WebSocket*>> snapshot { };
+        {
+
+            std::lock_guard<std::mutex> lock { m_mu };
+            snapshot.reserve(m_sessions.size());
+            for (const auto& kv : m_sessions) snapshot.emplace_back(kv.first, kv.second);
+
+        }
+
+        for (auto& kv : snapshot) fn(kv.first, kv.second);
+
+    }
+
     std::string make_session_id()
     {
 
