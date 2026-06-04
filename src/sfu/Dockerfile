@@ -38,7 +38,7 @@ WORKDIR /workspace/src/sfu
 # libdatachannel is fetched via FetchContent (~3 min first build,
 # cached on subsequent Docker layer rebuilds via cmake's _deps).
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build --parallel "$(nproc)" --target sfu
+    && cmake --build build --parallel 4 --target sfu
 
 # ---------- runtime ----------
 FROM ubuntu:24.04 AS runtime

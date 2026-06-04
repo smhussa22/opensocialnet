@@ -60,7 +60,7 @@ RUN git clone --depth 1 https://github.com/scylladb/cpp-driver.git scylla-cpp-dr
         -DCASS_BUILD_SHARED=ON \
         -DCASS_BUILD_EXAMPLES=OFF \
         -DCASS_BUILD_TESTS=OFF \
-    && cmake --build build --parallel "$(nproc)" \
+    && cmake --build build --parallel 4 \
     && cmake --install build \
     && ln -sf /usr/local/lib/x86_64-linux-gnu/libscylla-cpp-driver.so /usr/local/lib/libcassandra.so \
     && ln -sf /usr/local/lib/x86_64-linux-gnu/libscylla-cpp-driver.so.2 /usr/local/lib/libcassandra.so.2 \
@@ -76,6 +76,10 @@ RUN git clone --depth 1 https://github.com/microsoft/vcpkg.git \
     && /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
 ENV VCPKG_ROOT=/opt/vcpkg
+# cap parallel compiles during vcpkg source builds. protobuf + grpc each
+# link a few TUs that need ~3 GB RSS apiece; running 8 wide OOMs the
+# WSL2 VM and takes the buildkit daemon down with it. 2 leaves headroom.
+ENV VCPKG_MAX_CONCURRENCY=2
 
 # install C++ deps via vcpkg classic mode. takes the longest in this
 # build — primarily because grpc + protobuf are each ~5-10 min from
@@ -104,7 +108,7 @@ WORKDIR /workspace/src/signaling_server
 RUN cmake -S . -B build \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_TOOLCHAIN_FILE=/opt/vcpkg/scripts/buildsystems/vcpkg.cmake \
-    && cmake --build build --parallel "$(nproc)"
+    && cmake --build build --parallel 4
 
 # ---------- runtime ----------
 FROM ubuntu:24.04 AS runtime

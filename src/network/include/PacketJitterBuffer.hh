@@ -13,6 +13,7 @@
 // 3rd party headers
 
 // project headers
+#include "JitterStats.hh"
 #include "Packet.hh"
 
 namespace OpenSocialNet::Network
@@ -46,6 +47,7 @@ namespace OpenSocialNet::Network
         void set_playout_threshold(size_t threshold) noexcept { playout_threshold = threshold; }
         size_t size() const noexcept { return buffer.size(); }
         bool is_playing() const noexcept { return playing; }
+        const JitterStats& stats() const noexcept { return m_stats; }
 
     private:
         std::map<std::uint16_t, Packet> buffer {};     // packets keyed by sequence number, autoordered
@@ -53,6 +55,7 @@ namespace OpenSocialNet::Network
         size_t playout_threshold { 2 };                // minimum packets buffered before playback starts
         bool playing { false };                        // true once there is enough packets to start
         mutable std::mutex mutex {};                   // to lock all operations and avoid race conditions
+        JitterStats m_stats {};                        // RFC 3550 inter-arrival jitter + loss/order tracking
 
     };
 

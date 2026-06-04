@@ -19,6 +19,8 @@ namespace OpenSocialNet::Network
     bool PacketJitterBuffer::push(Packet& packet) noexcept
     {
 
+        m_stats.observe(packet);
+
         std::scoped_lock<std::mutex> lock { mutex };
         if (playing && packet_sequence_less_than(packet.header.sequence, next_sequence)) return false;
         if (buffer.size() >= 50) return false;
