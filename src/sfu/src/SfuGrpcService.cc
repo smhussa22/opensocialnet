@@ -42,6 +42,34 @@ namespace OpenSocialNet::Sfu
 
         std::printf("sfu: AddPeer room=%s peer=%s\n", room_id.c_str(), peer_id.c_str());
 
+        // Renegotiation fast path: a peer with this peer_id already exists,
+        // so this is a browser-initiated reneg (e.g. addTrack for screen share
+        // → onnegotiationneeded → fresh sdp_offer with the new m-line). Apply
+        // the new offer to the EXISTING SfuPeer instead of evicting it; that
+        // way the rtc::PeerConnection's ICE/DTLS state, SRTP keys, and room
+        // membership all stay live and only the SDP gets renegotiated.
+        std::shared_ptr<SfuPeer> existing { };
+        {
+
+            std::scoped_lock guard { peers_mutex };
+            auto it { peers.find(peer_id) };
+            if (it != peers.end()) existing = it->second;
+
+        }
+        if (existing != nullptr)
+        {
+
+            if (!existing->accept_offer(offer_sdp)) return ::grpc::Status { ::grpc::StatusCode::INVALID_ARGUMENT, "accept_offer (reneg) failed" };
+            std::string reneg_answer { existing->answer_sdp() };
+            ::signaling::Sdp* answer_msg { resp->mutable_answer() };
+            answer_msg->set_room_id(room_id);
+            answer_msg->set_sdp(std::move(reneg_answer));
+            answer_msg->set_type("answer");
+            std::printf("sfu: AddPeer renegotiated in place peer=%s\n", peer_id.c_str());
+            return ::grpc::Status::OK;
+
+        }
+
         // construct the peer; gRPC dispatches each RPC on its own worker thread.
         // shared_ptr because Room co-owns the peer for the lifetime of its membership.
         std::shared_ptr<SfuPeer> new_peer { std::make_shared<SfuPeer>() };
