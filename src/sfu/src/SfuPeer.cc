@@ -56,6 +56,7 @@ namespace OpenSocialNet::Sfu
             peer_connection->onLocalCandidate([this](::rtc::Candidate candidate)
             {
 
+                std::printf("sfu: onLocalCandidate peer=%s mid=%s cand=%s handler_set=%d\n", id_str.c_str(), candidate.mid().c_str(), candidate.candidate().c_str(), (ice_candidate_handler ? 1 : 0));
                 if (ice_candidate_handler) ice_candidate_handler(candidate.candidate(), candidate.mid());
 
             });

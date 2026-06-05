@@ -32,6 +32,7 @@ namespace OpenSocialNet::Signaling
     {
 
         ::uWS::App* app { nullptr }; // borrowed: needed so async paths can publish
+        ::uWS::Loop* ws_loop { nullptr }; // borrowed: the uWS loop running the gateway; captured on the WS thread so worker threads (gRPC, kafka) can Loop::defer back onto it
         ScyllaClient* scylla { nullptr }; // borrowed: Scylla connection + prepared statements
         KafkaBus* kafka { nullptr }; // borrowed: producer + consumer thread
         SfuClient* sfu { nullptr }; // borrowed: gRPC client to the SFU control plane

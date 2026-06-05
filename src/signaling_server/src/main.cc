@@ -77,6 +77,10 @@ int main()
     state.kafka = &kafka;
     state.sfu = sfu.get();
     state.sessions = &sessions;
+    // Capture this thread's uWS Loop BEFORE we start the SFU event stream
+    // thread; that thread's on_sfu_peer_event needs to defer back onto this
+    // loop, and Loop::get() on the worker thread would return the wrong one.
+    state.ws_loop = ::uWS::Loop::get();
 
     // The SFU event reader runs on its own thread inside SfuClient. The handler
     // captures `state` by reference; main()'s stack outlives that thread because

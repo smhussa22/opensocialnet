@@ -15,6 +15,7 @@
 
 // 3rd party headers
 #include <grpcpp/grpcpp.h>
+#include <rtc/rtc.hpp>
 
 // project headers
 
@@ -31,6 +32,10 @@ int main()
     // but block-buffered when stdout is piped (e.g. captured by Docker's
     // log driver), so startup messages never appear in `docker logs`.
     std::setvbuf(stdout, nullptr, _IONBF, 0);
+
+    // Verbose libdatachannel logger so ICE candidate gathering, DTLS setup,
+    // and any silent failures during AddPeer surface in `docker logs sfu`.
+    ::rtc::InitLogger(::rtc::LogLevel::Debug);
 
     // listen on all interfaces so peer containers (signaling_server) and
     // host-network probes can reach the gRPC service. 50051 is also

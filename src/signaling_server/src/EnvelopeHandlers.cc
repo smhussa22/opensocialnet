@@ -549,8 +549,12 @@ namespace OpenSocialNet::Signaling
         std::string session_id { peer_id.substr(colon + 1) };
         std::string room_id { event.room_id() };
 
-        auto* loop = ::uWS::Loop::get();
-        if (loop == nullptr) return;
+        // Loop::get() returns the CURRENT thread's loop. on_sfu_peer_event
+        // runs on the SFU gRPC reader thread, so Loop::get() here would
+        // return a per-worker-thread loop whose defer queue no one drains.
+        // Use the WS loop captured at app start instead.
+        auto* loop = state.ws_loop;
+        if (loop == nullptr) { std::cerr << "[sfu->ws] no ws_loop captured; dropping event\n"; return; }
 
         SessionRegistry* sessions { state.sessions };
 
@@ -558,11 +562,19 @@ namespace OpenSocialNet::Signaling
         {
 
             ::signaling::IceCandidate ice { event.local_ice_candidate() };
-            loop->defer([sessions, session_id = std::move(session_id), ice = std::move(ice)]() mutable
+            std::cerr << "[sfu->ws] local_ice_candidate for session=" << session_id
+                      << " cand=" << ice.candidate() << " mid=" << ice.mid() << '\n';
+            std::string sid_copy { session_id };
+            loop->defer([sessions, session_id = std::move(session_id), ice = std::move(ice), sid_copy]() mutable
             {
 
                 WebSocket* ws { sessions->lookup(session_id) };
-                if (ws == nullptr) return;
+                if (ws == nullptr)
+                {
+                    std::cerr << "[sfu->ws] DROP: no WS for session=" << sid_copy << '\n';
+                    return;
+                }
+                std::cerr << "[sfu->ws] sending server_ice_candidate to session=" << sid_copy << '\n';
                 ::signaling::Envelope envelope { };
                 *envelope.mutable_server_ice_candidate() = std::move(ice);
                 send_envelope(ws, envelope);
