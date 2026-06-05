@@ -3,6 +3,7 @@
 // c sys headers
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 // cpp stdlib headers
@@ -26,6 +27,27 @@
 #include "AudioDecoder.hh"
 #include "PacketJitterBuffer.hh"
 #include "SpscQueue.hh"
+#include "LossSim.hh"
+
+// Pull SIM_* env vars at startup. Empty or unparseable falls back to default
+// so the sim stays bypassed unless the caller asked for it.
+static double env_double(const char* name, double fallback)
+{
+
+    const char* value { std::getenv(name) };
+    if (value == nullptr or *value == '\0') return fallback;
+    try { return std::stod(value); } catch (...) { return fallback; }
+
+}
+
+static int env_int(const char* name, int fallback)
+{
+
+    const char* value { std::getenv(name) };
+    if (value == nullptr or *value == '\0') return fallback;
+    try { return std::stoi(value); } catch (...) { return fallback; }
+
+}
 
 static std::atomic<bool> running {true};
 
@@ -165,6 +187,30 @@ int main()
         }
         std::cout << "[main] sender init ok\n";
 
+        // Adversarial sender-side conditions; all default to 0 (bypass).
+        // SIM_LOSS_PCT=8 SIM_JITTER_MS=20 SIM_OOO_PCT=2 ./network
+        OpenSocialNet::Network::LossSim sim {{
+            .drop_pct      = env_double("SIM_LOSS_PCT", 0.0),
+            .jitter_ms_max = env_int   ("SIM_JITTER_MS", 0  ),
+            .ooo_pct       = env_double("SIM_OOO_PCT",  0.0),
+        }};
+        if (sim.enabled())
+        {
+
+            std::printf("[main] LossSim ACTIVE: drop=%.2f%% jitter_max=%dms ooo=%.2f%%\n",
+                sim.config().drop_pct, sim.config().jitter_ms_max, sim.config().ooo_pct);
+
+        }
+
+        // Stamp at capture time so wire-level sequence reflects capture order;
+        // LossSim's deferred sends then go via send_raw without re-stamping.
+        const auto sim_send = [&sender](OpenSocialNet::Network::Packet p)
+        {
+
+            sender.send_raw(std::move(p));
+
+        };
+
         std::thread rx { receive_thread, std::ref(receiver), std::ref(incoming_queue) };
 
         std::array<float, 480> chunk {};
@@ -195,7 +241,8 @@ int main()
                 packet.header.payload_type = OpenSocialNet::Network::PayloadType::Opus;
                 packet.header.payload_size = static_cast<uint16_t>(encoded_bytes);
 
-                sender.send(packet);
+                sender.stamp(packet);
+                sim.submit(std::move(packet), sim_send);
                 ++packets_sent;
 
             }

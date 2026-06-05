@@ -53,6 +53,16 @@ namespace OpenSocialNet::Network
 
     }
 
+    void UdpSender::stamp(Packet& packet) noexcept
+    {
+
+        packet.header.ssrc      = ssrc;
+        packet.header.sequence  = sequence++;
+        packet.header.timestamp = timestamp;
+        timestamp              += opus_samples_per_frame;
+
+    }
+
     bool UdpSender::send(Packet packet) noexcept
     {
         packet.header.ssrc      = ssrc;

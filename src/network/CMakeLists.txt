@@ -24,6 +24,7 @@ add_executable(network
     src/UdpSender.cc
     src/UdpReceiver.cc
     src/PacketJitterBuffer.cc
+    src/LossSim.cc
     ../audio_engine/src/AudioStream.cc
     ../audio_engine/src/AudioCapture.cc
     ../audio_engine/src/AudioEncoder.cc

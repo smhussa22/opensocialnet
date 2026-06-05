@@ -46,6 +46,13 @@ namespace OpenSocialNet::Network
         // Returns true if all bytes were sent, false on failure.
         bool send(Packet packet) noexcept;
 
+        // Stamps ssrc / seq / ts and advances the internal counters WITHOUT
+        // touching the socket. Pair with send_raw() when the actual TX is
+        // deferred (e.g. through LossSim) so the wire-level sequence reflects
+        // capture-order rather than the (jittered) send-order.
+        // Not thread-safe; call from the producer thread only.
+        void stamp(Packet& packet) noexcept;
+
         // Sends the packet exactly as given (header stays caller-supplied, only converts host byte order).
         // Use when the caller manages its own ssrc/sequence/timestamp clock, e.g. video.
         bool send_raw(Packet packet) noexcept;
