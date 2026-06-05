@@ -60,13 +60,27 @@ services:
   scylla:
     image: scylladb/scylla:5.4
     network_mode: host
+    # Under network_mode: host scylla's default listen-address auto-picks
+    # the EC2's primary (private) interface (172.31.x.x), not loopback —
+    # so signaling_server's SCYLLA_HOST=127.0.0.1 hits "connection refused".
+    # Pin every address arg to loopback so the whole stack talks to scylla
+    # over 127.0.0.1 consistently. seeds must match listen-address or scylla
+    # rejects the boot with "this node has not been bootstrapped".
     command:
       - --smp=1
       - --memory=750M
       - --overprovisioned=1
       - --developer-mode=1
+      - --listen-address=127.0.0.1
+      - --rpc-address=127.0.0.1
+      - --broadcast-address=127.0.0.1
+      - --broadcast-rpc-address=127.0.0.1
+      - --seeds=127.0.0.1
     volumes:
       - scylla-data:/var/lib/scylla
+      # Override the stock image's supervisord HTTP control port (127.0.0.1:9001)
+      # so it stops fighting signaling_server's gateway for that port.
+      - ./scripts/scylla-supervisord.conf:/etc/supervisord.conf:ro
     restart: unless-stopped
 
   sfu:

@@ -51,6 +51,10 @@ echo "=== 3/6  ship tarball + compose + schema to EC2 ==="
 "${SCP[@]}" "$IMAGES_TAR" "$EC2_HOST:~/images.tar.gz"
 "${SCP[@]}" "$COMPOSE_FILE" "$EC2_HOST:~/compose.prod.yml"
 "${SCP[@]}" src/signaling_server/schema/schema.cql "$EC2_HOST:~/schema.cql"
+# compose.prod.yml bind-mounts ./scripts/scylla-supervisord.conf into the
+# scylla container — make the relative path resolve on EC2 too.
+"${SSH[@]}" 'mkdir -p ~/scripts'
+"${SCP[@]}" scripts/scylla-supervisord.conf "$EC2_HOST:~/scripts/scylla-supervisord.conf"
 
 echo
 echo "=== 4/6  load images on EC2 ==="
@@ -58,16 +62,18 @@ echo "=== 4/6  load images on EC2 ==="
 
 echo
 echo "=== 5/6  bring stack up on EC2 ==="
+# Every `docker compose` call below re-interpolates compose.prod.yml, so the
+# secret has to be in scope for ps/logs/restart too — not just `up`.
 "${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml up -d"
 echo "waiting 25s for scylla + kafka to settle..."
-"${SSH[@]}" 'sleep 25 && docker compose -f ~/compose.prod.yml ps'
+"${SSH[@]}" "sleep 25 && OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml ps"
 
 echo
 echo "=== 6/6  apply schema + restart signaling_server so it picks it up ==="
 "${SSH[@]}" 'docker exec -i $(docker ps --filter name=scylla -q | head -1) cqlsh < ~/schema.cql 2>&1 | tail -3 || true'
 "${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml restart signaling_server"
 sleep 6
-"${SSH[@]}" 'docker compose -f ~/compose.prod.yml ps && echo === sfu logs === && docker compose -f ~/compose.prod.yml logs sfu --tail 5 && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20'
+"${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' bash -c 'docker compose -f ~/compose.prod.yml ps && echo === sfu logs === && docker compose -f ~/compose.prod.yml logs sfu --tail 5 && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20'"
 
 echo
 echo "=== deploy done ==="
