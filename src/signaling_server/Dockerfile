@@ -1,7 +1,7 @@
-# signaling_server image — uWebSockets gateway + gRPC client to SFU.
+# signaling_server image — uWebSockets gateway + Scylla chat + Kafka pub/sub.
 #
 # Multi-stage: a heavy builder stage runs scylla-cpp-driver from source
-# and vcpkg install of grpc / protobuf / librdkafka / uwebsockets,
+# and vcpkg install of protobuf / librdkafka / uwebsockets,
 # producing ~15 GB of build intermediates. A slim runtime stage copies
 # only the signaling_server binary + the two .so files it actually
 # needs, leaving the final image around a few hundred MB instead of
@@ -81,25 +81,17 @@ ENV VCPKG_ROOT=/opt/vcpkg
 # WSL2 VM and takes the buildkit daemon down with it. 2 leaves headroom.
 ENV VCPKG_MAX_CONCURRENCY=2
 
-# install C++ deps via vcpkg classic mode. takes the longest in this
-# build — primarily because grpc + protobuf are each ~5-10 min from
-# source. cached as long as the package set / vcpkg version is stable.
+# install C++ deps via vcpkg classic mode. protobuf is the longest single
+# package; grpc was removed when the SFU pathway was retired. cached as
+# long as the package set / vcpkg version is stable.
 RUN /opt/vcpkg/vcpkg install \
         protobuf \
-        grpc \
         librdkafka \
         uwebsockets
 
 WORKDIR /workspace
 
-# bring in the signaling_server source plus the SFU's gRPC service .proto.
-# the signaling_server is a gRPC client of the SFU and its CMakeLists runs
-# protoc against sfu_control.proto to generate the SfuControl stubs; the
-# file lives in the SFU's source tree and is referenced via the relative
-# path ../sfu/proto/sfu_control.proto, so we have to surface it at the
-# matching layout inside the build context.
 COPY src/signaling_server/ ./src/signaling_server/
-COPY src/sfu/proto/sfu_control.proto ./src/sfu/proto/
 
 WORKDIR /workspace/src/signaling_server
 
@@ -115,10 +107,10 @@ FROM ubuntu:24.04 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# minimal runtime deps. vcpkg builds protobuf / grpc / librdkafka /
-# uwebsockets / openssl as static libs that already linked into the
-# signaling_server binary, so we only need libuv (cassandra-cpp-driver
-# runtime dep), libstdc++/libgcc, and ca-certificates here.
+# minimal runtime deps. vcpkg builds protobuf / librdkafka / uwebsockets /
+# openssl as static libs that already linked into the signaling_server
+# binary, so we only need libuv (cassandra-cpp-driver runtime dep),
+# libstdc++/libgcc, and ca-certificates here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         libuv1 \

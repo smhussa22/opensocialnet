@@ -30,7 +30,7 @@ namespace OpenSocialNet::Signaling
         std::string user_id { }; // authenticated app-level user id, set in on_hello
         std::string session_id { }; // stable per-connection id used for async lookups
         bool authenticated { false }; // flipped true once Hello + auth succeeds
-        std::string current_room_id { }; // populated by on sdp offer; non empty means the peer is in the sfu and .close must call SfuClient::remove_pper
+        std::string current_voice_room_id { }; // populated by on_join_voice; non-empty means the peer is registered in the relay's room table and .close must tell the relay to drop them
 
     };
 
@@ -67,8 +67,8 @@ namespace OpenSocialNet::Signaling
         // lock, then invokes `fn` for each WITHOUT holding the lock. Caller
         // is expected to run on the uWS loop thread so that dereferencing
         // each ws (to read Session userdata) is race-free with concurrent
-        // .close erasures. Used by fanout paths like on_screen_share_update
-        // that need to find every session in a given room.
+        // .close erasures. Used by fanout paths that need to walk every
+        // session in a given room (e.g. VoicePeerJoined broadcasts).
         void for_each(const std::function<void(const std::string&, WebSocket*)>& fn);
 
     private:

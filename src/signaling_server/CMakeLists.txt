@@ -10,7 +10,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 find_package(Protobuf CONFIG REQUIRED)
-find_package(gRPC CONFIG REQUIRED)
 find_package(RdKafka CONFIG REQUIRED)
 find_package(unofficial-uwebsockets CONFIG REQUIRED)
 # Needed at link time for HMAC / CRYPTO_memcmp used by the Hello auth path.
@@ -29,50 +28,36 @@ find_library(CASSANDRA_LIB cassandra
         REQUIRED)
 
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/proto)
-set(SFU_PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../sfu/proto)
 set(PROTO_FILE ${PROTO_DIR}/signaling.proto)
-set(SFU_PROTO_FILE ${SFU_PROTO_DIR}/sfu_control.proto)
 set(GENERATED_DIR ${PROTO_DIR})
 
-# Regenerate the SFU's gRPC stubs alongside our signaling.pb.cc. Both protos
-# go through one protoc invocation so `import "signaling.proto"` inside
-# sfu_control.proto resolves against our local copy. The SFU build runs its
-# own protoc on its side — duplication is intentional so each binary owns
-# its generated sources.
+# Regenerate signaling.pb.cc from signaling.proto. No gRPC now that the SFU
+# is gone — the only inter-service control plane the gateway needs going
+# forward (relay membership) is small enough to do over a simple protobuf
+# message or even just CLI on the relay. We can add gRPC back if it grows.
 add_custom_command(
         OUTPUT
         ${GENERATED_DIR}/signaling.pb.cc
         ${GENERATED_DIR}/signaling.pb.h
-        ${GENERATED_DIR}/sfu_control.pb.cc
-        ${GENERATED_DIR}/sfu_control.pb.h
-        ${GENERATED_DIR}/sfu_control.grpc.pb.cc
-        ${GENERATED_DIR}/sfu_control.grpc.pb.h
 
         COMMAND protobuf::protoc
         ARGS
         --proto_path=${PROTO_DIR}
-        --proto_path=${SFU_PROTO_DIR}
         --cpp_out=${GENERATED_DIR}
-        --grpc_out=${GENERATED_DIR}
-        --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
-        ${PROTO_FILE} ${SFU_PROTO_FILE}
+        ${PROTO_FILE}
 
-        DEPENDS ${PROTO_FILE} ${SFU_PROTO_FILE}
-        COMMENT "Generating protobuf + SFU gRPC sources"
+        DEPENDS ${PROTO_FILE}
+        COMMENT "Generating signaling.pb.{cc,h}"
 )
 
 set_source_files_properties(
         ${GENERATED_DIR}/signaling.pb.cc
-        ${GENERATED_DIR}/sfu_control.pb.cc
-        ${GENERATED_DIR}/sfu_control.grpc.pb.cc
         PROPERTIES GENERATED TRUE
 )
 
 add_custom_target(generate_proto
         DEPENDS
         ${GENERATED_DIR}/signaling.pb.cc
-        ${GENERATED_DIR}/sfu_control.pb.cc
-        ${GENERATED_DIR}/sfu_control.grpc.pb.cc
 )
 
 
@@ -83,10 +68,7 @@ add_executable(signaling_server
         src/KafkaBus.cc
         src/ScyllaClient.cc
         src/Session.cc
-        src/SfuClient.cc
         ${GENERATED_DIR}/signaling.pb.cc
-        ${GENERATED_DIR}/sfu_control.pb.cc
-        ${GENERATED_DIR}/sfu_control.grpc.pb.cc
 )
 
 
@@ -103,7 +85,6 @@ target_include_directories(signaling_server PRIVATE
 
 target_link_libraries(signaling_server PRIVATE
         protobuf::libprotobuf
-        gRPC::grpc++
         RdKafka::rdkafka++
         unofficial::uwebsockets::uwebsockets
         ${CASSANDRA_LIB}

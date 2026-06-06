@@ -25,7 +25,6 @@
 #include "KafkaBus.hh"
 #include "ScyllaClient.hh"
 #include "Session.hh"
-#include "SfuClient.hh"
 
 
 namespace OpenSocialNet::Signaling
@@ -430,196 +429,6 @@ namespace OpenSocialNet::Signaling
 
     }
 
-    void on_sdp_offer(GatewayState& state, WebSocket* ws, const ::signaling::Sdp& offer)
-    {
-
-        auto* sess = ws->getUserData();
-        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
-        if (state.sfu == nullptr) { send_error(ws, 503, "sfu unavailable"); return; }
-
-        const std::string peer_id { make_peer_id(*sess) };
-        ::signaling::Sdp answer { };
-        std::string err { };
-        if (!state.sfu->add_peer(offer.room_id(), peer_id, offer, &answer, &err))
-        {
-
-            std::cerr << "[sfu] AddPeer failed: " << err << '\n';
-            send_error(ws, 502, "sfu add_peer failed");
-            return;
-
-        }
-
-        // remember which room this peer joined so .close can tell the SFU to
-        // remove it on disconnect. only set after AddPeer succeeded so the
-        // close handler doesn't try to remove a peer the SFU never accepted.
-        sess->current_room_id = offer.room_id();
-
-        ::signaling::Envelope envelope { };
-        *envelope.mutable_sdp_answer() = answer;
-        send_envelope(ws, envelope);
-
-    }
-
-    void on_ice_candidate(GatewayState& state, WebSocket* ws, const ::signaling::IceCandidate& candidate)
-    {
-
-        auto* sess = ws->getUserData();
-        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
-        if (state.sfu == nullptr) return;
-
-        const std::string peer_id { make_peer_id(*sess) };
-        state.sfu->add_remote_ice_candidate(candidate.room_id(), peer_id, candidate);
-
-    }
-
-    void on_screen_share_update(GatewayState& state, WebSocket* ws, const ::signaling::ScreenShareUpdate& update)
-    {
-
-        auto* sess = ws->getUserData();
-        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
-
-        // a client can only update screen share for the room it already
-        // joined via sdp_offer. drops cross-room spoofs silently rather
-        // than leaking room membership through an error.
-        if (sess->current_room_id.empty()) { send_error(ws, 409, "no active voice room"); return; }
-        if (update.room_id() != sess->current_room_id) { send_error(ws, 403, "room mismatch"); return; }
-        if (update.mid().empty()) { send_error(ws, 400, "mid required"); return; }
-
-        const std::string sharer_peer_id { make_peer_id(*sess) };
-        const std::string room_id { sess->current_room_id };
-        const std::string sharer_session_id { sess->session_id };
-
-        // tell the SFU which mid is the screen track so onTrack dispatches
-        // its inbound RTP through the screen handler. must precede the
-        // browser's renegotiated SDP offer; client guarantees that ordering.
-        if (state.sfu != nullptr) state.sfu->mark_screen_share(room_id, sharer_peer_id, update.mid(), update.sharing());
-
-        // fan the update out to every OTHER session currently in the same
-        // room so their UIs can show / hide the "<peer> is sharing" tile
-        // and (eventually) negotiate a consumer-side screen track.
-        if (state.sessions == nullptr) return;
-
-        ::signaling::ScreenShareUpdate fanned { update };
-        fanned.set_peer_id(sharer_peer_id);
-
-        state.sessions->for_each([&](const std::string& session_id, WebSocket* peer_ws)
-        {
-
-            if (peer_ws == nullptr) return;
-            if (session_id == sharer_session_id) return;
-            const Session* peer_sess { peer_ws->getUserData() };
-            if (peer_sess == nullptr) return;
-            if (peer_sess->current_room_id != room_id) return;
-
-            ::signaling::Envelope envelope { };
-            *envelope.mutable_peer_screen_share() = fanned;
-            send_envelope(peer_ws, envelope);
-
-        });
-
-    }
-
-    void on_client_sdp_answer(GatewayState& state, WebSocket* ws, const ::signaling::Sdp& answer)
-    {
-
-        auto* sess = ws->getUserData();
-        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
-        if (state.sfu == nullptr) { send_error(ws, 503, "sfu unavailable"); return; }
-
-        // an answer is only meaningful in the context of a room we already
-        // joined via sdp_offer. drop cross-room spoofs without leaking which
-        // rooms exist.
-        if (sess->current_room_id.empty()) { send_error(ws, 409, "no active voice room"); return; }
-        if (answer.room_id() != sess->current_room_id) { send_error(ws, 403, "room mismatch"); return; }
-        if (answer.sdp().empty()) { send_error(ws, 400, "empty sdp"); return; }
-
-        const std::string peer_id { make_peer_id(*sess) };
-        state.sfu->accept_renegotiation_answer(answer.room_id(), peer_id, answer);
-
-    }
-
-    void on_sfu_peer_event(GatewayState& state, const ::sfu_control::PeerEvent& event)
-    {
-
-        // The peer_id encoding is "user_id:session_id" -- extract the session id
-        // suffix so we can find the WS in live_sessions.
-        const std::string& peer_id { event.peer_id() };
-        const auto colon { peer_id.rfind(':') };
-        if (colon == std::string::npos) { std::cerr << "[sfu] malformed peer_id: " << peer_id << '\n'; return; }
-        std::string session_id { peer_id.substr(colon + 1) };
-        std::string room_id { event.room_id() };
-
-        // Loop::get() returns the CURRENT thread's loop. on_sfu_peer_event
-        // runs on the SFU gRPC reader thread, so Loop::get() here would
-        // return a per-worker-thread loop whose defer queue no one drains.
-        // Use the WS loop captured at app start instead.
-        auto* loop = state.ws_loop;
-        if (loop == nullptr) { std::cerr << "[sfu->ws] no ws_loop captured; dropping event\n"; return; }
-
-        SessionRegistry* sessions { state.sessions };
-
-        if (event.has_local_ice_candidate())
-        {
-
-            ::signaling::IceCandidate ice { event.local_ice_candidate() };
-            std::cerr << "[sfu->ws] local_ice_candidate for session=" << session_id
-                      << " cand=" << ice.candidate() << " mid=" << ice.mid() << '\n';
-            std::string sid_copy { session_id };
-            loop->defer([sessions, session_id = std::move(session_id), ice = std::move(ice), sid_copy]() mutable
-            {
-
-                WebSocket* ws { sessions->lookup(session_id) };
-                if (ws == nullptr)
-                {
-                    std::cerr << "[sfu->ws] DROP: no WS for session=" << sid_copy << '\n';
-                    return;
-                }
-                std::cerr << "[sfu->ws] sending server_ice_candidate to session=" << sid_copy << '\n';
-                ::signaling::Envelope envelope { };
-                *envelope.mutable_server_ice_candidate() = std::move(ice);
-                send_envelope(ws, envelope);
-
-            });
-            return;
-
-        }
-
-        if (event.has_renegotiation_offer())
-        {
-
-            ::signaling::Sdp offer { event.renegotiation_offer() };
-            loop->defer([sessions, session_id = std::move(session_id), offer = std::move(offer)]() mutable
-            {
-
-                WebSocket* ws { sessions->lookup(session_id) };
-                if (ws == nullptr) return;
-                ::signaling::Envelope envelope { };
-                *envelope.mutable_server_sdp_offer() = std::move(offer);
-                send_envelope(ws, envelope);
-
-            });
-            return;
-
-        }
-
-        if (event.has_peer_ready() && event.peer_ready())
-        {
-
-            loop->defer([sessions, session_id = std::move(session_id), room_id = std::move(room_id)]()
-            {
-
-                WebSocket* ws { sessions->lookup(session_id) };
-                if (ws == nullptr) return;
-                ::signaling::Envelope envelope { };
-                envelope.mutable_peer_ready()->set_room_id(room_id);
-                send_envelope(ws, envelope);
-
-            });
-
-        }
-
-    }
-
     void on_message(GatewayState& state, WebSocket* ws, std::string_view data, ::uWS::OpCode op)
     {
 
@@ -653,27 +462,11 @@ namespace OpenSocialNet::Signaling
                 on_join_voice(ws, envelope.join_voice()); 
                 break;
 
-            case ::signaling::Envelope::kLeaveVoice: 
-                on_leave_voice(ws, envelope.leave_voice()); 
+            case ::signaling::Envelope::kLeaveVoice:
+                on_leave_voice(ws, envelope.leave_voice());
                 break;
 
-            case ::signaling::Envelope::kSdpOffer:
-                on_sdp_offer(state, ws, envelope.sdp_offer());
-                break;
-
-            case ::signaling::Envelope::kClientSdpAnswer:
-                on_client_sdp_answer(state, ws, envelope.client_sdp_answer());
-                break;
-
-            case ::signaling::Envelope::kScreenShareUpdate:
-                on_screen_share_update(state, ws, envelope.screen_share_update());
-                break;
-
-            case ::signaling::Envelope::kIceCandidate:
-                on_ice_candidate(state, ws, envelope.ice_candidate());
-                break;
-                
-            case ::signaling::Envelope::kHeartbeat: 
+            case ::signaling::Envelope::kHeartbeat:
                 on_heartbeat(ws, envelope.heartbeat()); 
                 break;
 

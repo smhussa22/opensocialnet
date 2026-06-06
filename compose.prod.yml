@@ -13,9 +13,10 @@
 #   127.0.0.1:50051) work as-is — no env-var overrides needed.
 # - The EC2 security group must allow:
 #     22/tcp     SSH
-#     9001/tcp   WebSocket gateway (browsers connect here)
-#     50000-50200/udp  WebRTC media (browsers connect here)
-#   Nothing else needs to be public; gRPC, Scylla, Kafka are all
+#     9001/tcp   WebSocket gateway (native client connects here)
+#     <future>/udp  native voice/video relay (TBD, will be opened
+#                   in a later phase when src/relay/ ships)
+#   Nothing else needs to be public; Scylla, Kafka are all
 #   loopback-only from this host's perspective.
 #
 # Deploy assumes images are loaded from a tarball (built on a dev
@@ -83,18 +84,6 @@ services:
       - ./scripts/scylla-supervisord.conf:/etc/supervisord.conf:ro
     restart: unless-stopped
 
-  sfu:
-    build:
-      context: .
-      dockerfile: src/sfu/Dockerfile
-    image: opensocialnet-sfu
-    network_mode: host
-    # WebRTC media binds inside the range SfuPeer::init configures
-    # (50000-50200). No `ports:` line needed — the container shares the
-    # host's network namespace, so libdatachannel binds directly on the
-    # public EC2 interface. The security group opens 50000-50200/udp.
-    restart: unless-stopped
-
   signaling_server:
     build:
       context: .
@@ -104,14 +93,12 @@ services:
     depends_on:
       - scylla
       - kafka
-      - sfu
     environment:
       # Caller must set this in env / .env; signaling_server rejects every
       # Hello frame if the secret is empty.
       OPENSOCIALNET_AUTH_SECRET: "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET in env / .env}"
-      # main.cc's defaults (SCYLLA_HOST=127.0.0.1, KAFKA_BOOTSTRAP=localhost:19092,
-      # SFU_ADDR=127.0.0.1:50051) all resolve correctly under host networking,
-      # so no overrides here.
+      # main.cc's defaults (SCYLLA_HOST=127.0.0.1, KAFKA_BOOTSTRAP=localhost:19092)
+      # resolve correctly under host networking, so no overrides here.
     restart: unless-stopped
 
 volumes:

@@ -3,7 +3,6 @@
   "version-string": "0.1.0",
   "dependencies": [
     "protobuf",
-    "grpc",
     "librdkafka",
     "uwebsockets",
     "cassandra-cpp-driver"

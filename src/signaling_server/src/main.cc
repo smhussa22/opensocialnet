@@ -18,7 +18,6 @@
 #include "KafkaBus.hh"
 #include "ScyllaClient.hh"
 #include "Session.hh"
-#include "SfuClient.hh"
 #include "proto/signaling.pb.h"
 
 int main()
@@ -63,34 +62,17 @@ int main()
     OpenSocialNet::Signaling::KafkaBus kafka { };
     kafka.init(env_or("KAFKA_BOOTSTRAP", "localhost:19092"));
 
-    // SFU gRPC control-plane client. One stub for the process lifetime; gRPC
-    // handles concurrency. The event stream runs on its own background thread
-    // and bounces WS writes back onto the uWS loop via Loop::defer.
-    // SFU_ADDR overrides the default ("127.0.0.1:50051" laptop, "sfu:50051" compose).
-    auto sfu = std::make_unique<OpenSocialNet::Signaling::SfuClient>(env_or("SFU_ADDR", "127.0.0.1:50051"));
-
     // Live session_id -> WS map.
     OpenSocialNet::Signaling::SessionRegistry sessions { };
 
     // Wire everything into the shared state holder before we hand it to handlers.
     state.scylla = &scylla;
     state.kafka = &kafka;
-    state.sfu = sfu.get();
     state.sessions = &sessions;
-    // Capture this thread's uWS Loop BEFORE we start the SFU event stream
-    // thread; that thread's on_sfu_peer_event needs to defer back onto this
-    // loop, and Loop::get() on the worker thread would return the wrong one.
+    // Capture this thread's uWS Loop BEFORE any worker threads start so that
+    // background paths (kafka consumer, the future native-voice relay control
+    // path) can Loop::defer back onto the right loop instead of their own.
     state.ws_loop = ::uWS::Loop::get();
-
-    // The SFU event reader runs on its own thread inside SfuClient. The handler
-    // captures `state` by reference; main()'s stack outlives that thread because
-    // we call shutdown() before returning.
-    sfu->start_event_stream([&state](const ::sfu_control::PeerEvent& event)
-    {
-
-        OpenSocialNet::Signaling::on_sfu_peer_event(state, event);
-
-    });
 
     ::uWS::App app { };
     state.app = &app;
@@ -126,18 +108,10 @@ int main()
 
             auto* sess = ws->getUserData();
 
-            // if this session ever sent an Sdp offer, the SFU created a SfuPeer
-            // for it that we now need to tell to drop. otherwise the peer leaks
-            // its slot in Room::peers and its outgoing tracks forever. fire and
-            // forget — even if the SFU is unreachable, local cleanup still has
-            // to run. peer_id mirrors make_peer_id in EnvelopeHandlers.cc.
-            if (sess->authenticated && !sess->current_room_id.empty() && state.sfu != nullptr)
-            {
-
-                const std::string peer_id { sess->user_id + ":" + sess->session_id };
-                state.sfu->remove_peer(sess->current_room_id, peer_id);
-
-            }
+            // TODO(native-voice): once the relay's gRPC control plane is wired,
+            // if sess->current_voice_room_id is non-empty here we have to tell
+            // the relay to drop this peer's UDP endpoint from its room table,
+            // otherwise the room leaks an inactive subscriber forever.
 
             if (!sess->session_id.empty()) state.sessions->remove(sess->session_id);
             // uWS automatically unsubscribes the socket from all topics on
@@ -158,7 +132,6 @@ int main()
     app.run();
 
     // Shutdown
-    sfu->shutdown();
     kafka.shutdown();
     return 0;
 

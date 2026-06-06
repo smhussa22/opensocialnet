@@ -19,7 +19,6 @@ namespace OpenSocialNet::Signaling
 
     class ScyllaClient;
     class KafkaBus;
-    class SfuClient;
     class SessionRegistry;
 
 
@@ -32,10 +31,9 @@ namespace OpenSocialNet::Signaling
     {
 
         ::uWS::App* app { nullptr }; // borrowed: needed so async paths can publish
-        ::uWS::Loop* ws_loop { nullptr }; // borrowed: the uWS loop running the gateway; captured on the WS thread so worker threads (gRPC, kafka) can Loop::defer back onto it
+        ::uWS::Loop* ws_loop { nullptr }; // borrowed: the uWS loop running the gateway; captured on the WS thread so worker threads (kafka, future native-voice relay control) can Loop::defer back onto it
         ScyllaClient* scylla { nullptr }; // borrowed: Scylla connection + prepared statements
         KafkaBus* kafka { nullptr }; // borrowed: producer + consumer thread
-        SfuClient* sfu { nullptr }; // borrowed: gRPC client to the SFU control plane
         SessionRegistry* sessions { nullptr }; // borrowed: live session_id -> WS map
         std::string auth_secret { }; // HMAC key for Hello auth; empty means "not configured"
 

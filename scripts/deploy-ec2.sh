@@ -12,7 +12,8 @@
 # - Docker + compose plugin installed
 # - This script's user can `sudo systemctl restart docker` (for the
 #   docker-compose installation step; we don't need it in steady state)
-# - Security group open on 22/tcp, 9001/tcp, 50000-50200/udp
+# - Security group open on 22/tcp + 9001/tcp (UDP relay ports get added
+#   in a later phase when src/relay/ ships)
 
 set -euo pipefail
 
@@ -29,8 +30,8 @@ SCP=(scp -o StrictHostKeyChecking=no -i "$EC2_KEY")
 IMAGES_TAR=/tmp/opensocialnet-images.tar.gz
 COMPOSE_FILE=compose.prod.yml
 
-echo "=== 1/6  build SFU + signaling_server images locally ==="
-docker compose -f "$COMPOSE_FILE" build sfu signaling_server
+echo "=== 1/6  build signaling_server image locally ==="
+docker compose -f "$COMPOSE_FILE" build signaling_server
 
 echo
 echo "=== 2/6  save images to a tarball (and pull cp-zookeeper / cp-kafka / scylla so the EC2 doesn't have to fetch them) ==="
@@ -38,7 +39,6 @@ docker pull confluentinc/cp-zookeeper:7.6.0
 docker pull confluentinc/cp-kafka:7.6.0
 docker pull scylladb/scylla:5.4
 docker save \
-  opensocialnet-sfu \
   opensocialnet-signaling \
   confluentinc/cp-zookeeper:7.6.0 \
   confluentinc/cp-kafka:7.6.0 \
@@ -73,7 +73,7 @@ echo "=== 6/6  apply schema + restart signaling_server so it picks it up ==="
 "${SSH[@]}" 'docker exec -i $(docker ps --filter name=scylla -q | head -1) cqlsh < ~/schema.cql 2>&1 | tail -3 || true'
 "${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml restart signaling_server"
 sleep 6
-"${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' bash -c 'docker compose -f ~/compose.prod.yml ps && echo === sfu logs === && docker compose -f ~/compose.prod.yml logs sfu --tail 5 && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20'"
+"${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' bash -c 'docker compose -f ~/compose.prod.yml ps && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20'"
 
 echo
 echo "=== deploy done ==="
