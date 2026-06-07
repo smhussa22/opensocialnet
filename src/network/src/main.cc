@@ -1,6 +1,7 @@
 // related headers
 
 // c sys headers
+#include <cctype>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
@@ -11,6 +12,7 @@
 #include <atomic>
 #include <array>
 #include <iostream>
+#include <string_view>
 
 // 3rd party headers
 #include <SDL3/SDL.h>
@@ -54,6 +56,64 @@ static std::string env_str(const char* name, const char* fallback)
 
     const char* value { std::getenv(name) };
     return (value != nullptr and *value != '\0') ? std::string { value } : std::string { fallback };
+
+}
+
+// Print every recording / playback device SDL sees, then either pick the
+// device whose name contains the substring `wanted` (case-insensitive,
+// first match wins) or return 0 to mean "let SDL pick the default".
+// Empty `wanted` ⇒ default device. Logs the chosen device by name so the
+// user never has to guess which gadget OPus is actually talking to.
+static SDL_AudioDeviceID pick_audio_device(bool recording, std::string_view wanted)
+{
+
+    int count { 0 };
+    SDL_AudioDeviceID* ids { recording ? ::SDL_GetAudioRecordingDevices(&count) : ::SDL_GetAudioPlaybackDevices(&count) };
+    const char* kind { recording ? "input" : "output" };
+    if (ids == nullptr or count <= 0)
+    {
+
+        std::printf("[audio] no %s devices reported by SDL — falling back to default\n", kind);
+        if (ids) ::SDL_free(ids);
+        return recording ? SDL_AUDIO_DEVICE_DEFAULT_RECORDING : SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK;
+
+    }
+
+    std::printf("[audio] %s devices (%d):\n", kind, count);
+    SDL_AudioDeviceID chosen { 0 };
+    std::string chosen_name { };
+    for (int i { 0 }; i < count; ++i)
+    {
+
+        const char* name { ::SDL_GetAudioDeviceName(ids[i]) };
+        const std::string nm { name ? name : "(unnamed)" };
+        std::printf("  [%d] id=%u %s\n", i, static_cast<unsigned>(ids[i]), nm.c_str());
+
+        if (chosen != 0 or wanted.empty()) continue;
+        // case-insensitive substring match on the device name
+        std::string lhs { nm }, rhs { wanted };
+        for (auto& c : lhs) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        for (auto& c : rhs) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (lhs.find(rhs) != std::string::npos) { chosen = ids[i]; chosen_name = nm; }
+
+    }
+    ::SDL_free(ids);
+
+    if (chosen != 0)
+    {
+
+        std::printf("[audio] picked %s device by OSN_AUDIO_%s match: %s\n", kind, recording ? "INPUT" : "OUTPUT", chosen_name.c_str());
+        return chosen;
+
+    }
+
+    if (!wanted.empty())
+    {
+
+        std::printf("[audio] no %s device name contained \"%.*s\"; falling back to default\n", kind, static_cast<int>(wanted.size()), wanted.data());
+
+    }
+    return recording ? SDL_AUDIO_DEVICE_DEFAULT_RECORDING : SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK;
 
 }
 
@@ -193,14 +253,23 @@ int main()
         }
         std::cout << "[main] encoder init ok\n";
 
+        // Enumerate + pick devices. OSN_AUDIO_INPUT / OSN_AUDIO_OUTPUT take a
+        // case-insensitive substring of the device name (first match wins);
+        // unset means "SDL default". The full device list always prints so
+        // you can see what's available without staring at pavucontrol.
+        const std::string         input_want_str  { env_str("OSN_AUDIO_INPUT",  "") };
+        const std::string         output_want_str { env_str("OSN_AUDIO_OUTPUT", "") };
+        const SDL_AudioDeviceID   playback_id     { pick_audio_device(/*recording=*/false, output_want_str) };
+        const SDL_AudioDeviceID   recording_id    { pick_audio_device(/*recording=*/true,  input_want_str)  };
+
         PlaybackContext playback_context { &incoming_queue, &jitter_buffer, &decoder };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
-        OpenSocialNet::Audio::AudioStream audio_stream { spec, SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, on_playback, &playback_context };
+        OpenSocialNet::Audio::AudioStream audio_stream { spec, playback_id, on_playback, &playback_context };
         audio_stream.resume();
         std::cout << "[main] playback stream open\n";
 
         OpenSocialNet::Audio::AudioCapture capture {};
-        if (!capture.init())
+        if (!capture.init(recording_id))
         {
             std::cout << "[main] Failed to init capture\n";
             return 1;

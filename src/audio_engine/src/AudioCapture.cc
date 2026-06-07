@@ -17,14 +17,14 @@
 namespace OpenSocialNet::Audio
 {
 
-    bool AudioCapture::init() noexcept
+    bool AudioCapture::init(SDL_AudioDeviceID device_id) noexcept
     {
 
         try
         {
 
             SDL_AudioSpec audio_spec { create_opus_audio_spec() };
-            stream.emplace(audio_spec, SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &AudioCapture::onCapture, this);
+            stream.emplace(audio_spec, device_id, &AudioCapture::onCapture, this);
             stream->resume();
             return true;
 
@@ -35,7 +35,7 @@ namespace OpenSocialNet::Audio
             return false;
 
         }
-        
+
     }
 
     void AudioCapture::shutdown() noexcept

@@ -30,8 +30,11 @@ namespace OpenSocialNet::Audio
         AudioCapture& operator=(AudioCapture&&) = delete;
 
         // opens SDL capture device and starts recording.
+        // device_id defaults to SDL_AUDIO_DEVICE_DEFAULT_RECORDING; pass a
+        // specific id (looked up via SDL_GetAudioRecordingDevices) when the
+        // user has told us which mic to use via OSN_AUDIO_INPUT.
         // returns true on success, false if the device fails to open
-        bool init() noexcept;
+        bool init(SDL_AudioDeviceID device_id = SDL_AUDIO_DEVICE_DEFAULT_RECORDING) noexcept;
 
         // pauses and closes the capture device
         void shutdown() noexcept;
