@@ -34,7 +34,7 @@ namespace OpenSocialNet::Video
         const std::byte* payload_start { reinterpret_cast<const std::byte*>(packet.payload) };
         frame_buffer.insert(frame_buffer.end(), payload_start, payload_start + packet.header.payload_size);
 
-        if (packet.header.marker == 1)
+        if ((packet.header.flags & OpenSocialNet::Network::PacketFlag::marker) != 0)
         {
 
             frame_ready = true;

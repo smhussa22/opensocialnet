@@ -49,6 +49,42 @@ static int env_int(const char* name, int fallback)
 
 }
 
+static std::string env_str(const char* name, const char* fallback)
+{
+
+    const char* value { std::getenv(name) };
+    return (value != nullptr and *value != '\0') ? std::string { value } : std::string { fallback };
+
+}
+
+// 64-bit FNV-1a — fast enough at the packet rate, deterministic across
+// hosts so the same room name hashes to the same room_id everywhere.
+// Used so the relay can route by header alone without a side channel
+// telling it the canonical room id.
+static std::uint64_t fnv1a_64(std::string_view s) noexcept
+{
+
+    constexpr std::uint64_t prime  { 0x100000001b3ULL };
+    constexpr std::uint64_t offset { 0xcbf29ce484222325ULL };
+    std::uint64_t h { offset };
+    for (const char c : s) { h ^= static_cast<std::uint8_t>(c); h *= prime; }
+    return h;
+
+}
+
+// 32-bit FNV-1a for peer_id — same hash family, narrower output. We don't
+// need cryptographic uniqueness; 32 bits is plenty for ≤10 peers per room.
+static std::uint32_t fnv1a_32(std::string_view s) noexcept
+{
+
+    constexpr std::uint32_t prime  { 0x01000193u };
+    constexpr std::uint32_t offset { 0x811c9dc5u };
+    std::uint32_t h { offset };
+    for (const char c : s) { h ^= static_cast<std::uint8_t>(c); h *= prime; }
+    return h;
+
+}
+
 static std::atomic<bool> running {true};
 
 static void on_signal(int)
@@ -186,6 +222,20 @@ int main()
             return 1;
         }
         std::cout << "[main] sender init ok\n";
+
+        // Derive routing identity from env once at startup. Same string in =
+        // same hash out everywhere, so two clients setting OSN_ROOM=general
+        // end up stamping the same room_id and the relay (when it exists)
+        // groups them together. Loopback runs are happy with the defaults.
+        const std::string  room_str { env_str("OSN_ROOM", "loopback") };
+        const std::string  user_str { env_str("OSN_USER", "self") };
+        const std::uint64_t room_id { fnv1a_64(room_str) };
+        const std::uint32_t peer_id { fnv1a_32(user_str) };
+        sender.set_room_id(room_id);
+        sender.set_peer_id(peer_id);
+        std::printf("[main] routing identity room=\"%s\" (room_id=%016lx) user=\"%s\" (peer_id=%08x)\n",
+            room_str.c_str(), static_cast<unsigned long>(room_id),
+            user_str.c_str(), peer_id);
 
         // Adversarial sender-side conditions; all default to 0 (bypass).
         // SIM_LOSS_PCT=8 SIM_JITTER_MS=20 SIM_OOO_PCT=2 ./network

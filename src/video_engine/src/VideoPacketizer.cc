@@ -47,7 +47,7 @@ namespace OpenSocialNet::Video
             pkt.header.sequence = sequence++;
             pkt.header.payload_size = static_cast<std::uint16_t>(this_chunk);
             pkt.header.payload_type = OpenSocialNet::Network::PayloadType::H264;
-            pkt.header.marker = is_last ? 1 : 0;
+            pkt.header.flags        = is_last ? OpenSocialNet::Network::PacketFlag::marker : std::uint8_t { 0 };
 
             std::memcpy(pkt.payload, h264_bytes.data() + offset, this_chunk);
 
