@@ -207,26 +207,35 @@ int main()
         }
         std::cout << "[main] capture init ok\n";
 
-        OpenSocialNet::Network::UdpReceiver receiver {};
-        if (!receiver.init())
-        {
-            std::cout << "[main] Failed to init receiver\n";
-            return 1;
-        }
-        std::cout << "[main] receiver init ok\n";
+        // Network endpoint config. Single-machine loopback uses the defaults
+        // (talks to itself on 127.0.0.1:50100); pointing at the EC2 relay
+        // means OSN_RELAY_HOST=<public ip> and OSN_LOCAL_PORT=<some free
+        // local port>. Sender + receiver share one socket so the relay's
+        // auto-learned src endpoint actually matches where this process is
+        // recvfrom-ing.
+        const std::string   relay_host { env_str("OSN_RELAY_HOST", "127.0.0.1") };
+        const std::uint16_t relay_port { static_cast<std::uint16_t>(env_int("OSN_RELAY_PORT", 50100)) };
+        const std::uint16_t local_port { static_cast<std::uint16_t>(env_int("OSN_LOCAL_PORT", 50100)) };
 
         OpenSocialNet::Network::UdpSender sender {};
-        if (!sender.init())
+        if (!sender.init(relay_host, relay_port, local_port))
         {
-            std::cout << "[main] Failed to init sender\n";
+            std::printf("[main] Failed to init sender (host=%s port=%u local=%u)\n", relay_host.c_str(), relay_port, local_port);
             return 1;
         }
-        std::cout << "[main] sender init ok\n";
+        std::printf("[main] sender init ok: sending to %s:%u from local :%u\n", relay_host.c_str(), relay_port, local_port);
+
+        OpenSocialNet::Network::UdpReceiver receiver {};
+        if (!receiver.init(sender.borrow_socket()))
+        {
+            std::cout << "[main] Failed to init receiver (shared socket not open)\n";
+            return 1;
+        }
+        std::cout << "[main] receiver init ok (sharing sender's socket)\n";
 
         // Derive routing identity from env once at startup. Same string in =
         // same hash out everywhere, so two clients setting OSN_ROOM=general
-        // end up stamping the same room_id and the relay (when it exists)
-        // groups them together. Loopback runs are happy with the defaults.
+        // end up stamping the same room_id and the relay groups them together.
         const std::string  room_str { env_str("OSN_ROOM", "loopback") };
         const std::string  user_str { env_str("OSN_USER", "self") };
         const std::uint64_t room_id { fnv1a_64(room_str) };
@@ -272,6 +281,15 @@ int main()
         constexpr int stats_tick_interval { 200 };
         int ticks_since_stats { 0 };
 
+        // Keepalive: send a zero-payload Packet at least every ~25s so the
+        // relay's RoomTable doesn't expire this peer's endpoint and the
+        // NAT mapping along the path doesn't time out either. Audio packets
+        // reset the counter, so during active speech we never send any
+        // extra. The relay forwards the zero-payload packet to other peers;
+        // their receive_thread already drops payload_size==0.
+        constexpr int keepalive_tick_interval { 2500 };
+        int ticks_since_send { 0 };
+
         while (running)
         {
 
@@ -294,6 +312,21 @@ int main()
                 sender.stamp(packet);
                 sim.submit(std::move(packet), sim_send);
                 ++packets_sent;
+                ticks_since_send = 0;
+
+            }
+
+            // Keepalive when audio's gone quiet for a while. Skips the LossSim
+            // path on purpose — keepalives must actually reach the relay even
+            // when SIM_LOSS_PCT=100 stress-tests are running.
+            if (++ticks_since_send >= keepalive_tick_interval)
+            {
+
+                OpenSocialNet::Network::Packet keepalive { };
+                keepalive.header.payload_type = OpenSocialNet::Network::PayloadType::Opus;
+                keepalive.header.payload_size = 0;
+                sender.send(keepalive);
+                ticks_since_send = 0;
 
             }
 

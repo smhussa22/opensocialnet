@@ -17,27 +17,17 @@
 namespace OpenSocialNet::Network
 {
 
-    bool UdpReceiver::init(uint16_t port) noexcept
+    bool UdpReceiver::init(UdpSocket& shared) noexcept
     {
 
-        if (!socket.open()) return false;
+        m_socket = &shared;
+        if (!m_socket->is_open()) { m_socket = nullptr; return false; }
 
-        sockaddr_in local {};
-        local.sin_family = AF_INET;
-        local.sin_port = htons(port);
-        local.sin_addr.s_addr = INADDR_ANY;
-
-        if (::bind(socket.get_socket_fd(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) == -1)
-        {
-
-            socket.close();
-            return false;
-
-        }
-
-        // Bound timeout so receive() returns periodically and the caller can poll a running flag.
+        // Short blocking timeout so the recv thread loop wakes ~10x/s and can
+        // notice the running flag flipping to false. Same value the previous
+        // owned-socket version used.
         timeval timeout { 0, 100'000 };
-        ::setsockopt(socket.get_socket_fd(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        ::setsockopt(m_socket->get_socket_fd(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
         return true;
 
@@ -46,21 +36,20 @@ namespace OpenSocialNet::Network
     void UdpReceiver::shutdown() noexcept
     {
 
-        socket.close();
+        m_socket = nullptr;
 
     }
 
     bool UdpReceiver::receive(Packet& packet) noexcept
     {
 
-        socklen_t sender_address_size { sizeof(sender_address) };
+        if (m_socket == nullptr) return false;
+
+        socklen_t     sender_address_size { sizeof(sender_address) };
         const ssize_t received_bytes
         {
 
-            ::recvfrom(
-                socket.get_socket_fd(), &packet, sizeof(Packet), 0,
-                reinterpret_cast<sockaddr*>(&sender_address), &sender_address_size
-            )
+            ::recvfrom(m_socket->get_socket_fd(), &packet, sizeof(Packet), 0, reinterpret_cast<sockaddr*>(&sender_address), &sender_address_size)
 
         };
 
@@ -85,4 +74,4 @@ namespace OpenSocialNet::Network
 
     }
 
-};
+}

@@ -34,9 +34,14 @@ namespace OpenSocialNet::Network
         UdpSender(UdpSender&&)                 = delete;
         UdpSender& operator=(UdpSender&&)      = delete;
 
-        // Opens the socket and resolves the remote address.
-        // Returns true on success, false if the socket failed to open or the address is invalid.
-        bool init(std::string_view host = ipv4_loopback_address, uint16_t port = test_port) noexcept;
+        // Opens the socket, resolves the remote address, optionally binds the
+        // local side. local_port=0 lets the kernel pick (single-machine
+        // loopback tests don't care); local_port>0 binds explicitly which is
+        // mandatory for the relay model — the relay learns the client's
+        // endpoint by recvfrom and replies to the same (ip, port), so the
+        // client's recv socket has to be on the SAME port the relay saw
+        // packets coming from.
+        bool init(std::string_view host = ipv4_loopback_address, uint16_t port = test_port, uint16_t local_port = 0) noexcept;
 
         // Closes the socket and resets state.
         void shutdown() noexcept;
@@ -66,6 +71,14 @@ namespace OpenSocialNet::Network
         bool send_raw(Packet packet) noexcept;
 
         bool is_open() const noexcept { return socket.is_open(); }
+
+        // Non-owning handle to the underlying socket so a UdpReceiver can
+        // share the same fd. Required for the relay model where send + recv
+        // have to live on one port; the alternative (two sockets, two ports)
+        // breaks the relay's "learn endpoint from src on inbound" trick.
+        // Receiver must not outlive this UdpSender — same scope in main is
+        // the easiest way to guarantee that.
+        UdpSocket& borrow_socket() noexcept { return socket; }
 
 
     private:

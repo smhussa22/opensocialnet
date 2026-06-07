@@ -19,37 +19,52 @@
 namespace OpenSocialNet::Network
 {
 
+    // Receive-side wrapper around a UdpSocket that someone ELSE owns. The
+    // relay model forces send + recv to share one fd (so the relay's auto-
+    // learned src endpoint matches where the client is actually reading),
+    // so this class no longer opens its own socket — it borrows the
+    // UdpSender's via UdpSender::borrow_socket() and applies the recv
+    // timeout / does the byte-swap.
+    //
+    // Lifetime: the borrowed UdpSocket reference must outlive the UdpReceiver.
+    // In practice main.cc declares the sender first, the receiver second, so
+    // the destruction order is reverse — receiver destructs first.
     class UdpReceiver
     {
 
     public:
+
         UdpReceiver() = default;
-        ~UdpReceiver() {  shutdown(); }
+        ~UdpReceiver() = default;
 
-        UdpReceiver(const UdpReceiver&) = delete;
+        UdpReceiver(const UdpReceiver&)            = delete;
         UdpReceiver& operator=(const UdpReceiver&) = delete;
-        UdpReceiver(UdpReceiver&&) = delete;
-        UdpReceiver& operator=(UdpReceiver&&) = delete;
+        UdpReceiver(UdpReceiver&&)                 = delete;
+        UdpReceiver& operator=(UdpReceiver&&)      = delete;
 
-        // Opens the socket and binds to the given port on all interfaces.
-        // Returns true on success, false if the socket failed to open or bind.
-        bool init(uint16_t port = test_port) noexcept;
+        // Wire up to a shared socket and set the recv timeout so receive()
+        // returns ~10x/s even with no traffic, letting the caller poll a
+        // running flag. Returns false if the socket isn't open yet.
+        bool init(UdpSocket& shared) noexcept;
 
-        // Closes the socket and resets state.
+        // Drops the borrowed handle. Does NOT close the underlying socket —
+        // that belongs to UdpSender.
         void shutdown() noexcept;
 
-        // Reads one packet into the provided Packet struct.
-        // Returns true if a packet was received, false if nothing was available or an error occurred.
+        // Reads one packet, byte-swaps the header fields into host order,
+        // returns false on timeout / short read / unknown wire version.
         bool receive(Packet& packet) noexcept;
 
-        bool is_open() const noexcept { return socket.is_open(); }
-    
+        bool is_open() const noexcept { return m_socket != nullptr and m_socket->is_open(); }
+
+
     private:
-        UdpSocket socket {};
-        sockaddr_in sender_address {};
-        
+
+        UdpSocket*  m_socket       { nullptr }; // non-owning; lifetime managed by the UdpSender
+        sockaddr_in sender_address { };
+
     };
 
-};
+}
 
 #endif // UDP_RECEIVER_HH

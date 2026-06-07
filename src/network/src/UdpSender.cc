@@ -28,13 +28,34 @@ namespace OpenSocialNet::Network
 
     }
 
-    bool UdpSender::init(std::string_view host, uint16_t port) noexcept
+    bool UdpSender::init(std::string_view host, uint16_t port, uint16_t local_port) noexcept
     {
 
         if (!socket.open()) return false;
 
+        // Optional local bind. The relay model requires this because the
+        // server learns the client's endpoint via recvfrom's src address;
+        // if we let the kernel pick an ephemeral port, recv-side replies
+        // hit a different socket than the one this process is reading.
+        if (local_port > 0)
+        {
+
+            sockaddr_in local { };
+            local.sin_family      = AF_INET;
+            local.sin_port        = ::htons(local_port);
+            local.sin_addr.s_addr = ::htonl(INADDR_ANY);
+            if (::bind(socket.get_socket_fd(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) < 0)
+            {
+
+                socket.close();
+                return false;
+
+            }
+
+        }
+
         receiver_address.sin_family = AF_INET;
-        receiver_address.sin_port   = htons(port);
+        receiver_address.sin_port   = ::htons(port);
         if (::inet_pton(AF_INET, host.data(), &receiver_address.sin_addr) <= 0)
         {
 
