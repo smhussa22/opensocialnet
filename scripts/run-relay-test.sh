@@ -44,12 +44,12 @@ echo
 echo "=== /tmp/relay.log (last 8 lines) ==="
 tail -8 /tmp/relay.log
 echo
-echo "=== /tmp/alice.log (head 10 + last 6) ==="
-head -10 /tmp/alice.log
+echo "=== /tmp/alice.log (head 25 + last 6) ==="
+head -25 /tmp/alice.log
 echo "  ..."
 tail -6 /tmp/alice.log
 echo
-echo "=== /tmp/bob.log (head 10 + last 6) ==="
-head -10 /tmp/bob.log
+echo "=== /tmp/bob.log (head 25 + last 6) ==="
+head -25 /tmp/bob.log
 echo "  ..."
 tail -6 /tmp/bob.log
