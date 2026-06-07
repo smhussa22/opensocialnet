@@ -14,8 +14,7 @@
 # - The EC2 security group must allow:
 #     22/tcp     SSH
 #     9001/tcp   WebSocket gateway (native client connects here)
-#     <future>/udp  native voice/video relay (TBD, will be opened
-#                   in a later phase when src/relay/ ships)
+#     50100/udp  native voice/video relay (native clients send media here)
 #   Nothing else needs to be public; Scylla, Kafka are all
 #   loopback-only from this host's perspective.
 #
@@ -99,6 +98,19 @@ services:
       OPENSOCIALNET_AUTH_SECRET: "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET in env / .env}"
       # main.cc's defaults (SCYLLA_HOST=127.0.0.1, KAFKA_BOOTSTRAP=localhost:19092)
       # resolve correctly under host networking, so no overrides here.
+    restart: unless-stopped
+
+  relay:
+    build:
+      context: .
+      dockerfile: src/relay/Dockerfile
+    image: opensocialnet-relay
+    network_mode: host
+    environment:
+      # UDP port the native client sends Packets to. Match the value the
+      # native client uses (it reads its destination from OSN_RELAY_HOST +
+      # OSN_RELAY_PORT once Phase 3 lands).
+      RELAY_PORT: "50100"
     restart: unless-stopped
 
 volumes:
