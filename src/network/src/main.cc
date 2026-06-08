@@ -323,6 +323,19 @@ int main()
         OpenSocialNet::Plc::AudioPlc          plc          { plc_strategy, decoder };
         std::printf("[main] PLC strategy=%s\n", plc_strategy_name(plc_strategy));
 
+        // Adaptive playout: OSN_ADAPTIVE_JB=1 grows / shrinks the jitter
+        // buffer's playout threshold based on observed RFC 3550 jitter.
+        // Off by default — flip to 1 to see the threshold drift in
+        // [net-stats] as network conditions change.
+        const bool adaptive_jb { env_int("OSN_ADAPTIVE_JB", 0) != 0 };
+        if (adaptive_jb)
+        {
+
+            jitter_buffer.set_adaptive(true);
+            std::printf("[main] adaptive jitter buffer ENABLED (bounds 1..20 frames, recompute every 50 pops)\n");
+
+        }
+
         PlaybackContext playback_context { &incoming_queue, &jitter_buffer, &decoder, &plc };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
         OpenSocialNet::Audio::AudioStream audio_stream { spec, playback_id, on_playback, &playback_context };
@@ -464,13 +477,15 @@ int main()
             {
 
                 const auto snap { jitter_buffer.stats().snapshot() };
-                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu drop_overflow=%llu sent=%d plc=%llu\n",
+                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu\n",
                     static_cast<unsigned long long>(snap.packets_observed),
                     static_cast<unsigned long long>(snap.packets_lost),
                     static_cast<unsigned long long>(snap.packets_out_of_order),
                     snap.jitter_ms,
                     incoming_queue.size(),
                     jitter_buffer.size(),
+                    jitter_buffer.current_playout_threshold(),
+                    static_cast<unsigned long long>(jitter_buffer.adaptation_count()),
                     static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
                     packets_sent,
                     static_cast<unsigned long long>(plc.concealments_emitted()));
