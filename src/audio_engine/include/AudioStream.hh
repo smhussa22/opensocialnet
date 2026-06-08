@@ -12,10 +12,27 @@
 #include <SDL3/SDL.h>
 
 // project headers
+#include "AudioConstants.hh"
 #include "AudioStreamDeleter.hh"
 
 namespace OpenSocialNet::Audio
 {
+
+    // Build an SDL_AudioSpec configured for the opus pipeline's PCM format
+    // (mono float32 at opus_sample_rate). Lives here rather than in
+    // AudioConstants.hh so non-SDL consumers (the bench harness, the relay)
+    // don't have to transitively pull SDL into their build.
+    inline SDL_AudioSpec create_opus_audio_spec() noexcept
+    {
+
+        SDL_AudioSpec spec { };
+        spec.channels = opus_channels;
+        spec.format   = SDL_AUDIO_F32;
+        spec.freq     = opus_sample_rate;
+        return spec;
+
+    }
+
 
     class AudioStream
     {

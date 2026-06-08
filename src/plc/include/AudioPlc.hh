@@ -94,6 +94,12 @@ namespace OpenSocialNet::Plc
         // opus") so a benchmark run is self-documenting.
         PlcStrategy strategy() const noexcept;
 
+        // Raise/lower the runaway-hallucination guard. Default 5 — opus PLC
+        // drifts and Repeat ringt after that. Bench harness raises it to
+        // effectively unlimited so every loss event produces a measurable
+        // concealment regardless of streak length.
+        void set_max_consecutive_concealments(int n) noexcept;
+
 
     private:
 
@@ -115,8 +121,9 @@ namespace OpenSocialNet::Plc
         bool                                                       m_have_last_frame { false };         // false until first real frame arrives
         bool                                                       m_have_next_hint  { false };         // resets after each conceal() call
 
-        int                                                        m_consecutive_concealments { 0 };    // bumped per conceal(), zeroed per on_real_frame()
-        std::uint64_t                                              m_total_concealments       { 0 };    // monotonic across the session for [net-stats]
+        int                                                        m_consecutive_concealments     { 0 };    // bumped per conceal(), zeroed per on_real_frame()
+        int                                                        m_max_consecutive_concealments { 5 };    // cap; bench overrides to a large value to remove the streak guard
+        std::uint64_t                                              m_total_concealments           { 0 };    // monotonic across the session for [net-stats]
 
     };
 

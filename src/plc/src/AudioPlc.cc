@@ -15,19 +15,6 @@
 namespace OpenSocialNet::Plc
 {
 
-    namespace
-    {
-
-        // Past this many consecutive concealments any strategy starts
-        // producing artifacts worse than silence — opus PLC drifts, Repeat
-        // sounds like a stuck syllable, Interpolate has nothing real to
-        // anchor against. Past the cap conceal() returns 0 and lets SDL
-        // silence-fill the slot instead.
-        constexpr int max_consecutive_concealments { 5 };
-
-    }
-
-
     AudioPlc::AudioPlc(PlcStrategy strategy, OpenSocialNet::Audio::AudioDecoder& decoder) noexcept : m_strategy { strategy }, m_decoder { decoder }
     {
 
@@ -59,7 +46,7 @@ namespace OpenSocialNet::Plc
     {
 
         // Runaway-hallucination guard: return 0 and let SDL silence-fill.
-        if (m_consecutive_concealments >= max_consecutive_concealments) return 0;
+        if (m_consecutive_concealments >= m_max_consecutive_concealments) return 0;
 
         int samples_written { 0 };
         switch (m_strategy)
@@ -111,6 +98,13 @@ namespace OpenSocialNet::Plc
     {
 
         return m_strategy;
+
+    }
+
+    void AudioPlc::set_max_consecutive_concealments(int n) noexcept
+    {
+
+        m_max_consecutive_concealments = n;
 
     }
 
