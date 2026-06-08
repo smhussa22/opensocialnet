@@ -30,6 +30,7 @@
 #include "PacketJitterBuffer.hh"
 #include "SpscQueue.hh"
 #include "LossSim.hh"
+#include "AudioPlc.hh"
 
 // Pull SIM_* env vars at startup. Empty or unparseable falls back to default
 // so the sim stays bypassed unless the caller asked for it.
@@ -182,8 +183,40 @@ struct PlaybackContext
     IncomingQueue*                              incoming {};       // recv thread -> playback hand-off
     OpenSocialNet::Network::PacketJitterBuffer* jitter_buffer {};
     OpenSocialNet::Audio::AudioDecoder*         decoder {};
+    OpenSocialNet::Plc::AudioPlc*               plc {};            // gap-fill when jitter_buffer can't supply
 
 };
+
+// Map "silence"/"repeat"/"opus"/"interp" (case-insensitive) to PlcStrategy.
+// Unknown / empty values fall back to Opus — the best-quality default that
+// requires no special configuration.
+static OpenSocialNet::Plc::PlcStrategy parse_plc_strategy(std::string_view raw) noexcept
+{
+
+    std::string s { raw };
+    for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (s == "silence") return OpenSocialNet::Plc::PlcStrategy::Silence;
+    if (s == "repeat" ) return OpenSocialNet::Plc::PlcStrategy::Repeat;
+    if (s == "interp" ) return OpenSocialNet::Plc::PlcStrategy::Interpolate;
+    return OpenSocialNet::Plc::PlcStrategy::Opus;
+
+}
+
+static const char* plc_strategy_name(OpenSocialNet::Plc::PlcStrategy s) noexcept
+{
+
+    switch (s)
+    {
+
+        case OpenSocialNet::Plc::PlcStrategy::Silence:     return "silence";
+        case OpenSocialNet::Plc::PlcStrategy::Repeat:      return "repeat";
+        case OpenSocialNet::Plc::PlcStrategy::Opus:        return "opus";
+        case OpenSocialNet::Plc::PlcStrategy::Interpolate: return "interp";
+
+    }
+    return "?";
+
+}
 
 static void on_playback(void* userdata, SDL_AudioStream* stream, int additional, int total)
 {
@@ -201,16 +234,37 @@ static void on_playback(void* userdata, SDL_AudioStream* stream, int additional,
     int fed = 0;
     while (fed < additional)
     {
-        if (!context->jitter_buffer->pop(packet)) break;
 
-        const int decoded_samples { context->decoder->decode_bytes(
-            std::span<const std::byte> { reinterpret_cast<const std::byte*>(packet.payload), packet.header.payload_size },
-            std::span<float>           { decoded_pcm }
-        ) };
-        if (decoded_samples < 0) continue; // skip corrupted frames; keep the stream alive
+        if (context->jitter_buffer->pop(packet))
+        {
+
+            // Real frame: decode + feed + tell PLC so its "last good frame"
+            // state stays current for the next gap.
+            const int decoded_samples { context->decoder->decode_bytes(
+                std::span<const std::byte> { reinterpret_cast<const std::byte*>(packet.payload), packet.header.payload_size },
+                std::span<float>           { decoded_pcm }
+            ) };
+            if (decoded_samples < 0) continue; // skip corrupted frames; keep the stream alive
+
+            if (context->plc != nullptr) context->plc->on_real_frame(std::span<const float> { decoded_pcm });
+
+            SDL_PutAudioStreamData(stream, decoded_pcm.data(), decoded_byte_count);
+            fed += decoded_byte_count;
+            continue;
+
+        }
+
+        // No packet available — ask PLC to fill the slot. If PLC also gives
+        // up (returns 0; happens past the consecutive-concealment cap or
+        // before the first real frame), break so SDL silence-fills the rest
+        // of the buffer.
+        if (context->plc == nullptr) break;
+        const int concealed_samples { context->plc->conceal(std::span<float> { decoded_pcm }) };
+        if (concealed_samples <= 0) break;
 
         SDL_PutAudioStreamData(stream, decoded_pcm.data(), decoded_byte_count);
         fed += decoded_byte_count;
+
     }
 
 }
@@ -262,7 +316,14 @@ int main()
         const SDL_AudioDeviceID   playback_id     { pick_audio_device(/*recording=*/false, output_want_str) };
         const SDL_AudioDeviceID   recording_id    { pick_audio_device(/*recording=*/true,  input_want_str)  };
 
-        PlaybackContext playback_context { &incoming_queue, &jitter_buffer, &decoder };
+        // PLC strategy chosen at startup, single instance reused by every
+        // call into on_playback. Default is opus (best quality, no extra
+        // configuration needed); override with OSN_PLC=silence|repeat|interp.
+        const OpenSocialNet::Plc::PlcStrategy plc_strategy { parse_plc_strategy(env_str("OSN_PLC", "opus")) };
+        OpenSocialNet::Plc::AudioPlc          plc          { plc_strategy, decoder };
+        std::printf("[main] PLC strategy=%s\n", plc_strategy_name(plc_strategy));
+
+        PlaybackContext playback_context { &incoming_queue, &jitter_buffer, &decoder, &plc };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
         OpenSocialNet::Audio::AudioStream audio_stream { spec, playback_id, on_playback, &playback_context };
         audio_stream.resume();
@@ -403,7 +464,7 @@ int main()
             {
 
                 const auto snap { jitter_buffer.stats().snapshot() };
-                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu drop_overflow=%llu sent=%d\n",
+                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu drop_overflow=%llu sent=%d plc=%llu\n",
                     static_cast<unsigned long long>(snap.packets_observed),
                     static_cast<unsigned long long>(snap.packets_lost),
                     static_cast<unsigned long long>(snap.packets_out_of_order),
@@ -411,7 +472,8 @@ int main()
                     incoming_queue.size(),
                     jitter_buffer.size(),
                     static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
-                    packets_sent);
+                    packets_sent,
+                    static_cast<unsigned long long>(plc.concealments_emitted()));
                 ticks_since_stats = 0;
 
             }

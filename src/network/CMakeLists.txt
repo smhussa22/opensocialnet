@@ -29,11 +29,13 @@ add_executable(network
     ../audio_engine/src/AudioCapture.cc
     ../audio_engine/src/AudioEncoder.cc
     ../audio_engine/src/AudioDecoder.cc
+    ../plc/src/AudioPlc.cc
 )
 
 target_include_directories(network PRIVATE
     include
     ../audio_engine/include
+    ../plc/include
 )
 
 target_link_libraries(network PRIVATE SDL3::SDL3 PkgConfig::OPUS)
