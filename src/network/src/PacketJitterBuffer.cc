@@ -50,15 +50,32 @@ namespace OpenSocialNet::Network
         if (it == buffer.end())
         {
 
-            // only skip if we have newer packets waiting — don't skip just because it's missing yet
-            if (!buffer.empty() and packet_sequence_less_than(next_sequence + 5, buffer.begin()->first))
+            // Two skip conditions, each catches a different loss pattern:
+            //
+            // 1. Pile-up skip: buffer is well above the playout threshold,
+            //    so newer packets are stacking up while we're stalled
+            //    waiting for next_sequence. That's the single-frame-loss
+            //    signature — head is lost, everything behind has arrived.
+            //    Give up on the head, advance to the smallest waiting seq.
+            //
+            // 2. Burst skip: buffer's smallest waiting seq is 5+ ahead of
+            //    next_sequence, meaning we lost a run of consecutive
+            //    packets. Same fix — jump to wherever the buffer actually
+            //    starts.
+            //
+            // The pile-up skip also paper-overs the previous "buffer hits
+            // its 50-packet cap and silently drops new pushes" failure
+            // mode that wedged the live binary on any single-frame loss.
+            const bool pile_up_skip { buffer.size() >= playout_threshold + 3 };
+            const bool burst_skip   { !buffer.empty() and packet_sequence_less_than(next_sequence + 5, buffer.begin()->first) };
+            if (pile_up_skip or burst_skip)
             {
 
-                // gap is large enough that packet is truly lost, not just late
                 next_sequence = buffer.begin()->first;
+                it = buffer.find(next_sequence);
 
             }
-            return false;
+            if (it == buffer.end()) return false;
 
         }
 

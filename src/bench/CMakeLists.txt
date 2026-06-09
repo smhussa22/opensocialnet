@@ -20,6 +20,7 @@ add_executable(bench
     ../audio_engine/src/AudioEncoder.cc
     ../audio_engine/src/AudioDecoder.cc
     ../plc/src/AudioPlc.cc
+    ../network/src/PacketJitterBuffer.cc
 )
 
 target_include_directories(bench PRIVATE
