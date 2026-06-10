@@ -3,39 +3,43 @@
 # on the recording so you hear back-to-back what fixed-vs-adaptive sounds
 # like on YOUR voice (not the synthesized sweep).
 #
+# Uses the `record` binary built alongside the network CLI (SDL-based)
+# rather than arecord, so it works in WSL where ALSA has no card 0.
+#
 # Env vars:
-#   DURATION  seconds to record   (default 10)
-#   LOSS      simulated loss %     (default 10)
-#   JIT       simulated jitter ms  (default 30)
-#   DEVICE    arecord -D value     (default unset = system default)
+#   DURATION         seconds to record           (default 10)
+#   LOSS             simulated loss %             (default 10)
+#   JIT              simulated jitter ms          (default 30)
+#   OSN_AUDIO_INPUT  device-name substring match (default = SDL default)
+#   RECORDING        output WAV path             (default /tmp/recorded_voice.wav)
 
 set -euo pipefail
 
 DURATION="${DURATION:-10}"
 LOSS="${LOSS:-10}"
 JIT="${JIT:-30}"
-DEVICE_FLAG=( )
-if [[ -n "${DEVICE:-}" ]]; then DEVICE_FLAG=(-D "$DEVICE"); fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 RECORDING="${RECORDING:-/tmp/recorded_voice.wav}"
+RECORD_BIN="${RECORD_BIN:-$REPO_ROOT/src/network/build/record}"
 
-if ! command -v arecord >/dev/null 2>&1; then
-    echo "[record] arecord not installed. Install with: sudo apt install alsa-utils" >&2
+if [[ ! -x "$RECORD_BIN" ]]; then
+    echo "[record] $RECORD_BIN not found. Build it with:" >&2
+    echo "         cd $REPO_ROOT/src/network && cmake --build build --target record -j" >&2
     exit 1
 fi
 
 echo "[record] Recording $DURATION s from mic into $RECORDING ..."
 echo "[record] Speak now."
-arecord "${DEVICE_FLAG[@]}" -f S16_LE -r 48000 -c 1 -d "$DURATION" "$RECORDING"
+"$RECORD_BIN" --duration "$DURATION" --out "$RECORDING"
 echo "[record] Done. File: $RECORDING"
 
-# Quick sanity playback so you know whether the recording actually
-# captured anything (a common WSL failure mode is "device shows up but
-# captures pure silence"). Suppress aplay's own output to keep the
-# console clean.
+# Sanity playback so you know whether the recording actually captured
+# anything (a common WSL failure mode is "device shows up but captures
+# pure silence"). aplay is alsa-utils; if it's missing, just skip.
 if command -v aplay >/dev/null 2>&1; then
-    echo "[record] Playing back the recording (mute speakers if you don't want feedback)..."
+    echo "[record] Playing back via aplay (mute speakers if you do not want feedback) — Ctrl-C to skip..."
     aplay -q "$RECORDING" || true
 fi
 
