@@ -26,8 +26,7 @@
 #include "AudioCapture.hh"
 #include "AudioConstants.hh"
 #include "AudioEncoder.hh"
-#include "AudioDecoder.hh"
-#include "PacketJitterBuffer.hh"
+#include "PeerMixer.hh"
 #include "SpscQueue.hh"
 #include "LossSim.hh"
 #include "AudioPlc.hh"
@@ -181,10 +180,8 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue
 struct PlaybackContext
 {
 
-    IncomingQueue*                              incoming {};       // recv thread -> playback hand-off
-    OpenSocialNet::Network::PacketJitterBuffer* jitter_buffer {};
-    OpenSocialNet::Audio::AudioDecoder*         decoder {};
-    OpenSocialNet::Plc::AudioPlc*               plc {};            // gap-fill when jitter_buffer can't supply
+    IncomingQueue*                  incoming {}; // recv thread -> playback hand-off
+    OpenSocialNet::Network::PeerMixer* mixer {}; // per-peer demux + jitter buffers + PLC + PCM mix
 
 };
 
@@ -224,47 +221,23 @@ static void on_playback(void* userdata, SDL_AudioStream* stream, int additional,
 
     auto* context = static_cast<PlaybackContext*>(userdata);
     OpenSocialNet::Network::Packet packet {};
-    std::array<float, OpenSocialNet::Audio::samples_per_frame> decoded_pcm {};
-    constexpr int decoded_byte_count { static_cast<int>(decoded_pcm.size() * sizeof(float)) };
+    std::array<float, OpenSocialNet::Audio::samples_per_frame> mixed_pcm {};
+    constexpr int mixed_byte_count { static_cast<int>(mixed_pcm.size() * sizeof(float)) };
 
-    // drain everything the recv thread parked since the last callback into the
-    // jitter buffer; only this thread touches the jitter buffer now, so its
-    // internal mutex stays uncontended.
-    while (context->incoming->try_pop(packet)) context->jitter_buffer->push(packet);
+    // drain everything the recv thread parked since the last callback into
+    // each source's jitter buffer (the mixer demuxes by peer_id + ssrc).
+    while (context->incoming->try_pop(packet)) context->mixer->route(packet);
 
+    // One mixed frame at a time. Zero contributors means every source is
+    // dry AND past its PLC budget — break so SDL silence-fills the rest.
     int fed = 0;
     while (fed < additional)
     {
 
-        if (context->jitter_buffer->pop(packet))
-        {
+        if (context->mixer->mix_one_frame(std::span<float> { mixed_pcm }) == 0) break;
 
-            // Real frame: decode + feed + tell PLC so its "last good frame"
-            // state stays current for the next gap.
-            const int decoded_samples { context->decoder->decode_bytes(
-                std::span<const std::byte> { reinterpret_cast<const std::byte*>(packet.payload), packet.header.payload_size },
-                std::span<float>           { decoded_pcm }
-            ) };
-            if (decoded_samples < 0) continue; // skip corrupted frames; keep the stream alive
-
-            if (context->plc != nullptr) context->plc->on_real_frame(std::span<const float> { decoded_pcm });
-
-            SDL_PutAudioStreamData(stream, decoded_pcm.data(), decoded_byte_count);
-            fed += decoded_byte_count;
-            continue;
-
-        }
-
-        // No packet available — ask PLC to fill the slot. If PLC also gives
-        // up (returns 0; happens past the consecutive-concealment cap or
-        // before the first real frame), break so SDL silence-fills the rest
-        // of the buffer.
-        if (context->plc == nullptr) break;
-        const int concealed_samples { context->plc->conceal(std::span<float> { decoded_pcm }) };
-        if (concealed_samples <= 0) break;
-
-        SDL_PutAudioStreamData(stream, decoded_pcm.data(), decoded_byte_count);
-        fed += decoded_byte_count;
+        SDL_PutAudioStreamData(stream, mixed_pcm.data(), mixed_byte_count);
+        fed += mixed_byte_count;
 
     }
 
@@ -290,16 +263,6 @@ int main()
         // to absorb a burst before the audio callback next drains.
         IncomingQueue incoming_queue {};
 
-        OpenSocialNet::Network::PacketJitterBuffer jitter_buffer {};
-
-        OpenSocialNet::Audio::AudioDecoder decoder {};
-        if (!decoder.valid())
-        {
-            std::cout << "[main] Failed to init Opus decoder\n";
-            return 1;
-        }
-        std::cout << "[main] decoder init ok\n";
-
         OpenSocialNet::Audio::AudioEncoder encoder {};
         if (!encoder.valid())
         {
@@ -317,27 +280,24 @@ int main()
         const SDL_AudioDeviceID   playback_id     { pick_audio_device(/*recording=*/false, output_want_str) };
         const SDL_AudioDeviceID   recording_id    { pick_audio_device(/*recording=*/true,  input_want_str)  };
 
-        // PLC strategy chosen at startup, single instance reused by every
-        // call into on_playback. Default is opus (best quality, no extra
+        // PLC strategy chosen at startup, stamped into every per-peer PLC
+        // the mixer creates. Default is opus (best quality, no extra
         // configuration needed); override with OSN_PLC=silence|repeat|interp.
         const OpenSocialNet::Plc::PlcStrategy plc_strategy { parse_plc_strategy(env_str("OSN_PLC", "opus")) };
-        OpenSocialNet::Plc::AudioPlc          plc          { plc_strategy, decoder };
         std::printf("[main] PLC strategy=%s\n", plc_strategy_name(plc_strategy));
 
-        // Adaptive playout: OSN_ADAPTIVE_JB=1 grows / shrinks the jitter
-        // buffer's playout threshold based on observed RFC 3550 jitter.
+        // Adaptive playout: OSN_ADAPTIVE_JB=1 grows / shrinks each source's
+        // jitter-buffer playout threshold based on observed RFC 3550 jitter.
         // Off by default — flip to 1 to see the threshold drift in
         // [net-stats] as network conditions change.
         const bool adaptive_jb { env_int("OSN_ADAPTIVE_JB", 0) != 0 };
-        if (adaptive_jb)
-        {
+        if (adaptive_jb) std::printf("[main] adaptive jitter buffers ENABLED (bounds 1..20 frames, recompute every 50 pops)\n");
 
-            jitter_buffer.set_adaptive(true);
-            std::printf("[main] adaptive jitter buffer ENABLED (bounds 1..20 frames, recompute every 50 pops)\n");
+        // Per-peer receive state lives here: one jitter buffer + opus
+        // decoder + PLC per inbound (peer_id, ssrc), mixed to one stream.
+        OpenSocialNet::Network::PeerMixer mixer { plc_strategy, adaptive_jb };
 
-        }
-
-        PlaybackContext playback_context { &incoming_queue, &jitter_buffer, &decoder, &plc };
+        PlaybackContext playback_context { &incoming_queue, &mixer };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
         OpenSocialNet::Audio::AudioStream audio_stream { spec, playback_id, on_playback, &playback_context };
         audio_stream.resume();
@@ -499,6 +459,10 @@ int main()
         constexpr int signaling_heartbeat_tick_interval { 6000 };
         int ticks_since_heartbeat { 0 };
 
+        // Mixer source reap cadence (~5s at the 10ms tick).
+        constexpr int reap_tick_interval { 500 };
+        int ticks_since_reap { 0 };
+
         while (running)
         {
 
@@ -551,23 +515,36 @@ int main()
 
             }
 
+            // Reap mixer sources that went silent — their peer left the
+            // room or lost connectivity. 10s is generous: live peers send
+            // continuously (mic frames or 25s keepalives never reach the
+            // mixer, but real audio does at 100 pkt/s).
+            if (++ticks_since_reap >= reap_tick_interval)
+            {
+
+                mixer.reap_idle(std::chrono::seconds { 10 });
+                ticks_since_reap = 0;
+
+            }
+
             if (++ticks_since_stats >= stats_tick_interval)
             {
 
-                const auto snap { jitter_buffer.stats().snapshot() };
+                const auto agg { mixer.stats() };
                 const std::size_t live_peers { signaling_host.empty() ? std::size_t { 0 } : signaling.peers().size() };
-                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu peers=%zu\n",
-                    static_cast<unsigned long long>(snap.packets_observed),
-                    static_cast<unsigned long long>(snap.packets_lost),
-                    static_cast<unsigned long long>(snap.packets_out_of_order),
-                    snap.jitter_ms,
+                std::printf("[net-stats] src=%zu obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu peers=%zu\n",
+                    agg.sources,
+                    static_cast<unsigned long long>(agg.packets_observed),
+                    static_cast<unsigned long long>(agg.packets_lost),
+                    static_cast<unsigned long long>(agg.packets_out_of_order),
+                    agg.max_jitter_ms,
                     incoming_queue.size(),
-                    jitter_buffer.size(),
-                    jitter_buffer.current_playout_threshold(),
-                    static_cast<unsigned long long>(jitter_buffer.adaptation_count()),
+                    agg.buffered_packets,
+                    agg.max_playout_threshold,
+                    static_cast<unsigned long long>(agg.adaptations),
                     static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
                     packets_sent,
-                    static_cast<unsigned long long>(plc.concealments_emitted()),
+                    static_cast<unsigned long long>(agg.concealments),
                     live_peers);
                 ticks_since_stats = 0;
 
@@ -586,7 +563,7 @@ int main()
 
         capture.shutdown();
 
-    } // audio_stream + jitter_buffer + sender + receiver destroyed here, before SDL_Quit
+    } // audio_stream + mixer + sender + receiver destroyed here, before SDL_Quit
 
     SDL_Quit();
     return 0;

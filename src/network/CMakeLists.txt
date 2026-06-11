@@ -53,6 +53,7 @@ add_executable(network
     src/UdpSender.cc
     src/UdpReceiver.cc
     src/PacketJitterBuffer.cc
+    src/PeerMixer.cc
     src/LossSim.cc
     src/WebSocketClient.cc
     src/SignalingClient.cc

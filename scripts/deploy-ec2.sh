@@ -23,6 +23,15 @@ cd "$REPO_ROOT"
 : "${EC2_KEY:?EC2_KEY=path/to/key.pem}"
 : "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET (hmac secret used to verify Hello frames)}"
 
+# Relay endpoint that signaling_server stamps into VoicePeerJoined replies.
+# Defaults to the EC2 public IP parsed out of EC2_HOST (ubuntu@1.2.3.4).
+OSN_RELAY_HOST="${OSN_RELAY_HOST:-${EC2_HOST#*@}}"
+echo "relay endpoint clients will be told to dial: $OSN_RELAY_HOST:50100"
+
+# compose.prod.yml interpolates these on EVERY docker compose call (up /
+# ps / restart / logs), so prefix all of them with the same env block.
+COMPOSE_ENV="OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' OSN_RELAY_HOST='$OSN_RELAY_HOST'"
+
 SSH=(ssh -o StrictHostKeyChecking=no -i "$EC2_KEY" "$EC2_HOST")
 SCP=(scp -o StrictHostKeyChecking=no -i "$EC2_KEY")
 
@@ -62,18 +71,16 @@ echo "=== 4/6  load images on EC2 ==="
 
 echo
 echo "=== 5/6  bring stack up on EC2 ==="
-# Every `docker compose` call below re-interpolates compose.prod.yml, so the
-# secret has to be in scope for ps/logs/restart too — not just `up`.
-"${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml up -d"
+"${SSH[@]}" "$COMPOSE_ENV docker compose -f ~/compose.prod.yml up -d"
 echo "waiting 25s for scylla + kafka to settle..."
-"${SSH[@]}" "sleep 25 && OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml ps"
+"${SSH[@]}" "sleep 25 && $COMPOSE_ENV docker compose -f ~/compose.prod.yml ps"
 
 echo
 echo "=== 6/6  apply schema + restart signaling_server so it picks it up ==="
 "${SSH[@]}" 'docker exec -i $(docker ps --filter name=scylla -q | head -1) cqlsh < ~/schema.cql 2>&1 | tail -3 || true'
-"${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' docker compose -f ~/compose.prod.yml restart signaling_server"
+"${SSH[@]}" "$COMPOSE_ENV docker compose -f ~/compose.prod.yml restart signaling_server"
 sleep 6
-"${SSH[@]}" "OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' bash -c 'docker compose -f ~/compose.prod.yml ps && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20 && echo === relay logs === && docker compose -f ~/compose.prod.yml logs relay --tail 10'"
+"${SSH[@]}" "$COMPOSE_ENV bash -c 'docker compose -f ~/compose.prod.yml ps && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20 && echo === relay logs === && docker compose -f ~/compose.prod.yml logs relay --tail 10'"
 
 echo
 echo "=== deploy done ==="
