@@ -25,7 +25,9 @@ cd "$REPO_ROOT"
 
 # Relay endpoint that signaling_server stamps into VoicePeerJoined replies.
 # Defaults to the EC2 public IP parsed out of EC2_HOST (ubuntu@1.2.3.4).
-OSN_RELAY_HOST="${OSN_RELAY_HOST:-${EC2_HOST#*@}}"
+# Exported because the local `docker compose build` interpolates
+# compose.prod.yml too, not just the remote up/ps/restart calls.
+export OSN_RELAY_HOST="${OSN_RELAY_HOST:-${EC2_HOST#*@}}"
 echo "relay endpoint clients will be told to dial: $OSN_RELAY_HOST:50100"
 
 # compose.prod.yml interpolates these on EVERY docker compose call (up /
