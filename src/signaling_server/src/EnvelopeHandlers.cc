@@ -402,54 +402,162 @@ namespace OpenSocialNet::Signaling
 
     }
 
+    namespace
+    {
+
+        // Build + send a single VoicePeerJoined frame to a specific ws.
+        // Helper because the same shape is sent four ways during a join:
+        // self to joiner, each existing peer to joiner, joiner to each
+        // existing peer, and (eventually) joiner to itself via topic
+        // subscribe — keep them all consistent through one builder.
+        void send_voice_peer_joined(WebSocket* ws, const std::string& channel_id, const std::string& user_id, const std::string& ip, std::uint16_t port, std::uint32_t ssrc)
+        {
+
+            ::signaling::Envelope out { };
+            auto* event = out.mutable_voice_peer_joined();
+            event->set_channel_id(channel_id);
+            auto* peer = event->mutable_peer();
+            peer->set_user_id(user_id);
+            peer->set_ip(ip);
+            peer->set_port(port);
+            peer->set_ssrc(ssrc);
+            send_envelope(ws, out);
+
+        }
+
+        void send_voice_peer_left(WebSocket* ws, const std::string& channel_id, const std::string& user_id)
+        {
+
+            ::signaling::Envelope out { };
+            auto* event = out.mutable_voice_peer_left();
+            event->set_channel_id(channel_id);
+            event->set_user_id(user_id);
+            send_envelope(ws, out);
+
+        }
+
+        // Pull `sess` out of `channel_id`'s membership list, return the
+        // peers that remained. Caller is responsible for broadcasting
+        // VoicePeerLeft to them — we don't do it here because the close
+        // handler and on_leave_voice want the same effect but reach this
+        // path from slightly different setups.
+        std::vector<VoiceRoomPeer> remove_from_voice_room(GatewayState& state, const Session& sess, const std::string& channel_id)
+        {
+
+            std::vector<VoiceRoomPeer> remaining { };
+            std::scoped_lock<std::mutex> lock { state.voice_rooms_mu };
+
+            auto it = state.voice_rooms.find(channel_id);
+            if (it == state.voice_rooms.end()) return remaining;
+
+            auto& room = it->second;
+            auto new_end = std::remove_if(room.begin(), room.end(), [&](const VoiceRoomPeer& p) { return p.session_id == sess.session_id; });
+            room.erase(new_end, room.end());
+
+            if (room.empty()) { state.voice_rooms.erase(it); return remaining; }
+
+            remaining = room;
+            return remaining;
+
+        }
+
+    }
+
+
+    void leave_voice_room(GatewayState& state, WebSocket* ws, const std::string& channel_id)
+    {
+
+        auto* sess = ws->getUserData();
+        if (sess == nullptr or channel_id.empty()) return;
+
+        ws->unsubscribe("voice:" + channel_id);
+        const std::vector<VoiceRoomPeer> remaining { remove_from_voice_room(state, *sess, channel_id) };
+        sess->current_voice_room_id.clear();
+
+        // Notify each remaining peer that this user is gone. Direct sends
+        // (vs publish) so we don't accidentally send VoicePeerLeft to a
+        // socket that's already gone — sessions->lookup hands us back the
+        // current ws* or nullptr if it died.
+        for (const auto& peer : remaining)
+        {
+
+            WebSocket* peer_ws { state.sessions->lookup(peer.session_id) };
+            if (peer_ws != nullptr) send_voice_peer_left(peer_ws, channel_id, sess->user_id);
+
+        }
+
+        std::cerr << "[leave_voice] user=" << sess->user_id << " channel=" << channel_id << " remaining=" << remaining.size() << '\n';
+
+    }
+
+
     void on_join_voice(GatewayState& state, WebSocket* ws, const ::signaling::JoinVoice& req)
     {
 
         auto* sess = ws->getUserData();
         if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
 
+        // Idempotency: if this session re-joins the same room (a client
+        // restart that left a half-open connection on the server), kick
+        // out the previous registration first so we don't end up with
+        // two entries for one peer.
+        if (!sess->current_voice_room_id.empty()) leave_voice_room(state, ws, sess->current_voice_room_id);
+
         // Voice events get their own topic so they don't intermingle with
         // chat consumers on the same channel_id. Subscribing here means
         // future VoicePeerJoined / VoicePeerLeft broadcasts published to
-        // "voice:<channel>" will fan out to this socket automatically.
-        ws->subscribe("voice:" + req.channel_id());
-        sess->current_voice_room_id = req.channel_id();
+        // "voice:<channel>" will fan out to this socket automatically —
+        // currently we direct-send instead, but the subscription is
+        // future-proofing for the kafka-fanout path.
+        const std::string channel { req.channel_id() };
+        ws->subscribe("voice:" + channel);
+        sess->current_voice_room_id = channel;
 
-        // Reply with the joiner's OWN VoicePeerJoined entry. The client
-        // uses peer.ip/port as its UDP destination (the relay's public
-        // endpoint, configured server-side via OSN_RELAY_HOST/PORT) and
-        // peer.ssrc to stamp into outgoing Packet headers. Per the
-        // SignalingClient contract: SELF comes first in the JoinVoice
-        // reply sequence.
         const std::uint32_t assigned_ssrc { state.next_ssrc.fetch_add(1, std::memory_order_relaxed) };
 
-        ::signaling::Envelope out { };
-        auto* event = out.mutable_voice_peer_joined();
-        event->set_channel_id(req.channel_id());
-        auto* peer = event->mutable_peer();
-        peer->set_user_id(sess->user_id);
-        peer->set_ip(state.relay_host);
-        peer->set_port(state.relay_port);
-        peer->set_ssrc(assigned_ssrc);
-        send_envelope(ws, out);
+        // Snapshot the existing peer list, then add self under the same
+        // lock. After this point new joiners will see us; we already have
+        // the existing snapshot to replay to the wire.
+        std::vector<VoiceRoomPeer> existing { };
+        {
 
-        std::cerr << "[join_voice] user=" << sess->user_id << " channel=" << req.channel_id() << " ssrc=" << assigned_ssrc << " relay=" << state.relay_host << ":" << state.relay_port << '\n';
+            std::scoped_lock<std::mutex> lock { state.voice_rooms_mu };
+            auto& room = state.voice_rooms[channel];
+            existing = room;
+            room.push_back({ sess->user_id, sess->session_id, assigned_ssrc });
 
-        // TODO(phase-3): track this peer in an in-memory voice_peers map
-        // keyed by channel_id, replay each existing peer to this joiner
-        // as a follow-up VoicePeerJoined, and publish a VoicePeerJoined
-        // to "voice:<channel>" so every other peer learns about the
-        // joiner. Audio still works in the meantime because the relay
-        // fans out by Packet.room_id without needing per-peer state on
-        // the gateway.
+        }
+
+        // 1. Self first (the SignalingClient protocol contract — caller
+        //    waits for its own entry to know the slot is ready).
+        send_voice_peer_joined(ws, channel, sess->user_id, state.relay_host, state.relay_port, assigned_ssrc);
+
+        // 2. Replay each existing peer to the joiner so the new client
+        //    learns who is already in the room.
+        for (const auto& peer : existing)
+        {
+
+            send_voice_peer_joined(ws, channel, peer.user_id, state.relay_host, state.relay_port, peer.ssrc);
+
+        }
+
+        // 3. Tell each existing peer about the new joiner.
+        for (const auto& peer : existing)
+        {
+
+            WebSocket* peer_ws { state.sessions->lookup(peer.session_id) };
+            if (peer_ws != nullptr) send_voice_peer_joined(peer_ws, channel, sess->user_id, state.relay_host, state.relay_port, assigned_ssrc);
+
+        }
+
+        std::cerr << "[join_voice] user=" << sess->user_id << " channel=" << channel << " ssrc=" << assigned_ssrc << " existing=" << existing.size() << " relay=" << state.relay_host << ":" << state.relay_port << '\n';
 
     }
 
-    void on_leave_voice(WebSocket* ws, const ::signaling::LeaveVoice& req)
+    void on_leave_voice(GatewayState& state, WebSocket* ws, const ::signaling::LeaveVoice& req)
     {
 
-        ws->unsubscribe("voice:" + req.channel_id());
-        // TODO: remove from voice_peers map, publish VoicePeerLeft.
+        leave_voice_room(state, ws, req.channel_id());
 
     }
 
@@ -487,7 +595,7 @@ namespace OpenSocialNet::Signaling
                 break;
 
             case ::signaling::Envelope::kLeaveVoice:
-                on_leave_voice(ws, envelope.leave_voice());
+                on_leave_voice(state, ws, envelope.leave_voice());
                 break;
 
             case ::signaling::Envelope::kHeartbeat:

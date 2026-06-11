@@ -37,7 +37,12 @@ namespace OpenSocialNet::Signaling
     void on_send_message(GatewayState& state, WebSocket* ws, const ::signaling::SendMessage& req);
     void on_fetch_history(GatewayState& state, WebSocket* ws, const ::signaling::FetchHistory& req);
     void on_join_voice(GatewayState& state, WebSocket* ws, const ::signaling::JoinVoice& req);
-    void on_leave_voice(WebSocket* ws, const ::signaling::LeaveVoice& req);
+    void on_leave_voice(GatewayState& state, WebSocket* ws, const ::signaling::LeaveVoice& req);
+
+    // Pull a session out of a voice room's membership list and broadcast
+    // VoicePeerLeft to whoever is left. Exposed so the WS close handler
+    // can call it without forging a LeaveVoice envelope.
+    void leave_voice_room(GatewayState& state, WebSocket* ws, const std::string& channel_id);
 
     // Top-level dispatcher: parse the frame, switch on which oneof case is
     // set. This switch is literally the entire protocol surface area of the

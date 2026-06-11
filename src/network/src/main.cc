@@ -409,6 +409,13 @@ int main()
             relay_port    = self_peer.port;
             assigned_ssrc = self_peer.ssrc;
 
+            // Kick off the background reader so VoicePeerJoined / Left
+            // for peers who arrive AFTER us show up in the [net-stats]
+            // line below. Heartbeats keep the gateway's 120s idleTimeout
+            // from dropping us mid-call; we send them from the main
+            // loop's tick further down.
+            signaling.start_event_reader();
+
         }
 
         OpenSocialNet::Network::UdpSender sender {};
@@ -485,6 +492,13 @@ int main()
         constexpr int keepalive_tick_interval { 2500 };
         int ticks_since_send { 0 };
 
+        // Signaling heartbeat. The gateway's uWS::App idleTimeout is 120s
+        // — without traffic the WS gets dropped mid-call. 60s gives us a
+        // comfy margin. Cheap, since the WS reader thread is already
+        // open; this is just one envelope every 6000 ticks.
+        constexpr int signaling_heartbeat_tick_interval { 6000 };
+        int ticks_since_heartbeat { 0 };
+
         while (running)
         {
 
@@ -525,11 +539,24 @@ int main()
 
             }
 
+            // Signaling heartbeat — only if we actually went through the
+            // gateway. The WebSocket connection is otherwise idle as far
+            // as uWS can tell, since all audio traffic is on a separate
+            // UDP socket.
+            if (!signaling_host.empty() and ++ticks_since_heartbeat >= signaling_heartbeat_tick_interval)
+            {
+
+                signaling.send_heartbeat();
+                ticks_since_heartbeat = 0;
+
+            }
+
             if (++ticks_since_stats >= stats_tick_interval)
             {
 
                 const auto snap { jitter_buffer.stats().snapshot() };
-                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu\n",
+                const std::size_t live_peers { signaling_host.empty() ? std::size_t { 0 } : signaling.peers().size() };
+                std::printf("[net-stats] obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu peers=%zu\n",
                     static_cast<unsigned long long>(snap.packets_observed),
                     static_cast<unsigned long long>(snap.packets_lost),
                     static_cast<unsigned long long>(snap.packets_out_of_order),
@@ -540,7 +567,8 @@ int main()
                     static_cast<unsigned long long>(jitter_buffer.adaptation_count()),
                     static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
                     packets_sent,
-                    static_cast<unsigned long long>(plc.concealments_emitted()));
+                    static_cast<unsigned long long>(plc.concealments_emitted()),
+                    live_peers);
                 ticks_since_stats = 0;
 
             }

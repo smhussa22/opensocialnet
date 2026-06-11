@@ -132,10 +132,24 @@ int main()
 
             auto* sess = ws->getUserData();
 
+            // If the connection dropped while still in a voice room, run
+            // the same teardown LeaveVoice would: remove from the room's
+            // membership list and broadcast VoicePeerLeft to remaining
+            // peers. Has to happen BEFORE sessions->remove so the
+            // remaining-peers lookup loop inside leave_voice_room can
+            // still see other rooms' sessions (and it's fine that this
+            // session's own lookup would race with the upcoming remove —
+            // we never look ourselves up here).
+            if (!sess->current_voice_room_id.empty())
+            {
+
+                OpenSocialNet::Signaling::leave_voice_room(state, ws, sess->current_voice_room_id);
+
+            }
+
             // TODO(native-voice): once the relay's gRPC control plane is wired,
-            // if sess->current_voice_room_id is non-empty here we have to tell
-            // the relay to drop this peer's UDP endpoint from its room table,
-            // otherwise the room leaks an inactive subscriber forever.
+            // also tell the relay to drop this peer's UDP endpoint from its
+            // room table so it doesn't fan out to a now-dead subscriber.
 
             if (!sess->session_id.empty()) state.sessions->remove(sess->session_id);
             // uWS automatically unsubscribes the socket from all topics on

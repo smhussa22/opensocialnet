@@ -8,7 +8,10 @@
 
 // cpp stdlib headers
 #include <atomic>
+#include <mutex>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 // 3rd party headers
 #include <uwebsockets/App.h>
@@ -22,6 +25,20 @@ namespace OpenSocialNet::Signaling
     class ScyllaClient;
     class KafkaBus;
     class SessionRegistry;
+
+
+    // One entry in a voice room's membership list. session_id is the
+    // primary key — it's stable per connection and is what SessionRegistry
+    // hands ws*'s back through. user_id + ssrc travel out on the wire to
+    // every other peer so they can render the room contents.
+    struct VoiceRoomPeer
+    {
+
+        std::string   user_id    { }; // who this peer is (echoed in VoicePeerJoined)
+        std::string   session_id { }; // lookup key for sessions->lookup() when we need the ws*
+        std::uint32_t ssrc       { 0 }; // ssrc handed to this peer at join time
+
+    };
 
 
     // Central holder of process-wide runtime references that every WS
@@ -51,6 +68,16 @@ namespace OpenSocialNet::Signaling
         // Atomic so multi-thread futures don't race; in practice today
         // only the WS loop touches it.
         std::atomic<std::uint32_t> next_ssrc { 1 };
+
+        // channel_id -> ordered list of peers currently joined to that
+        // voice room. Used by on_join_voice to replay existing peers to
+        // the joiner + to broadcast joins / leaves to existing peers.
+        // All mutation goes through voice_rooms_mu — currently only the
+        // WS loop touches it, but the relay-control plane is going to
+        // grow worker threads soon and this is the index they'd race
+        // against.
+        std::mutex                                                          voice_rooms_mu { };
+        std::unordered_map<std::string, std::vector<VoiceRoomPeer>>         voice_rooms    { };
 
     };
 
