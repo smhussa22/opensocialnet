@@ -7,3 +7,4 @@ cmake-build-debug/
 CLAUDE.md
 goals.md
 *.pem
+*.wav
