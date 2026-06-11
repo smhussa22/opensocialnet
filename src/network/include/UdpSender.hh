@@ -53,6 +53,12 @@ namespace OpenSocialNet::Network
         void set_room_id(std::uint64_t room_id) noexcept { m_room_id = room_id; }
         void set_peer_id(std::uint32_t peer_id) noexcept { m_peer_id = peer_id; }
 
+        // Override the random-at-construction ssrc with the value the
+        // signaling server assigned during JoinVoice. No-op when called
+        // with 0 (preserves the random fallback when there's no signaling
+        // round-trip — useful for loopback tests).
+        void set_ssrc(std::uint32_t new_ssrc) noexcept { if (new_ssrc != 0) ssrc = new_ssrc; }
+
         // Stamps the full header (version / flags / payload_type stay as the
         // caller set them) with room_id, peer_id, ssrc, seq, ts, then sends.
         // Returns true if all bytes were sent.

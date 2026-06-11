@@ -36,7 +36,7 @@ namespace OpenSocialNet::Signaling
     void on_heartbeat(WebSocket* ws, const ::signaling::Heartbeat& heartbeat);
     void on_send_message(GatewayState& state, WebSocket* ws, const ::signaling::SendMessage& req);
     void on_fetch_history(GatewayState& state, WebSocket* ws, const ::signaling::FetchHistory& req);
-    void on_join_voice(WebSocket* ws, const ::signaling::JoinVoice& req);
+    void on_join_voice(GatewayState& state, WebSocket* ws, const ::signaling::JoinVoice& req);
     void on_leave_voice(WebSocket* ws, const ::signaling::LeaveVoice& req);
 
     // Top-level dispatcher: parse the frame, switch on which oneof case is

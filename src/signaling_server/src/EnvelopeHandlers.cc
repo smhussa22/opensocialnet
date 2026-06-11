@@ -402,22 +402,46 @@ namespace OpenSocialNet::Signaling
 
     }
 
-    void on_join_voice(WebSocket* ws, const ::signaling::JoinVoice& req)
+    void on_join_voice(GatewayState& state, WebSocket* ws, const ::signaling::JoinVoice& req)
     {
 
         auto* sess = ws->getUserData();
         if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
 
         // Voice events get their own topic so they don't intermingle with
-        // chat consumers on the same channel_id.
+        // chat consumers on the same channel_id. Subscribing here means
+        // future VoicePeerJoined / VoicePeerLeft broadcasts published to
+        // "voice:<channel>" will fan out to this socket automatically.
         ws->subscribe("voice:" + req.channel_id());
+        sess->current_voice_room_id = req.channel_id();
 
-        // TODO: record this peer in an in-memory voice_peers[channel_id] map
-        // (user_id, ip, port, ssrc). The ip/port comes from where the client
-        // says its UDP socket is, sent via an extended JoinVoice -- or via
-        // a STUN-style probe to the UDP receiver. Then publish VoicePeerJoined
-        // to "voice:<channel>" so every existing peer learns about the joiner,
-        // and reply directly to ws with one VoicePeerJoined per existing peer.
+        // Reply with the joiner's OWN VoicePeerJoined entry. The client
+        // uses peer.ip/port as its UDP destination (the relay's public
+        // endpoint, configured server-side via OSN_RELAY_HOST/PORT) and
+        // peer.ssrc to stamp into outgoing Packet headers. Per the
+        // SignalingClient contract: SELF comes first in the JoinVoice
+        // reply sequence.
+        const std::uint32_t assigned_ssrc { state.next_ssrc.fetch_add(1, std::memory_order_relaxed) };
+
+        ::signaling::Envelope out { };
+        auto* event = out.mutable_voice_peer_joined();
+        event->set_channel_id(req.channel_id());
+        auto* peer = event->mutable_peer();
+        peer->set_user_id(sess->user_id);
+        peer->set_ip(state.relay_host);
+        peer->set_port(state.relay_port);
+        peer->set_ssrc(assigned_ssrc);
+        send_envelope(ws, out);
+
+        std::cerr << "[join_voice] user=" << sess->user_id << " channel=" << req.channel_id() << " ssrc=" << assigned_ssrc << " relay=" << state.relay_host << ":" << state.relay_port << '\n';
+
+        // TODO(phase-3): track this peer in an in-memory voice_peers map
+        // keyed by channel_id, replay each existing peer to this joiner
+        // as a follow-up VoicePeerJoined, and publish a VoicePeerJoined
+        // to "voice:<channel>" so every other peer learns about the
+        // joiner. Audio still works in the meantime because the relay
+        // fans out by Packet.room_id without needing per-peer state on
+        // the gateway.
 
     }
 
@@ -458,8 +482,8 @@ namespace OpenSocialNet::Signaling
                 on_fetch_history(state, ws, envelope.fetch_history()); 
                 break;
 
-            case ::signaling::Envelope::kJoinVoice: 
-                on_join_voice(ws, envelope.join_voice()); 
+            case ::signaling::Envelope::kJoinVoice:
+                on_join_voice(state, ws, envelope.join_voice());
                 break;
 
             case ::signaling::Envelope::kLeaveVoice:

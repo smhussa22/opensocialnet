@@ -42,6 +42,30 @@ int main()
 
     }
 
+    // Relay endpoint shipped back to every JoinVoice. Required for voice
+    // to actually work; if unset, the server still runs but JoinVoice
+    // replies with an empty IP and clients will fail to dial out.
+    if (const char* relay = std::getenv("OSN_RELAY_HOST"); relay && *relay)
+    {
+
+        state.relay_host = relay;
+
+    }
+    else
+    {
+
+        std::cerr << "[voice] WARNING: OSN_RELAY_HOST is unset; JoinVoice replies will be unusable\n";
+
+    }
+    if (const char* relay_port = std::getenv("OSN_RELAY_PORT"); relay_port && *relay_port)
+    {
+
+        try { state.relay_port = static_cast<std::uint16_t>(std::stoi(relay_port)); }
+        catch (...) { std::cerr << "[voice] OSN_RELAY_PORT not a number, keeping default " << state.relay_port << '\n'; }
+
+    }
+    std::cerr << "[voice] relay endpoint = " << state.relay_host << ":" << state.relay_port << '\n';
+
     // small env-or-default helper: env var wins if set + non-empty, else use the fallback.
     const auto env_or = [](const char* name, const char* fallback) -> std::string
     {

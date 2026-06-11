@@ -121,39 +121,6 @@ struct SendMessageDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
     PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SendMessageDefaultTypeInternal _SendMessage_default_instance_;
 
-inline constexpr Sdp::Impl_::Impl_(
-    ::_pbi::ConstantInitialized) noexcept
-      : _cached_size_{0},
-        room_id_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()),
-        sdp_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()),
-        type_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()) {}
-
-template <typename>
-PROTOBUF_CONSTEXPR Sdp::Sdp(::_pbi::ConstantInitialized)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(Sdp_class_data_.base()),
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(),
-#endif  // PROTOBUF_CUSTOM_VTABLE
-      _impl_(::_pbi::ConstantInitialized()) {
-}
-struct SdpDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR SdpDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
-  ~SdpDefaultTypeInternal() {}
-  union {
-    Sdp _instance;
-  };
-};
-
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
-    PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 SdpDefaultTypeInternal _Sdp_default_instance_;
-
 inline constexpr Ready::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
@@ -181,33 +148,6 @@ struct ReadyDefaultTypeInternal {
 
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
     PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ReadyDefaultTypeInternal _Ready_default_instance_;
-
-inline constexpr PeerReady::Impl_::Impl_(
-    ::_pbi::ConstantInitialized) noexcept
-      : _cached_size_{0},
-        room_id_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()) {}
-
-template <typename>
-PROTOBUF_CONSTEXPR PeerReady::PeerReady(::_pbi::ConstantInitialized)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(PeerReady_class_data_.base()),
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(),
-#endif  // PROTOBUF_CUSTOM_VTABLE
-      _impl_(::_pbi::ConstantInitialized()) {
-}
-struct PeerReadyDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR PeerReadyDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
-  ~PeerReadyDefaultTypeInternal() {}
-  union {
-    PeerReady _instance;
-  };
-};
-
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
-    PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 PeerReadyDefaultTypeInternal _PeerReady_default_instance_;
 
 inline constexpr LeaveVoice::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
@@ -262,39 +202,6 @@ struct JoinVoiceDefaultTypeInternal {
 
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
     PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 JoinVoiceDefaultTypeInternal _JoinVoice_default_instance_;
-
-inline constexpr IceCandidate::Impl_::Impl_(
-    ::_pbi::ConstantInitialized) noexcept
-      : _cached_size_{0},
-        room_id_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()),
-        candidate_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()),
-        mid_(
-            &::google::protobuf::internal::fixed_address_empty_string,
-            ::_pbi::ConstantInitialized()) {}
-
-template <typename>
-PROTOBUF_CONSTEXPR IceCandidate::IceCandidate(::_pbi::ConstantInitialized)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(IceCandidate_class_data_.base()),
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(),
-#endif  // PROTOBUF_CUSTOM_VTABLE
-      _impl_(::_pbi::ConstantInitialized()) {
-}
-struct IceCandidateDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR IceCandidateDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
-  ~IceCandidateDefaultTypeInternal() {}
-  union {
-    IceCandidate _instance;
-  };
-};
-
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
-    PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 IceCandidateDefaultTypeInternal _IceCandidate_default_instance_;
 
 inline constexpr Hello::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
@@ -571,7 +478,7 @@ const ::uint32_t
         0x085, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_._has_bits_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_._oneof_case_[0]),
-        24, // hasbit index offset
+        19, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.seq_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
@@ -587,17 +494,7 @@ const ::uint32_t
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         0,
-        ~0u,
-        ~0u,
-        ~0u,
-        ~0u,
-        ~0u,
         ~0u,
         ~0u,
         ~0u,
@@ -713,29 +610,6 @@ const ::uint32_t
         0,
         1,
         0x081, // bitmap
-        PROTOBUF_FIELD_OFFSET(::signaling::Sdp, _impl_._has_bits_),
-        6, // hasbit index offset
-        PROTOBUF_FIELD_OFFSET(::signaling::Sdp, _impl_.room_id_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Sdp, _impl_.sdp_),
-        PROTOBUF_FIELD_OFFSET(::signaling::Sdp, _impl_.type_),
-        0,
-        1,
-        2,
-        0x081, // bitmap
-        PROTOBUF_FIELD_OFFSET(::signaling::IceCandidate, _impl_._has_bits_),
-        6, // hasbit index offset
-        PROTOBUF_FIELD_OFFSET(::signaling::IceCandidate, _impl_.room_id_),
-        PROTOBUF_FIELD_OFFSET(::signaling::IceCandidate, _impl_.candidate_),
-        PROTOBUF_FIELD_OFFSET(::signaling::IceCandidate, _impl_.mid_),
-        0,
-        1,
-        2,
-        0x081, // bitmap
-        PROTOBUF_FIELD_OFFSET(::signaling::PeerReady, _impl_._has_bits_),
-        4, // hasbit index offset
-        PROTOBUF_FIELD_OFFSET(::signaling::PeerReady, _impl_.room_id_),
-        0,
-        0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::ErrorEvent, _impl_._has_bits_),
         5, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::ErrorEvent, _impl_.code_),
@@ -747,23 +621,20 @@ const ::uint32_t
 static const ::_pbi::MigrationSchema
     schemas[] ABSL_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
         {0, sizeof(::signaling::Envelope)},
-        {43, sizeof(::signaling::Hello)},
-        {50, sizeof(::signaling::Ready)},
-        {57, sizeof(::signaling::Heartbeat)},
-        {62, sizeof(::signaling::HeartbeatAck)},
-        {67, sizeof(::signaling::SendMessage)},
-        {76, sizeof(::signaling::ChatMessageEvent)},
-        {91, sizeof(::signaling::FetchHistory)},
-        {102, sizeof(::signaling::HistoryResponse)},
-        {109, sizeof(::signaling::JoinVoice)},
-        {114, sizeof(::signaling::LeaveVoice)},
-        {119, sizeof(::signaling::VoicePeer)},
-        {130, sizeof(::signaling::VoicePeerJoined)},
-        {137, sizeof(::signaling::VoicePeerLeft)},
-        {144, sizeof(::signaling::Sdp)},
-        {153, sizeof(::signaling::IceCandidate)},
-        {162, sizeof(::signaling::PeerReady)},
-        {167, sizeof(::signaling::ErrorEvent)},
+        {33, sizeof(::signaling::Hello)},
+        {40, sizeof(::signaling::Ready)},
+        {47, sizeof(::signaling::Heartbeat)},
+        {52, sizeof(::signaling::HeartbeatAck)},
+        {57, sizeof(::signaling::SendMessage)},
+        {66, sizeof(::signaling::ChatMessageEvent)},
+        {81, sizeof(::signaling::FetchHistory)},
+        {92, sizeof(::signaling::HistoryResponse)},
+        {99, sizeof(::signaling::JoinVoice)},
+        {104, sizeof(::signaling::LeaveVoice)},
+        {109, sizeof(::signaling::VoicePeer)},
+        {120, sizeof(::signaling::VoicePeerJoined)},
+        {127, sizeof(::signaling::VoicePeerLeft)},
+        {134, sizeof(::signaling::ErrorEvent)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::signaling::_Envelope_default_instance_._instance,
@@ -780,14 +651,11 @@ static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::signaling::_VoicePeer_default_instance_._instance,
     &::signaling::_VoicePeerJoined_default_instance_._instance,
     &::signaling::_VoicePeerLeft_default_instance_._instance,
-    &::signaling::_Sdp_default_instance_._instance,
-    &::signaling::_IceCandidate_default_instance_._instance,
-    &::signaling::_PeerReady_default_instance_._instance,
     &::signaling::_ErrorEvent_default_instance_._instance,
 };
 const char descriptor_table_protodef_signaling_2eproto[] ABSL_ATTRIBUTE_SECTION_VARIABLE(
     protodesc_cold) = {
-    "\n\017signaling.proto\022\tsignaling\"\354\006\n\010Envelop"
+    "\n\017signaling.proto\022\tsignaling\"\212\005\n\010Envelop"
     "e\022\013\n\003seq\030\001 \001(\004\022!\n\005hello\030\n \001(\0132\020.signalin"
     "g.HelloH\000\022)\n\theartbeat\030\013 \001(\0132\024.signaling"
     ".HeartbeatH\000\022.\n\014send_message\030\014 \001(\0132\026.sig"
@@ -795,59 +663,49 @@ const char descriptor_table_protodef_signaling_2eproto[] ABSL_ATTRIBUTE_SECTION_
     "\001(\0132\027.signaling.FetchHistoryH\000\022*\n\njoin_v"
     "oice\030\016 \001(\0132\024.signaling.JoinVoiceH\000\022,\n\013le"
     "ave_voice\030\017 \001(\0132\025.signaling.LeaveVoiceH\000"
-    "\022#\n\tsdp_offer\030\020 \001(\0132\016.signaling.SdpH\000\0220\n"
-    "\rice_candidate\030\021 \001(\0132\027.signaling.IceCand"
-    "idateH\000\022!\n\005ready\030\036 \001(\0132\020.signaling.Ready"
-    "H\000\0220\n\rheartbeat_ack\030\037 \001(\0132\027.signaling.He"
-    "artbeatAckH\000\0229\n\022chat_message_event\030  \001(\013"
-    "2\033.signaling.ChatMessageEventH\000\0226\n\020histo"
-    "ry_response\030! \001(\0132\032.signaling.HistoryRes"
-    "ponseH\000\0227\n\021voice_peer_joined\030\" \001(\0132\032.sig"
-    "naling.VoicePeerJoinedH\000\0223\n\017voice_peer_l"
-    "eft\030# \001(\0132\030.signaling.VoicePeerLeftH\000\022&\n"
-    "\005error\030$ \001(\0132\025.signaling.ErrorEventH\000\022$\n"
-    "\nsdp_answer\030% \001(\0132\016.signaling.SdpH\000\0227\n\024s"
-    "erver_ice_candidate\030& \001(\0132\027.signaling.Ic"
-    "eCandidateH\000\022*\n\npeer_ready\030\' \001(\0132\024.signa"
-    "ling.PeerReadyH\000B\t\n\007payload\",\n\005Hello\022\017\n\007"
-    "user_id\030\001 \001(\t\022\022\n\nauth_token\030\002 \001(\t\"0\n\005Rea"
-    "dy\022\022\n\nsession_id\030\001 \001(\t\022\023\n\013channel_ids\030\002 "
-    "\003(\t\"\032\n\tHeartbeat\022\r\n\005nonce\030\001 \001(\004\"\035\n\014Heart"
-    "beatAck\022\r\n\005nonce\030\001 \001(\004\"H\n\013SendMessage\022\024\n"
-    "\014client_nonce\030\001 \001(\t\022\022\n\nchannel_id\030\002 \001(\t\022"
-    "\017\n\007content\030\003 \001(\t\"\212\001\n\020ChatMessageEvent\022\022\n"
-    "\nmessage_id\030\001 \001(\t\022\024\n\014client_nonce\030\002 \001(\t\022"
-    "\022\n\nchannel_id\030\003 \001(\t\022\021\n\tsender_id\030\004 \001(\t\022\017"
-    "\n\007content\030\005 \001(\t\022\024\n\014timestamp_ms\030\006 \001(\003\"`\n"
-    "\014FetchHistory\022\022\n\nrequest_id\030\001 \001(\t\022\022\n\ncha"
-    "nnel_id\030\002 \001(\t\022\031\n\021before_message_id\030\003 \001(\t"
-    "\022\r\n\005limit\030\004 \001(\r\"P\n\017HistoryResponse\022\022\n\nre"
-    "quest_id\030\001 \001(\t\022)\n\004msgs\030\002 \003(\0132\033.signaling"
-    ".ChatMessageEvent\"\037\n\tJoinVoice\022\022\n\nchanne"
-    "l_id\030\001 \001(\t\" \n\nLeaveVoice\022\022\n\nchannel_id\030\001"
-    " \001(\t\"D\n\tVoicePeer\022\017\n\007user_id\030\001 \001(\t\022\n\n\002ip"
-    "\030\002 \001(\t\022\014\n\004port\030\003 \001(\r\022\014\n\004ssrc\030\004 \001(\r\"I\n\017Vo"
-    "icePeerJoined\022\022\n\nchannel_id\030\001 \001(\t\022\"\n\004pee"
-    "r\030\002 \001(\0132\024.signaling.VoicePeer\"4\n\rVoicePe"
-    "erLeft\022\022\n\nchannel_id\030\001 \001(\t\022\017\n\007user_id\030\002 "
-    "\001(\t\"1\n\003Sdp\022\017\n\007room_id\030\001 \001(\t\022\013\n\003sdp\030\002 \001(\t"
-    "\022\014\n\004type\030\003 \001(\t\"\?\n\014IceCandidate\022\017\n\007room_i"
-    "d\030\001 \001(\t\022\021\n\tcandidate\030\002 \001(\t\022\013\n\003mid\030\003 \001(\t\""
-    "\034\n\tPeerReady\022\017\n\007room_id\030\001 \001(\t\"+\n\nErrorEv"
-    "ent\022\014\n\004code\030\001 \001(\r\022\017\n\007message\030\002 \001(\tb\006prot"
-    "o3"
+    "\022!\n\005ready\030\036 \001(\0132\020.signaling.ReadyH\000\0220\n\rh"
+    "eartbeat_ack\030\037 \001(\0132\027.signaling.Heartbeat"
+    "AckH\000\0229\n\022chat_message_event\030  \001(\0132\033.sign"
+    "aling.ChatMessageEventH\000\0226\n\020history_resp"
+    "onse\030! \001(\0132\032.signaling.HistoryResponseH\000"
+    "\0227\n\021voice_peer_joined\030\" \001(\0132\032.signaling."
+    "VoicePeerJoinedH\000\0223\n\017voice_peer_left\030# \001"
+    "(\0132\030.signaling.VoicePeerLeftH\000\022&\n\005error\030"
+    "$ \001(\0132\025.signaling.ErrorEventH\000B\t\n\007payloa"
+    "d\",\n\005Hello\022\017\n\007user_id\030\001 \001(\t\022\022\n\nauth_toke"
+    "n\030\002 \001(\t\"0\n\005Ready\022\022\n\nsession_id\030\001 \001(\t\022\023\n\013"
+    "channel_ids\030\002 \003(\t\"\032\n\tHeartbeat\022\r\n\005nonce\030"
+    "\001 \001(\004\"\035\n\014HeartbeatAck\022\r\n\005nonce\030\001 \001(\004\"H\n\013"
+    "SendMessage\022\024\n\014client_nonce\030\001 \001(\t\022\022\n\ncha"
+    "nnel_id\030\002 \001(\t\022\017\n\007content\030\003 \001(\t\"\212\001\n\020ChatM"
+    "essageEvent\022\022\n\nmessage_id\030\001 \001(\t\022\024\n\014clien"
+    "t_nonce\030\002 \001(\t\022\022\n\nchannel_id\030\003 \001(\t\022\021\n\tsen"
+    "der_id\030\004 \001(\t\022\017\n\007content\030\005 \001(\t\022\024\n\014timesta"
+    "mp_ms\030\006 \001(\003\"`\n\014FetchHistory\022\022\n\nrequest_i"
+    "d\030\001 \001(\t\022\022\n\nchannel_id\030\002 \001(\t\022\031\n\021before_me"
+    "ssage_id\030\003 \001(\t\022\r\n\005limit\030\004 \001(\r\"P\n\017History"
+    "Response\022\022\n\nrequest_id\030\001 \001(\t\022)\n\004msgs\030\002 \003"
+    "(\0132\033.signaling.ChatMessageEvent\"\037\n\tJoinV"
+    "oice\022\022\n\nchannel_id\030\001 \001(\t\" \n\nLeaveVoice\022\022"
+    "\n\nchannel_id\030\001 \001(\t\"D\n\tVoicePeer\022\017\n\007user_"
+    "id\030\001 \001(\t\022\n\n\002ip\030\002 \001(\t\022\014\n\004port\030\003 \001(\r\022\014\n\004ss"
+    "rc\030\004 \001(\r\"I\n\017VoicePeerJoined\022\022\n\nchannel_i"
+    "d\030\001 \001(\t\022\"\n\004peer\030\002 \001(\0132\024.signaling.VoiceP"
+    "eer\"4\n\rVoicePeerLeft\022\022\n\nchannel_id\030\001 \001(\t"
+    "\022\017\n\007user_id\030\002 \001(\t\"+\n\nErrorEvent\022\014\n\004code\030"
+    "\001 \001(\r\022\017\n\007message\030\002 \001(\tb\006proto3"
 };
 static ::absl::once_flag descriptor_table_signaling_2eproto_once;
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_signaling_2eproto = {
     false,
     false,
-    1922,
+    1550,
     descriptor_table_protodef_signaling_2eproto,
     "signaling.proto",
     &descriptor_table_signaling_2eproto_once,
     nullptr,
     0,
-    18,
+    15,
     schemas,
     file_default_instances,
     TableStruct_signaling_2eproto::offsets,
@@ -945,32 +803,6 @@ void Envelope::set_allocated_leave_voice(::signaling::LeaveVoice* PROTOBUF_NULLA
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.leave_voice)
 }
-void Envelope::set_allocated_sdp_offer(::signaling::Sdp* PROTOBUF_NULLABLE sdp_offer) {
-  ::google::protobuf::Arena* message_arena = GetArena();
-  clear_payload();
-  if (sdp_offer) {
-    ::google::protobuf::Arena* submessage_arena = sdp_offer->GetArena();
-    if (message_arena != submessage_arena) {
-      sdp_offer = ::google::protobuf::internal::GetOwnedMessage(message_arena, sdp_offer, submessage_arena);
-    }
-    set_has_sdp_offer();
-    _impl_.payload_.sdp_offer_ = sdp_offer;
-  }
-  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.sdp_offer)
-}
-void Envelope::set_allocated_ice_candidate(::signaling::IceCandidate* PROTOBUF_NULLABLE ice_candidate) {
-  ::google::protobuf::Arena* message_arena = GetArena();
-  clear_payload();
-  if (ice_candidate) {
-    ::google::protobuf::Arena* submessage_arena = ice_candidate->GetArena();
-    if (message_arena != submessage_arena) {
-      ice_candidate = ::google::protobuf::internal::GetOwnedMessage(message_arena, ice_candidate, submessage_arena);
-    }
-    set_has_ice_candidate();
-    _impl_.payload_.ice_candidate_ = ice_candidate;
-  }
-  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.ice_candidate)
-}
 void Envelope::set_allocated_ready(::signaling::Ready* PROTOBUF_NULLABLE ready) {
   ::google::protobuf::Arena* message_arena = GetArena();
   clear_payload();
@@ -1062,45 +894,6 @@ void Envelope::set_allocated_error(::signaling::ErrorEvent* PROTOBUF_NULLABLE er
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.error)
 }
-void Envelope::set_allocated_sdp_answer(::signaling::Sdp* PROTOBUF_NULLABLE sdp_answer) {
-  ::google::protobuf::Arena* message_arena = GetArena();
-  clear_payload();
-  if (sdp_answer) {
-    ::google::protobuf::Arena* submessage_arena = sdp_answer->GetArena();
-    if (message_arena != submessage_arena) {
-      sdp_answer = ::google::protobuf::internal::GetOwnedMessage(message_arena, sdp_answer, submessage_arena);
-    }
-    set_has_sdp_answer();
-    _impl_.payload_.sdp_answer_ = sdp_answer;
-  }
-  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.sdp_answer)
-}
-void Envelope::set_allocated_server_ice_candidate(::signaling::IceCandidate* PROTOBUF_NULLABLE server_ice_candidate) {
-  ::google::protobuf::Arena* message_arena = GetArena();
-  clear_payload();
-  if (server_ice_candidate) {
-    ::google::protobuf::Arena* submessage_arena = server_ice_candidate->GetArena();
-    if (message_arena != submessage_arena) {
-      server_ice_candidate = ::google::protobuf::internal::GetOwnedMessage(message_arena, server_ice_candidate, submessage_arena);
-    }
-    set_has_server_ice_candidate();
-    _impl_.payload_.server_ice_candidate_ = server_ice_candidate;
-  }
-  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.server_ice_candidate)
-}
-void Envelope::set_allocated_peer_ready(::signaling::PeerReady* PROTOBUF_NULLABLE peer_ready) {
-  ::google::protobuf::Arena* message_arena = GetArena();
-  clear_payload();
-  if (peer_ready) {
-    ::google::protobuf::Arena* submessage_arena = peer_ready->GetArena();
-    if (message_arena != submessage_arena) {
-      peer_ready = ::google::protobuf::internal::GetOwnedMessage(message_arena, peer_ready, submessage_arena);
-    }
-    set_has_peer_ready();
-    _impl_.payload_.peer_ready_ = peer_ready;
-  }
-  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.peer_ready)
-}
 Envelope::Envelope(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
     : ::google::protobuf::Message(arena, Envelope_class_data_.base()) {
@@ -1154,12 +947,6 @@ Envelope::Envelope(
       case kLeaveVoice:
         _impl_.payload_.leave_voice_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.leave_voice_);
         break;
-      case kSdpOffer:
-        _impl_.payload_.sdp_offer_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.sdp_offer_);
-        break;
-      case kIceCandidate:
-        _impl_.payload_.ice_candidate_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.ice_candidate_);
-        break;
       case kReady:
         _impl_.payload_.ready_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.ready_);
         break;
@@ -1180,15 +967,6 @@ Envelope::Envelope(
         break;
       case kError:
         _impl_.payload_.error_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.error_);
-        break;
-      case kSdpAnswer:
-        _impl_.payload_.sdp_answer_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.sdp_answer_);
-        break;
-      case kServerIceCandidate:
-        _impl_.payload_.server_ice_candidate_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.server_ice_candidate_);
-        break;
-      case kPeerReady:
-        _impl_.payload_.peer_ready_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.peer_ready_);
         break;
   }
 
@@ -1274,22 +1052,6 @@ void Envelope::clear_payload() {
       }
       break;
     }
-    case kSdpOffer: {
-      if (GetArena() == nullptr) {
-        delete _impl_.payload_.sdp_offer_;
-      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
-        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.sdp_offer_);
-      }
-      break;
-    }
-    case kIceCandidate: {
-      if (GetArena() == nullptr) {
-        delete _impl_.payload_.ice_candidate_;
-      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
-        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.ice_candidate_);
-      }
-      break;
-    }
     case kReady: {
       if (GetArena() == nullptr) {
         delete _impl_.payload_.ready_;
@@ -1346,30 +1108,6 @@ void Envelope::clear_payload() {
       }
       break;
     }
-    case kSdpAnswer: {
-      if (GetArena() == nullptr) {
-        delete _impl_.payload_.sdp_answer_;
-      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
-        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.sdp_answer_);
-      }
-      break;
-    }
-    case kServerIceCandidate: {
-      if (GetArena() == nullptr) {
-        delete _impl_.payload_.server_ice_candidate_;
-      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
-        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.server_ice_candidate_);
-      }
-      break;
-    }
-    case kPeerReady: {
-      if (GetArena() == nullptr) {
-        delete _impl_.payload_.peer_ready_;
-      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
-        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.peer_ready_);
-      }
-      break;
-    }
     case PAYLOAD_NOT_SET: {
       break;
     }
@@ -1421,17 +1159,17 @@ Envelope::GetClassData() const {
   return Envelope_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 19, 18, 0, 7>
+const ::_pbi::TcParseTable<0, 14, 13, 0, 7>
 Envelope::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(Envelope, _impl_._has_bits_),
     0, // no _extensions_
-    39, 0,  // max_field_number, fast_idx_mask
+    36, 0,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    536740350,  // skipmap
+    536838654,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    19,  // num_field_entries
-    18,  // num_aux_entries
+    14,  // num_field_entries
+    13,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     Envelope_class_data_.base(),
     nullptr,  // post_loop_handler
@@ -1446,7 +1184,7 @@ Envelope::_table_ = {
       PROTOBUF_FIELD_OFFSET(Envelope, _impl_.seq_)}},
   }}, {{
     33, 0, 1,
-    65408, 12,
+    65520, 10,
     65535, 65535
   }}, {{
     // uint64 seq = 1;
@@ -1463,30 +1201,20 @@ Envelope::_table_ = {
     {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.join_voice_), _Internal::kOneofCaseOffset + 0, 4, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.LeaveVoice leave_voice = 15;
     {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.leave_voice_), _Internal::kOneofCaseOffset + 0, 5, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
-    // .signaling.Sdp sdp_offer = 16;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.sdp_offer_), _Internal::kOneofCaseOffset + 0, 6, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
-    // .signaling.IceCandidate ice_candidate = 17;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.ice_candidate_), _Internal::kOneofCaseOffset + 0, 7, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.Ready ready = 30;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.ready_), _Internal::kOneofCaseOffset + 0, 8, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.ready_), _Internal::kOneofCaseOffset + 0, 6, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.HeartbeatAck heartbeat_ack = 31;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.heartbeat_ack_), _Internal::kOneofCaseOffset + 0, 9, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.heartbeat_ack_), _Internal::kOneofCaseOffset + 0, 7, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.ChatMessageEvent chat_message_event = 32;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.chat_message_event_), _Internal::kOneofCaseOffset + 0, 10, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.chat_message_event_), _Internal::kOneofCaseOffset + 0, 8, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.HistoryResponse history_response = 33;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.history_response_), _Internal::kOneofCaseOffset + 0, 11, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.history_response_), _Internal::kOneofCaseOffset + 0, 9, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.VoicePeerJoined voice_peer_joined = 34;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_joined_), _Internal::kOneofCaseOffset + 0, 12, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_joined_), _Internal::kOneofCaseOffset + 0, 10, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.VoicePeerLeft voice_peer_left = 35;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_left_), _Internal::kOneofCaseOffset + 0, 13, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_left_), _Internal::kOneofCaseOffset + 0, 11, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.ErrorEvent error = 36;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.error_), _Internal::kOneofCaseOffset + 0, 14, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
-    // .signaling.Sdp sdp_answer = 37;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.sdp_answer_), _Internal::kOneofCaseOffset + 0, 15, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
-    // .signaling.IceCandidate server_ice_candidate = 38;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.server_ice_candidate_), _Internal::kOneofCaseOffset + 0, 16, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
-    // .signaling.PeerReady peer_ready = 39;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.peer_ready_), _Internal::kOneofCaseOffset + 0, 17, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.error_), _Internal::kOneofCaseOffset + 0, 12, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::signaling::Hello>()},
@@ -1495,8 +1223,6 @@ Envelope::_table_ = {
       {::_pbi::TcParser::GetTable<::signaling::FetchHistory>()},
       {::_pbi::TcParser::GetTable<::signaling::JoinVoice>()},
       {::_pbi::TcParser::GetTable<::signaling::LeaveVoice>()},
-      {::_pbi::TcParser::GetTable<::signaling::Sdp>()},
-      {::_pbi::TcParser::GetTable<::signaling::IceCandidate>()},
       {::_pbi::TcParser::GetTable<::signaling::Ready>()},
       {::_pbi::TcParser::GetTable<::signaling::HeartbeatAck>()},
       {::_pbi::TcParser::GetTable<::signaling::ChatMessageEvent>()},
@@ -1504,9 +1230,6 @@ Envelope::_table_ = {
       {::_pbi::TcParser::GetTable<::signaling::VoicePeerJoined>()},
       {::_pbi::TcParser::GetTable<::signaling::VoicePeerLeft>()},
       {::_pbi::TcParser::GetTable<::signaling::ErrorEvent>()},
-      {::_pbi::TcParser::GetTable<::signaling::Sdp>()},
-      {::_pbi::TcParser::GetTable<::signaling::IceCandidate>()},
-      {::_pbi::TcParser::GetTable<::signaling::PeerReady>()},
   }},
   {{
   }},
@@ -1589,18 +1312,6 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
           stream);
       break;
     }
-    case kSdpOffer: {
-      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
-          16, *this_._impl_.payload_.sdp_offer_, this_._impl_.payload_.sdp_offer_->GetCachedSize(), target,
-          stream);
-      break;
-    }
-    case kIceCandidate: {
-      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
-          17, *this_._impl_.payload_.ice_candidate_, this_._impl_.payload_.ice_candidate_->GetCachedSize(), target,
-          stream);
-      break;
-    }
     case kReady: {
       target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
           30, *this_._impl_.payload_.ready_, this_._impl_.payload_.ready_->GetCachedSize(), target,
@@ -1640,24 +1351,6 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
     case kError: {
       target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
           36, *this_._impl_.payload_.error_, this_._impl_.payload_.error_->GetCachedSize(), target,
-          stream);
-      break;
-    }
-    case kSdpAnswer: {
-      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
-          37, *this_._impl_.payload_.sdp_answer_, this_._impl_.payload_.sdp_answer_->GetCachedSize(), target,
-          stream);
-      break;
-    }
-    case kServerIceCandidate: {
-      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
-          38, *this_._impl_.payload_.server_ice_candidate_, this_._impl_.payload_.server_ice_candidate_->GetCachedSize(), target,
-          stream);
-      break;
-    }
-    case kPeerReady: {
-      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
-          39, *this_._impl_.payload_.peer_ready_, this_._impl_.payload_.peer_ready_->GetCachedSize(), target,
           stream);
       break;
     }
@@ -1734,18 +1427,6 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.leave_voice_);
       break;
     }
-    // .signaling.Sdp sdp_offer = 16;
-    case kSdpOffer: {
-      total_size += 2 +
-                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.sdp_offer_);
-      break;
-    }
-    // .signaling.IceCandidate ice_candidate = 17;
-    case kIceCandidate: {
-      total_size += 2 +
-                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.ice_candidate_);
-      break;
-    }
     // .signaling.Ready ready = 30;
     case kReady: {
       total_size += 2 +
@@ -1786,24 +1467,6 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
     case kError: {
       total_size += 2 +
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.error_);
-      break;
-    }
-    // .signaling.Sdp sdp_answer = 37;
-    case kSdpAnswer: {
-      total_size += 2 +
-                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.sdp_answer_);
-      break;
-    }
-    // .signaling.IceCandidate server_ice_candidate = 38;
-    case kServerIceCandidate: {
-      total_size += 2 +
-                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.server_ice_candidate_);
-      break;
-    }
-    // .signaling.PeerReady peer_ready = 39;
-    case kPeerReady: {
-      total_size += 2 +
-                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.peer_ready_);
       break;
     }
     case PAYLOAD_NOT_SET: {
@@ -1895,22 +1558,6 @@ void Envelope::MergeImpl(::google::protobuf::MessageLite& to_msg,
         }
         break;
       }
-      case kSdpOffer: {
-        if (oneof_needs_init) {
-          _this->_impl_.payload_.sdp_offer_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.sdp_offer_);
-        } else {
-          _this->_impl_.payload_.sdp_offer_->MergeFrom(*from._impl_.payload_.sdp_offer_);
-        }
-        break;
-      }
-      case kIceCandidate: {
-        if (oneof_needs_init) {
-          _this->_impl_.payload_.ice_candidate_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.ice_candidate_);
-        } else {
-          _this->_impl_.payload_.ice_candidate_->MergeFrom(*from._impl_.payload_.ice_candidate_);
-        }
-        break;
-      }
       case kReady: {
         if (oneof_needs_init) {
           _this->_impl_.payload_.ready_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.ready_);
@@ -1964,30 +1611,6 @@ void Envelope::MergeImpl(::google::protobuf::MessageLite& to_msg,
           _this->_impl_.payload_.error_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.error_);
         } else {
           _this->_impl_.payload_.error_->MergeFrom(*from._impl_.payload_.error_);
-        }
-        break;
-      }
-      case kSdpAnswer: {
-        if (oneof_needs_init) {
-          _this->_impl_.payload_.sdp_answer_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.sdp_answer_);
-        } else {
-          _this->_impl_.payload_.sdp_answer_->MergeFrom(*from._impl_.payload_.sdp_answer_);
-        }
-        break;
-      }
-      case kServerIceCandidate: {
-        if (oneof_needs_init) {
-          _this->_impl_.payload_.server_ice_candidate_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.server_ice_candidate_);
-        } else {
-          _this->_impl_.payload_.server_ice_candidate_->MergeFrom(*from._impl_.payload_.server_ice_candidate_);
-        }
-        break;
-      }
-      case kPeerReady: {
-        if (oneof_needs_init) {
-          _this->_impl_.payload_.peer_ready_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.peer_ready_);
-        } else {
-          _this->_impl_.payload_.peer_ready_->MergeFrom(*from._impl_.payload_.peer_ready_);
         }
         break;
       }
@@ -6308,1003 +5931,6 @@ void VoicePeerLeft::InternalSwap(VoicePeerLeft* PROTOBUF_RESTRICT PROTOBUF_NONNU
 }
 
 ::google::protobuf::Metadata VoicePeerLeft::GetMetadata() const {
-  return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
-}
-// ===================================================================
-
-class Sdp::_Internal {
- public:
-  using HasBits =
-      decltype(::std::declval<Sdp>()._impl_._has_bits_);
-  static constexpr ::int32_t kHasBitsOffset =
-      8 * PROTOBUF_FIELD_OFFSET(Sdp, _impl_._has_bits_);
-};
-
-Sdp::Sdp(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, Sdp_class_data_.base()) {
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena) {
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  SharedCtor(arena);
-  // @@protoc_insertion_point(arena_constructor:signaling.Sdp)
-}
-PROTOBUF_NDEBUG_INLINE Sdp::Impl_::Impl_(
-    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
-    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
-    [[maybe_unused]] const ::signaling::Sdp& from_msg)
-      : _has_bits_{from._has_bits_},
-        _cached_size_{0},
-        room_id_(arena, from.room_id_),
-        sdp_(arena, from.sdp_),
-        type_(arena, from.type_) {}
-
-Sdp::Sdp(
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
-    const Sdp& from)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, Sdp_class_data_.base()) {
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena) {
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  Sdp* const _this = this;
-  (void)_this;
-  _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
-      from._internal_metadata_);
-  new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
-
-  // @@protoc_insertion_point(copy_constructor:signaling.Sdp)
-}
-PROTOBUF_NDEBUG_INLINE Sdp::Impl_::Impl_(
-    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
-    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-      : _cached_size_{0},
-        room_id_(arena),
-        sdp_(arena),
-        type_(arena) {}
-
-inline void Sdp::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
-  new (&_impl_) Impl_(internal_visibility(), arena);
-}
-Sdp::~Sdp() {
-  // @@protoc_insertion_point(destructor:signaling.Sdp)
-  SharedDtor(*this);
-}
-inline void Sdp::SharedDtor(MessageLite& self) {
-  Sdp& this_ = static_cast<Sdp&>(self);
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    this_.CheckHasBitConsistency();
-  }
-  this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
-  ABSL_DCHECK(this_.GetArena() == nullptr);
-  this_._impl_.room_id_.Destroy();
-  this_._impl_.sdp_.Destroy();
-  this_._impl_.type_.Destroy();
-  this_._impl_.~Impl_();
-}
-
-inline void* PROTOBUF_NONNULL Sdp::PlacementNew_(
-    const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena) {
-  return ::new (mem) Sdp(arena);
-}
-constexpr auto Sdp::InternalNewImpl_() {
-  return ::google::protobuf::internal::MessageCreator::CopyInit(sizeof(Sdp),
-                                            alignof(Sdp));
-}
-constexpr auto Sdp::InternalGenerateClassData_() {
-  return ::google::protobuf::internal::ClassDataFull{
-      ::google::protobuf::internal::ClassData{
-          &_Sdp_default_instance_._instance,
-          &_table_.header,
-          nullptr,  // OnDemandRegisterArenaDtor
-          nullptr,  // IsInitialized
-          &Sdp::MergeImpl,
-          ::google::protobuf::Message::GetNewImpl<Sdp>(),
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-          &Sdp::SharedDtor,
-          ::google::protobuf::Message::GetClearImpl<Sdp>(), &Sdp::ByteSizeLong,
-              &Sdp::_InternalSerialize,
-#endif  // PROTOBUF_CUSTOM_VTABLE
-          PROTOBUF_FIELD_OFFSET(Sdp, _impl_._cached_size_),
-          false,
-      },
-      &Sdp::kDescriptorMethods,
-      &descriptor_table_signaling_2eproto,
-      nullptr,  // tracker
-  };
-}
-
-PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 const
-    ::google::protobuf::internal::ClassDataFull Sdp_class_data_ =
-        Sdp::InternalGenerateClassData_();
-
-PROTOBUF_ATTRIBUTE_WEAK const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL
-Sdp::GetClassData() const {
-  ::google::protobuf::internal::PrefetchToLocalCache(&Sdp_class_data_);
-  ::google::protobuf::internal::PrefetchToLocalCache(Sdp_class_data_.tc_table);
-  return Sdp_class_data_.base();
-}
-PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 3, 0, 36, 2>
-Sdp::_table_ = {
-  {
-    PROTOBUF_FIELD_OFFSET(Sdp, _impl_._has_bits_),
-    0, // no _extensions_
-    3, 24,  // max_field_number, fast_idx_mask
-    offsetof(decltype(_table_), field_lookup_table),
-    4294967288,  // skipmap
-    offsetof(decltype(_table_), field_entries),
-    3,  // num_field_entries
-    0,  // num_aux_entries
-    offsetof(decltype(_table_), field_names),  // no aux_entries
-    Sdp_class_data_.base(),
-    nullptr,  // post_loop_handler
-    ::_pbi::TcParser::GenericFallback,  // fallback
-    #ifdef PROTOBUF_PREFETCH_PARSE_TABLE
-    ::_pbi::TcParser::GetTable<::signaling::Sdp>(),  // to_prefetch
-    #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
-  }, {{
-    {::_pbi::TcParser::MiniParse, {}},
-    // string room_id = 1;
-    {::_pbi::TcParser::FastUS1,
-     {10, 0, 0,
-      PROTOBUF_FIELD_OFFSET(Sdp, _impl_.room_id_)}},
-    // string sdp = 2;
-    {::_pbi::TcParser::FastUS1,
-     {18, 1, 0,
-      PROTOBUF_FIELD_OFFSET(Sdp, _impl_.sdp_)}},
-    // string type = 3;
-    {::_pbi::TcParser::FastUS1,
-     {26, 2, 0,
-      PROTOBUF_FIELD_OFFSET(Sdp, _impl_.type_)}},
-  }}, {{
-    65535, 65535
-  }}, {{
-    // string room_id = 1;
-    {PROTOBUF_FIELD_OFFSET(Sdp, _impl_.room_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-    // string sdp = 2;
-    {PROTOBUF_FIELD_OFFSET(Sdp, _impl_.sdp_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-    // string type = 3;
-    {PROTOBUF_FIELD_OFFSET(Sdp, _impl_.type_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-  }},
-  // no aux_entries
-  {{
-    "\15\7\3\4\0\0\0\0"
-    "signaling.Sdp"
-    "room_id"
-    "sdp"
-    "type"
-  }},
-};
-PROTOBUF_NOINLINE void Sdp::Clear() {
-// @@protoc_insertion_point(message_clear_start:signaling.Sdp)
-  ::google::protobuf::internal::TSanWrite(&_impl_);
-  ::uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      _impl_.room_id_.ClearNonDefaultToEmpty();
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-      _impl_.sdp_.ClearNonDefaultToEmpty();
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-      _impl_.type_.ClearNonDefaultToEmpty();
-    }
-  }
-  _impl_._has_bits_.Clear();
-  _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
-}
-
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-::uint8_t* PROTOBUF_NONNULL Sdp::_InternalSerialize(
-    const ::google::protobuf::MessageLite& base, ::uint8_t* PROTOBUF_NONNULL target,
-    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) {
-  const Sdp& this_ = static_cast<const Sdp&>(base);
-#else   // PROTOBUF_CUSTOM_VTABLE
-::uint8_t* PROTOBUF_NONNULL Sdp::_InternalSerialize(
-    ::uint8_t* PROTOBUF_NONNULL target,
-    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
-  const Sdp& this_ = *this;
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    this_.CheckHasBitConsistency();
-  }
-  // @@protoc_insertion_point(serialize_to_array_start:signaling.Sdp)
-  ::uint32_t cached_has_bits = 0;
-  (void)cached_has_bits;
-
-  cached_has_bits = this_._impl_._has_bits_[0];
-  // string room_id = 1;
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!this_._internal_room_id().empty()) {
-      const ::std::string& _s = this_._internal_room_id();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.Sdp.room_id");
-      target = stream->WriteStringMaybeAliased(1, _s, target);
-    }
-  }
-
-  // string sdp = 2;
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-    if (!this_._internal_sdp().empty()) {
-      const ::std::string& _s = this_._internal_sdp();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.Sdp.sdp");
-      target = stream->WriteStringMaybeAliased(2, _s, target);
-    }
-  }
-
-  // string type = 3;
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-    if (!this_._internal_type().empty()) {
-      const ::std::string& _s = this_._internal_type();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.Sdp.type");
-      target = stream->WriteStringMaybeAliased(3, _s, target);
-    }
-  }
-
-  if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
-    target =
-        ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
-            this_._internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance), target, stream);
-  }
-  // @@protoc_insertion_point(serialize_to_array_end:signaling.Sdp)
-  return target;
-}
-
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-::size_t Sdp::ByteSizeLong(const MessageLite& base) {
-  const Sdp& this_ = static_cast<const Sdp&>(base);
-#else   // PROTOBUF_CUSTOM_VTABLE
-::size_t Sdp::ByteSizeLong() const {
-  const Sdp& this_ = *this;
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  // @@protoc_insertion_point(message_byte_size_start:signaling.Sdp)
-  ::size_t total_size = 0;
-
-  ::uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void)cached_has_bits;
-
-  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
-  cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
-    // string room_id = 1;
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      if (!this_._internal_room_id().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_room_id());
-      }
-    }
-    // string sdp = 2;
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-      if (!this_._internal_sdp().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_sdp());
-      }
-    }
-    // string type = 3;
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-      if (!this_._internal_type().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_type());
-      }
-    }
-  }
-  return this_.MaybeComputeUnknownFieldsSize(total_size,
-                                             &this_._impl_._cached_size_);
-}
-
-void Sdp::MergeImpl(::google::protobuf::MessageLite& to_msg,
-                            const ::google::protobuf::MessageLite& from_msg) {
-   auto* const _this =
-      static_cast<Sdp*>(&to_msg);
-  auto& from = static_cast<const Sdp&>(from_msg);
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    from.CheckHasBitConsistency();
-  }
-  // @@protoc_insertion_point(class_specific_merge_from_start:signaling.Sdp)
-  ABSL_DCHECK_NE(&from, _this);
-  ::uint32_t cached_has_bits = 0;
-  (void)cached_has_bits;
-
-  cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      if (!from._internal_room_id().empty()) {
-        _this->_internal_set_room_id(from._internal_room_id());
-      } else {
-        if (_this->_impl_.room_id_.IsDefault()) {
-          _this->_internal_set_room_id("");
-        }
-      }
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-      if (!from._internal_sdp().empty()) {
-        _this->_internal_set_sdp(from._internal_sdp());
-      } else {
-        if (_this->_impl_.sdp_.IsDefault()) {
-          _this->_internal_set_sdp("");
-        }
-      }
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-      if (!from._internal_type().empty()) {
-        _this->_internal_set_type(from._internal_type());
-      } else {
-        if (_this->_impl_.type_.IsDefault()) {
-          _this->_internal_set_type("");
-        }
-      }
-    }
-  }
-  _this->_impl_._has_bits_[0] |= cached_has_bits;
-  _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
-      from._internal_metadata_);
-}
-
-void Sdp::CopyFrom(const Sdp& from) {
-  // @@protoc_insertion_point(class_specific_copy_from_start:signaling.Sdp)
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-
-void Sdp::InternalSwap(Sdp* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
-  using ::std::swap;
-  auto* arena = GetArena();
-  ABSL_DCHECK_EQ(arena, other->GetArena());
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.room_id_, &other->_impl_.room_id_, arena);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.sdp_, &other->_impl_.sdp_, arena);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.type_, &other->_impl_.type_, arena);
-}
-
-::google::protobuf::Metadata Sdp::GetMetadata() const {
-  return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
-}
-// ===================================================================
-
-class IceCandidate::_Internal {
- public:
-  using HasBits =
-      decltype(::std::declval<IceCandidate>()._impl_._has_bits_);
-  static constexpr ::int32_t kHasBitsOffset =
-      8 * PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_._has_bits_);
-};
-
-IceCandidate::IceCandidate(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, IceCandidate_class_data_.base()) {
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena) {
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  SharedCtor(arena);
-  // @@protoc_insertion_point(arena_constructor:signaling.IceCandidate)
-}
-PROTOBUF_NDEBUG_INLINE IceCandidate::Impl_::Impl_(
-    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
-    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
-    [[maybe_unused]] const ::signaling::IceCandidate& from_msg)
-      : _has_bits_{from._has_bits_},
-        _cached_size_{0},
-        room_id_(arena, from.room_id_),
-        candidate_(arena, from.candidate_),
-        mid_(arena, from.mid_) {}
-
-IceCandidate::IceCandidate(
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
-    const IceCandidate& from)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, IceCandidate_class_data_.base()) {
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena) {
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  IceCandidate* const _this = this;
-  (void)_this;
-  _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
-      from._internal_metadata_);
-  new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
-
-  // @@protoc_insertion_point(copy_constructor:signaling.IceCandidate)
-}
-PROTOBUF_NDEBUG_INLINE IceCandidate::Impl_::Impl_(
-    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
-    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-      : _cached_size_{0},
-        room_id_(arena),
-        candidate_(arena),
-        mid_(arena) {}
-
-inline void IceCandidate::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
-  new (&_impl_) Impl_(internal_visibility(), arena);
-}
-IceCandidate::~IceCandidate() {
-  // @@protoc_insertion_point(destructor:signaling.IceCandidate)
-  SharedDtor(*this);
-}
-inline void IceCandidate::SharedDtor(MessageLite& self) {
-  IceCandidate& this_ = static_cast<IceCandidate&>(self);
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    this_.CheckHasBitConsistency();
-  }
-  this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
-  ABSL_DCHECK(this_.GetArena() == nullptr);
-  this_._impl_.room_id_.Destroy();
-  this_._impl_.candidate_.Destroy();
-  this_._impl_.mid_.Destroy();
-  this_._impl_.~Impl_();
-}
-
-inline void* PROTOBUF_NONNULL IceCandidate::PlacementNew_(
-    const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena) {
-  return ::new (mem) IceCandidate(arena);
-}
-constexpr auto IceCandidate::InternalNewImpl_() {
-  return ::google::protobuf::internal::MessageCreator::CopyInit(sizeof(IceCandidate),
-                                            alignof(IceCandidate));
-}
-constexpr auto IceCandidate::InternalGenerateClassData_() {
-  return ::google::protobuf::internal::ClassDataFull{
-      ::google::protobuf::internal::ClassData{
-          &_IceCandidate_default_instance_._instance,
-          &_table_.header,
-          nullptr,  // OnDemandRegisterArenaDtor
-          nullptr,  // IsInitialized
-          &IceCandidate::MergeImpl,
-          ::google::protobuf::Message::GetNewImpl<IceCandidate>(),
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-          &IceCandidate::SharedDtor,
-          ::google::protobuf::Message::GetClearImpl<IceCandidate>(), &IceCandidate::ByteSizeLong,
-              &IceCandidate::_InternalSerialize,
-#endif  // PROTOBUF_CUSTOM_VTABLE
-          PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_._cached_size_),
-          false,
-      },
-      &IceCandidate::kDescriptorMethods,
-      &descriptor_table_signaling_2eproto,
-      nullptr,  // tracker
-  };
-}
-
-PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 const
-    ::google::protobuf::internal::ClassDataFull IceCandidate_class_data_ =
-        IceCandidate::InternalGenerateClassData_();
-
-PROTOBUF_ATTRIBUTE_WEAK const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL
-IceCandidate::GetClassData() const {
-  ::google::protobuf::internal::PrefetchToLocalCache(&IceCandidate_class_data_);
-  ::google::protobuf::internal::PrefetchToLocalCache(IceCandidate_class_data_.tc_table);
-  return IceCandidate_class_data_.base();
-}
-PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 3, 0, 50, 2>
-IceCandidate::_table_ = {
-  {
-    PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_._has_bits_),
-    0, // no _extensions_
-    3, 24,  // max_field_number, fast_idx_mask
-    offsetof(decltype(_table_), field_lookup_table),
-    4294967288,  // skipmap
-    offsetof(decltype(_table_), field_entries),
-    3,  // num_field_entries
-    0,  // num_aux_entries
-    offsetof(decltype(_table_), field_names),  // no aux_entries
-    IceCandidate_class_data_.base(),
-    nullptr,  // post_loop_handler
-    ::_pbi::TcParser::GenericFallback,  // fallback
-    #ifdef PROTOBUF_PREFETCH_PARSE_TABLE
-    ::_pbi::TcParser::GetTable<::signaling::IceCandidate>(),  // to_prefetch
-    #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
-  }, {{
-    {::_pbi::TcParser::MiniParse, {}},
-    // string room_id = 1;
-    {::_pbi::TcParser::FastUS1,
-     {10, 0, 0,
-      PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_.room_id_)}},
-    // string candidate = 2;
-    {::_pbi::TcParser::FastUS1,
-     {18, 1, 0,
-      PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_.candidate_)}},
-    // string mid = 3;
-    {::_pbi::TcParser::FastUS1,
-     {26, 2, 0,
-      PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_.mid_)}},
-  }}, {{
-    65535, 65535
-  }}, {{
-    // string room_id = 1;
-    {PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_.room_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-    // string candidate = 2;
-    {PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_.candidate_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-    // string mid = 3;
-    {PROTOBUF_FIELD_OFFSET(IceCandidate, _impl_.mid_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-  }},
-  // no aux_entries
-  {{
-    "\26\7\11\3\0\0\0\0"
-    "signaling.IceCandidate"
-    "room_id"
-    "candidate"
-    "mid"
-  }},
-};
-PROTOBUF_NOINLINE void IceCandidate::Clear() {
-// @@protoc_insertion_point(message_clear_start:signaling.IceCandidate)
-  ::google::protobuf::internal::TSanWrite(&_impl_);
-  ::uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      _impl_.room_id_.ClearNonDefaultToEmpty();
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-      _impl_.candidate_.ClearNonDefaultToEmpty();
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-      _impl_.mid_.ClearNonDefaultToEmpty();
-    }
-  }
-  _impl_._has_bits_.Clear();
-  _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
-}
-
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-::uint8_t* PROTOBUF_NONNULL IceCandidate::_InternalSerialize(
-    const ::google::protobuf::MessageLite& base, ::uint8_t* PROTOBUF_NONNULL target,
-    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) {
-  const IceCandidate& this_ = static_cast<const IceCandidate&>(base);
-#else   // PROTOBUF_CUSTOM_VTABLE
-::uint8_t* PROTOBUF_NONNULL IceCandidate::_InternalSerialize(
-    ::uint8_t* PROTOBUF_NONNULL target,
-    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
-  const IceCandidate& this_ = *this;
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    this_.CheckHasBitConsistency();
-  }
-  // @@protoc_insertion_point(serialize_to_array_start:signaling.IceCandidate)
-  ::uint32_t cached_has_bits = 0;
-  (void)cached_has_bits;
-
-  cached_has_bits = this_._impl_._has_bits_[0];
-  // string room_id = 1;
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!this_._internal_room_id().empty()) {
-      const ::std::string& _s = this_._internal_room_id();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.IceCandidate.room_id");
-      target = stream->WriteStringMaybeAliased(1, _s, target);
-    }
-  }
-
-  // string candidate = 2;
-  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-    if (!this_._internal_candidate().empty()) {
-      const ::std::string& _s = this_._internal_candidate();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.IceCandidate.candidate");
-      target = stream->WriteStringMaybeAliased(2, _s, target);
-    }
-  }
-
-  // string mid = 3;
-  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-    if (!this_._internal_mid().empty()) {
-      const ::std::string& _s = this_._internal_mid();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.IceCandidate.mid");
-      target = stream->WriteStringMaybeAliased(3, _s, target);
-    }
-  }
-
-  if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
-    target =
-        ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
-            this_._internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance), target, stream);
-  }
-  // @@protoc_insertion_point(serialize_to_array_end:signaling.IceCandidate)
-  return target;
-}
-
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-::size_t IceCandidate::ByteSizeLong(const MessageLite& base) {
-  const IceCandidate& this_ = static_cast<const IceCandidate&>(base);
-#else   // PROTOBUF_CUSTOM_VTABLE
-::size_t IceCandidate::ByteSizeLong() const {
-  const IceCandidate& this_ = *this;
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  // @@protoc_insertion_point(message_byte_size_start:signaling.IceCandidate)
-  ::size_t total_size = 0;
-
-  ::uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void)cached_has_bits;
-
-  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
-  cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
-    // string room_id = 1;
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      if (!this_._internal_room_id().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_room_id());
-      }
-    }
-    // string candidate = 2;
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-      if (!this_._internal_candidate().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_candidate());
-      }
-    }
-    // string mid = 3;
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-      if (!this_._internal_mid().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_mid());
-      }
-    }
-  }
-  return this_.MaybeComputeUnknownFieldsSize(total_size,
-                                             &this_._impl_._cached_size_);
-}
-
-void IceCandidate::MergeImpl(::google::protobuf::MessageLite& to_msg,
-                            const ::google::protobuf::MessageLite& from_msg) {
-   auto* const _this =
-      static_cast<IceCandidate*>(&to_msg);
-  auto& from = static_cast<const IceCandidate&>(from_msg);
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    from.CheckHasBitConsistency();
-  }
-  // @@protoc_insertion_point(class_specific_merge_from_start:signaling.IceCandidate)
-  ABSL_DCHECK_NE(&from, _this);
-  ::uint32_t cached_has_bits = 0;
-  (void)cached_has_bits;
-
-  cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      if (!from._internal_room_id().empty()) {
-        _this->_internal_set_room_id(from._internal_room_id());
-      } else {
-        if (_this->_impl_.room_id_.IsDefault()) {
-          _this->_internal_set_room_id("");
-        }
-      }
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
-      if (!from._internal_candidate().empty()) {
-        _this->_internal_set_candidate(from._internal_candidate());
-      } else {
-        if (_this->_impl_.candidate_.IsDefault()) {
-          _this->_internal_set_candidate("");
-        }
-      }
-    }
-    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
-      if (!from._internal_mid().empty()) {
-        _this->_internal_set_mid(from._internal_mid());
-      } else {
-        if (_this->_impl_.mid_.IsDefault()) {
-          _this->_internal_set_mid("");
-        }
-      }
-    }
-  }
-  _this->_impl_._has_bits_[0] |= cached_has_bits;
-  _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
-      from._internal_metadata_);
-}
-
-void IceCandidate::CopyFrom(const IceCandidate& from) {
-  // @@protoc_insertion_point(class_specific_copy_from_start:signaling.IceCandidate)
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-
-void IceCandidate::InternalSwap(IceCandidate* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
-  using ::std::swap;
-  auto* arena = GetArena();
-  ABSL_DCHECK_EQ(arena, other->GetArena());
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.room_id_, &other->_impl_.room_id_, arena);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.candidate_, &other->_impl_.candidate_, arena);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.mid_, &other->_impl_.mid_, arena);
-}
-
-::google::protobuf::Metadata IceCandidate::GetMetadata() const {
-  return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
-}
-// ===================================================================
-
-class PeerReady::_Internal {
- public:
-  using HasBits =
-      decltype(::std::declval<PeerReady>()._impl_._has_bits_);
-  static constexpr ::int32_t kHasBitsOffset =
-      8 * PROTOBUF_FIELD_OFFSET(PeerReady, _impl_._has_bits_);
-};
-
-PeerReady::PeerReady(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, PeerReady_class_data_.base()) {
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena) {
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  SharedCtor(arena);
-  // @@protoc_insertion_point(arena_constructor:signaling.PeerReady)
-}
-PROTOBUF_NDEBUG_INLINE PeerReady::Impl_::Impl_(
-    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
-    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
-    [[maybe_unused]] const ::signaling::PeerReady& from_msg)
-      : _has_bits_{from._has_bits_},
-        _cached_size_{0},
-        room_id_(arena, from.room_id_) {}
-
-PeerReady::PeerReady(
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
-    const PeerReady& from)
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-    : ::google::protobuf::Message(arena, PeerReady_class_data_.base()) {
-#else   // PROTOBUF_CUSTOM_VTABLE
-    : ::google::protobuf::Message(arena) {
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  PeerReady* const _this = this;
-  (void)_this;
-  _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
-      from._internal_metadata_);
-  new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
-
-  // @@protoc_insertion_point(copy_constructor:signaling.PeerReady)
-}
-PROTOBUF_NDEBUG_INLINE PeerReady::Impl_::Impl_(
-    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
-    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
-      : _cached_size_{0},
-        room_id_(arena) {}
-
-inline void PeerReady::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
-  new (&_impl_) Impl_(internal_visibility(), arena);
-}
-PeerReady::~PeerReady() {
-  // @@protoc_insertion_point(destructor:signaling.PeerReady)
-  SharedDtor(*this);
-}
-inline void PeerReady::SharedDtor(MessageLite& self) {
-  PeerReady& this_ = static_cast<PeerReady&>(self);
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    this_.CheckHasBitConsistency();
-  }
-  this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
-  ABSL_DCHECK(this_.GetArena() == nullptr);
-  this_._impl_.room_id_.Destroy();
-  this_._impl_.~Impl_();
-}
-
-inline void* PROTOBUF_NONNULL PeerReady::PlacementNew_(
-    const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
-    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena) {
-  return ::new (mem) PeerReady(arena);
-}
-constexpr auto PeerReady::InternalNewImpl_() {
-  return ::google::protobuf::internal::MessageCreator::CopyInit(sizeof(PeerReady),
-                                            alignof(PeerReady));
-}
-constexpr auto PeerReady::InternalGenerateClassData_() {
-  return ::google::protobuf::internal::ClassDataFull{
-      ::google::protobuf::internal::ClassData{
-          &_PeerReady_default_instance_._instance,
-          &_table_.header,
-          nullptr,  // OnDemandRegisterArenaDtor
-          nullptr,  // IsInitialized
-          &PeerReady::MergeImpl,
-          ::google::protobuf::Message::GetNewImpl<PeerReady>(),
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-          &PeerReady::SharedDtor,
-          ::google::protobuf::Message::GetClearImpl<PeerReady>(), &PeerReady::ByteSizeLong,
-              &PeerReady::_InternalSerialize,
-#endif  // PROTOBUF_CUSTOM_VTABLE
-          PROTOBUF_FIELD_OFFSET(PeerReady, _impl_._cached_size_),
-          false,
-      },
-      &PeerReady::kDescriptorMethods,
-      &descriptor_table_signaling_2eproto,
-      nullptr,  // tracker
-  };
-}
-
-PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 const
-    ::google::protobuf::internal::ClassDataFull PeerReady_class_data_ =
-        PeerReady::InternalGenerateClassData_();
-
-PROTOBUF_ATTRIBUTE_WEAK const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL
-PeerReady::GetClassData() const {
-  ::google::protobuf::internal::PrefetchToLocalCache(&PeerReady_class_data_);
-  ::google::protobuf::internal::PrefetchToLocalCache(PeerReady_class_data_.tc_table);
-  return PeerReady_class_data_.base();
-}
-PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 1, 0, 35, 2>
-PeerReady::_table_ = {
-  {
-    PROTOBUF_FIELD_OFFSET(PeerReady, _impl_._has_bits_),
-    0, // no _extensions_
-    1, 0,  // max_field_number, fast_idx_mask
-    offsetof(decltype(_table_), field_lookup_table),
-    4294967294,  // skipmap
-    offsetof(decltype(_table_), field_entries),
-    1,  // num_field_entries
-    0,  // num_aux_entries
-    offsetof(decltype(_table_), field_names),  // no aux_entries
-    PeerReady_class_data_.base(),
-    nullptr,  // post_loop_handler
-    ::_pbi::TcParser::GenericFallback,  // fallback
-    #ifdef PROTOBUF_PREFETCH_PARSE_TABLE
-    ::_pbi::TcParser::GetTable<::signaling::PeerReady>(),  // to_prefetch
-    #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
-  }, {{
-    // string room_id = 1;
-    {::_pbi::TcParser::FastUS1,
-     {10, 0, 0,
-      PROTOBUF_FIELD_OFFSET(PeerReady, _impl_.room_id_)}},
-  }}, {{
-    65535, 65535
-  }}, {{
-    // string room_id = 1;
-    {PROTOBUF_FIELD_OFFSET(PeerReady, _impl_.room_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
-  }},
-  // no aux_entries
-  {{
-    "\23\7\0\0\0\0\0\0"
-    "signaling.PeerReady"
-    "room_id"
-  }},
-};
-PROTOBUF_NOINLINE void PeerReady::Clear() {
-// @@protoc_insertion_point(message_clear_start:signaling.PeerReady)
-  ::google::protobuf::internal::TSanWrite(&_impl_);
-  ::uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void) cached_has_bits;
-
-  cached_has_bits = _impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    _impl_.room_id_.ClearNonDefaultToEmpty();
-  }
-  _impl_._has_bits_.Clear();
-  _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
-}
-
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-::uint8_t* PROTOBUF_NONNULL PeerReady::_InternalSerialize(
-    const ::google::protobuf::MessageLite& base, ::uint8_t* PROTOBUF_NONNULL target,
-    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) {
-  const PeerReady& this_ = static_cast<const PeerReady&>(base);
-#else   // PROTOBUF_CUSTOM_VTABLE
-::uint8_t* PROTOBUF_NONNULL PeerReady::_InternalSerialize(
-    ::uint8_t* PROTOBUF_NONNULL target,
-    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
-  const PeerReady& this_ = *this;
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    this_.CheckHasBitConsistency();
-  }
-  // @@protoc_insertion_point(serialize_to_array_start:signaling.PeerReady)
-  ::uint32_t cached_has_bits = 0;
-  (void)cached_has_bits;
-
-  cached_has_bits = this_._impl_._has_bits_[0];
-  // string room_id = 1;
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!this_._internal_room_id().empty()) {
-      const ::std::string& _s = this_._internal_room_id();
-      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.PeerReady.room_id");
-      target = stream->WriteStringMaybeAliased(1, _s, target);
-    }
-  }
-
-  if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
-    target =
-        ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
-            this_._internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance), target, stream);
-  }
-  // @@protoc_insertion_point(serialize_to_array_end:signaling.PeerReady)
-  return target;
-}
-
-#if defined(PROTOBUF_CUSTOM_VTABLE)
-::size_t PeerReady::ByteSizeLong(const MessageLite& base) {
-  const PeerReady& this_ = static_cast<const PeerReady&>(base);
-#else   // PROTOBUF_CUSTOM_VTABLE
-::size_t PeerReady::ByteSizeLong() const {
-  const PeerReady& this_ = *this;
-#endif  // PROTOBUF_CUSTOM_VTABLE
-  // @@protoc_insertion_point(message_byte_size_start:signaling.PeerReady)
-  ::size_t total_size = 0;
-
-  ::uint32_t cached_has_bits = 0;
-  // Prevent compiler warnings about cached_has_bits being unused
-  (void)cached_has_bits;
-
-   {
-    // string room_id = 1;
-    cached_has_bits = this_._impl_._has_bits_[0];
-    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-      if (!this_._internal_room_id().empty()) {
-        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
-                                        this_._internal_room_id());
-      }
-    }
-  }
-  return this_.MaybeComputeUnknownFieldsSize(total_size,
-                                             &this_._impl_._cached_size_);
-}
-
-void PeerReady::MergeImpl(::google::protobuf::MessageLite& to_msg,
-                            const ::google::protobuf::MessageLite& from_msg) {
-   auto* const _this =
-      static_cast<PeerReady*>(&to_msg);
-  auto& from = static_cast<const PeerReady&>(from_msg);
-  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
-    from.CheckHasBitConsistency();
-  }
-  // @@protoc_insertion_point(class_specific_merge_from_start:signaling.PeerReady)
-  ABSL_DCHECK_NE(&from, _this);
-  ::uint32_t cached_has_bits = 0;
-  (void)cached_has_bits;
-
-  cached_has_bits = from._impl_._has_bits_[0];
-  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
-    if (!from._internal_room_id().empty()) {
-      _this->_internal_set_room_id(from._internal_room_id());
-    } else {
-      if (_this->_impl_.room_id_.IsDefault()) {
-        _this->_internal_set_room_id("");
-      }
-    }
-  }
-  _this->_impl_._has_bits_[0] |= cached_has_bits;
-  _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
-      from._internal_metadata_);
-}
-
-void PeerReady::CopyFrom(const PeerReady& from) {
-  // @@protoc_insertion_point(class_specific_copy_from_start:signaling.PeerReady)
-  if (&from == this) return;
-  Clear();
-  MergeFrom(from);
-}
-
-
-void PeerReady::InternalSwap(PeerReady* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
-  using ::std::swap;
-  auto* arena = GetArena();
-  ABSL_DCHECK_EQ(arena, other->GetArena());
-  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
-  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.room_id_, &other->_impl_.room_id_, arena);
-}
-
-::google::protobuf::Metadata PeerReady::GetMetadata() const {
   return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
 }
 // ===================================================================

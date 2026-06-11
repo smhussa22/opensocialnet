@@ -31,6 +31,7 @@
 #include "SpscQueue.hh"
 #include "LossSim.hh"
 #include "AudioPlc.hh"
+#include "SignalingClient.hh"
 
 // Pull SIM_* env vars at startup. Empty or unparseable falls back to default
 // so the sim stays bypassed unless the caller asked for it.
@@ -350,15 +351,65 @@ int main()
         }
         std::cout << "[main] capture init ok\n";
 
-        // Network endpoint config. Single-machine loopback uses the defaults
-        // (talks to itself on 127.0.0.1:50100); pointing at the EC2 relay
-        // means OSN_RELAY_HOST=<public ip> and OSN_LOCAL_PORT=<some free
-        // local port>. Sender + receiver share one socket so the relay's
-        // auto-learned src endpoint actually matches where this process is
-        // recvfrom-ing.
-        const std::string   relay_host { env_str("OSN_RELAY_HOST", "127.0.0.1") };
-        const std::uint16_t relay_port { static_cast<std::uint16_t>(env_int("OSN_RELAY_PORT", 50100)) };
+        // Network endpoint config. Three modes, picked at startup:
+        //
+        //   1. OSN_SIGNALING_HOST is set → real signaling handshake. The
+        //      client opens a WS to the gateway, authenticates with
+        //      OSN_USER + OSN_AUTH_TOKEN, sends JoinVoice(OSN_ROOM), and
+        //      uses the relay endpoint the server replies with. The user's
+        //      OSN_RELAY_HOST is ignored in this mode (the server is the
+        //      source of truth for where the relay lives).
+        //
+        //   2. OSN_RELAY_HOST is set → direct relay mode. Skip signaling,
+        //      use the literal IP from the env var. Original behaviour;
+        //      kept so loopback / pre-deploy testing still works without
+        //      a running signaling server.
+        //
+        //   3. Neither set → loopback to 127.0.0.1. The original default.
+        //
+        // Sender + receiver share one socket so the relay's auto-learned
+        // src endpoint actually matches where this process is recvfrom-ing.
+        std::string   relay_host { env_str("OSN_RELAY_HOST", "127.0.0.1") };
+        std::uint16_t relay_port { static_cast<std::uint16_t>(env_int("OSN_RELAY_PORT", 50100)) };
         const std::uint16_t local_port { static_cast<std::uint16_t>(env_int("OSN_LOCAL_PORT", 50100)) };
+        std::uint32_t assigned_ssrc { 0 };
+
+        OpenSocialNet::Network::SignalingClient signaling { };
+        const std::string signaling_host { env_str("OSN_SIGNALING_HOST", "") };
+        if (!signaling_host.empty())
+        {
+
+            const std::uint16_t signaling_port { static_cast<std::uint16_t>(env_int("OSN_SIGNALING_PORT", 9001)) };
+            const std::string   signaling_path { env_str("OSN_SIGNALING_PATH", "/gateway") };
+            const std::string   user_id        { env_str("OSN_USER",           "self") };
+            const std::string   auth_token     { env_str("OSN_AUTH_TOKEN",     "") };
+            const std::string   channel_id     { env_str("OSN_ROOM",           "loopback") };
+
+            std::printf("[main] signaling: ws://%s:%u%s user=%s channel=%s\n", signaling_host.c_str(), signaling_port, signaling_path.c_str(), user_id.c_str(), channel_id.c_str());
+
+            if (!signaling.connect_and_hello(signaling_host, signaling_port, signaling_path, user_id, auth_token))
+            {
+
+                std::fprintf(stderr, "[main] signaling Hello failed; aborting\n");
+                return 1;
+
+            }
+
+            OpenSocialNet::Network::VoicePeerInfo                 self_peer { };
+            std::vector<OpenSocialNet::Network::VoicePeerInfo>    other_peers { };
+            if (!signaling.join_voice(channel_id, self_peer, other_peers))
+            {
+
+                std::fprintf(stderr, "[main] signaling JoinVoice failed; aborting\n");
+                return 1;
+
+            }
+
+            relay_host    = self_peer.ip;
+            relay_port    = self_peer.port;
+            assigned_ssrc = self_peer.ssrc;
+
+        }
 
         OpenSocialNet::Network::UdpSender sender {};
         if (!sender.init(relay_host, relay_port, local_port))
@@ -385,9 +436,10 @@ int main()
         const std::uint32_t peer_id { fnv1a_32(user_str) };
         sender.set_room_id(room_id);
         sender.set_peer_id(peer_id);
-        std::printf("[main] routing identity room=\"%s\" (room_id=%016lx) user=\"%s\" (peer_id=%08x)\n",
+        sender.set_ssrc(assigned_ssrc);
+        std::printf("[main] routing identity room=\"%s\" (room_id=%016lx) user=\"%s\" (peer_id=%08x) ssrc=%u\n",
             room_str.c_str(), static_cast<unsigned long>(room_id),
-            user_str.c_str(), peer_id);
+            user_str.c_str(), peer_id, assigned_ssrc);
 
         // Adversarial sender-side conditions; all default to 0 (bypass).
         // SIM_LOSS_PCT=8 SIM_JITTER_MS=20 SIM_OOO_PCT=2 ./network
