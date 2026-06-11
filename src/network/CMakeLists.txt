@@ -18,6 +18,11 @@ FetchContent_MakeAvailable(SDL3)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(OPUS REQUIRED IMPORTED_TARGET opus)
 
+# Video path in the call client: x264 for encode, FFmpeg for decode +
+# the encoder's colorspace plumbing. Same system deps as video_engine.
+pkg_check_modules(X264 REQUIRED IMPORTED_TARGET x264)
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavutil libswscale)
+
 # Signaling client (Hello/JoinVoice handshake against signaling_server)
 # needs protobuf for the Envelope wire format and OpenSSL for the SHA1
 # step of the WebSocket upgrade handshake. The generated pb files live
@@ -62,6 +67,14 @@ add_executable(network
     ../audio_engine/src/AudioEncoder.cc
     ../audio_engine/src/AudioDecoder.cc
     ../plc/src/AudioPlc.cc
+    ../plc/src/VideoPlc.cc
+    src/PeerVideoRouter.cc
+    ../video_engine/src/VideoCapture.cc
+    ../video_engine/src/VideoEncoder.cc
+    ../video_engine/src/VideoDecoder.cc
+    ../video_engine/src/VideoRenderer.cc
+    ../video_engine/src/VideoPacketizer.cc
+    ../video_engine/src/VideoReassembler.cc
     ${SIGNALING_PB_CC}
 )
 
@@ -69,6 +82,7 @@ target_include_directories(network PRIVATE
     include
     ../audio_engine/include
     ../plc/include
+    ../video_engine/include
     ${SIGNALING_PROTO_GEN_DIR}
     ${Protobuf_INCLUDE_DIRS}
 )
@@ -76,6 +90,8 @@ target_include_directories(network PRIVATE
 target_link_libraries(network PRIVATE
     SDL3::SDL3
     PkgConfig::OPUS
+    PkgConfig::X264
+    PkgConfig::FFMPEG
     ${Protobuf_LIBRARIES}
     OpenSSL::Crypto
 )

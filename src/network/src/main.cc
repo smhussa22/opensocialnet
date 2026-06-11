@@ -10,9 +10,12 @@
 // cpp stdlib headers
 #include <thread>
 #include <atomic>
+#include <algorithm>
 #include <array>
+#include <memory>
 #include <iostream>
 #include <string_view>
+#include <vector>
 
 // 3rd party headers
 #include <SDL3/SDL.h>
@@ -31,6 +34,11 @@
 #include "LossSim.hh"
 #include "AudioPlc.hh"
 #include "SignalingClient.hh"
+#include "PeerVideoRouter.hh"
+#include "VideoCapture.hh"
+#include "VideoEncoder.hh"
+#include "VideoPacketizer.hh"
+#include "VideoPlc.hh"
 
 // Pull SIM_* env vars at startup. Empty or unparseable falls back to default
 // so the sim stays bypassed unless the caller asked for it.
@@ -157,9 +165,14 @@ static void on_signal(int)
 // Power of two so SpscQueue's mask wrap-around fires.
 using IncomingQueue = OpenSocialNet::Network::SpscQueue<OpenSocialNet::Network::Packet, 128>;
 
-static std::atomic<std::uint64_t> packets_dropped_overflow { 0 }; // SpscQueue full at try_push
+// Video ring is wider: a keyframe burst is tens of fragments and several
+// peers can keyframe in the same tick. Heap-allocated in main (≈500 KB).
+using VideoQueue = OpenSocialNet::Network::SpscQueue<OpenSocialNet::Network::Packet, 256>;
 
-void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue& queue)
+static std::atomic<std::uint64_t> packets_dropped_overflow       { 0 }; // audio SpscQueue full at try_push
+static std::atomic<std::uint64_t> video_packets_dropped_overflow { 0 }; // video SpscQueue full at try_push
+
+void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue& audio_queue, VideoQueue& video_queue)
 {
 
     OpenSocialNet::Network::Packet packet {};
@@ -171,7 +184,17 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue
         if (packet.header.payload_size == 0) continue;
         if (packet.header.payload_size > OpenSocialNet::Network::maximum_packet_size) continue;
 
-        if (!queue.try_push(packet)) packets_dropped_overflow.fetch_add(1, std::memory_order_relaxed);
+        // Demux by payload kind: video fragments go to the main loop's
+        // router (decode + render on the main thread), everything else to
+        // the audio callback's mixer.
+        const bool is_video { packet.header.payload_type == OpenSocialNet::Network::PayloadType::H264 or packet.header.payload_type == OpenSocialNet::Network::PayloadType::H264_Screen };
+        if (is_video)
+        {
+
+            if (!video_queue.try_push(packet)) video_packets_dropped_overflow.fetch_add(1, std::memory_order_relaxed);
+
+        }
+        else if (!audio_queue.try_push(packet)) packets_dropped_overflow.fetch_add(1, std::memory_order_relaxed);
 
     }
 
@@ -215,6 +238,85 @@ static const char* plc_strategy_name(OpenSocialNet::Plc::PlcStrategy s) noexcept
     return "?";
 
 }
+
+// Map "skip"/"hold"/"interp"/"motion" (case-insensitive) to
+// VideoPlcStrategy. Unknown / empty falls back to MotionCompensated —
+// the best-looking concealer and cheap at call resolutions.
+static OpenSocialNet::Plc::VideoPlcStrategy parse_video_plc_strategy(std::string_view raw) noexcept
+{
+
+    std::string s { raw };
+    for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (s == "skip"  ) return OpenSocialNet::Plc::VideoPlcStrategy::Skip;
+    if (s == "hold"  ) return OpenSocialNet::Plc::VideoPlcStrategy::Hold;
+    if (s == "interp") return OpenSocialNet::Plc::VideoPlcStrategy::Interpolate;
+    return OpenSocialNet::Plc::VideoPlcStrategy::MotionCompensated;
+
+}
+
+static const char* video_plc_strategy_name(OpenSocialNet::Plc::VideoPlcStrategy s) noexcept
+{
+
+    switch (s)
+    {
+
+        case OpenSocialNet::Plc::VideoPlcStrategy::Skip:              return "skip";
+        case OpenSocialNet::Plc::VideoPlcStrategy::Hold:              return "hold";
+        case OpenSocialNet::Plc::VideoPlcStrategy::Interpolate:       return "interp";
+        case OpenSocialNet::Plc::VideoPlcStrategy::MotionCompensated: return "motion";
+
+    }
+    return "?";
+
+}
+
+// Stand-in camera for headless boxes (WSL guests, EC2 test clients): a
+// scrolling diagonal gradient + bouncing bright square in YUV420P,
+// deterministic per frame index so two runs produce identical streams.
+struct SyntheticVideoSource
+{
+
+    int           width       { 0 }; // luma width
+    int           height      { 0 }; // luma height
+    std::uint64_t frame_index { 0 }; // advances per fill(); drives the animation
+
+    void fill(std::vector<std::uint8_t>& yuv) noexcept
+    {
+
+        const int t { static_cast<int>(frame_index % 100000) };
+        std::uint8_t* y_plane { yuv.data() };
+        std::uint8_t* u_plane { y_plane + static_cast<std::size_t>(width) * height };
+        std::uint8_t* v_plane { u_plane + static_cast<std::size_t>(width / 2) * (height / 2) };
+
+        // scrolling gradient background
+        for (int y { 0 }; y < height; ++y)
+        {
+
+            for (int x { 0 }; x < width; ++x) y_plane[static_cast<std::size_t>(y) * width + x] = static_cast<std::uint8_t>((x + y + 2 * t) & 0xff);
+
+        }
+
+        // bouncing bright square so motion estimation has something to chase
+        const int square { 32 };
+        const int px { (10 + 3 * t) % (width - square) };
+        const int py { (10 + 2 * t) % (height - square) };
+        for (int y { 0 }; y < square; ++y)
+        {
+
+            for (int x { 0 }; x < square; ++x) y_plane[static_cast<std::size_t>(py + y) * width + px + x] = 235;
+
+        }
+
+        // slowly drifting chroma so the picture isn't grayscale
+        const std::size_t chroma_size { static_cast<std::size_t>(width / 2) * (height / 2) };
+        std::fill(u_plane, u_plane + chroma_size, static_cast<std::uint8_t>(128 + (t / 4) % 64));
+        std::fill(v_plane, v_plane + chroma_size, static_cast<std::uint8_t>(128));
+
+        ++frame_index;
+
+    }
+
+};
 
 static void on_playback(void* userdata, SDL_AudioStream* stream, int additional, int total)
 {
@@ -262,6 +364,10 @@ int main()
         // ~155 KB on the stack; cheap enough vs. a heap allocation, sized
         // to absorb a burst before the audio callback next drains.
         IncomingQueue incoming_queue {};
+
+        // Video ring lives on the heap — 256 Packets is ~500 KB, too fat
+        // for the stack next to the audio ring.
+        auto video_queue { std::make_unique<VideoQueue>() };
 
         OpenSocialNet::Audio::AudioEncoder encoder {};
         if (!encoder.valid())
@@ -408,6 +514,81 @@ int main()
             room_str.c_str(), static_cast<unsigned long>(room_id),
             user_str.c_str(), peer_id, assigned_ssrc);
 
+        // ---- video: camera (or synthetic stand-in) -> x264 -> Packets ----
+        //
+        // OSN_VIDEO=1 turns the send side on. The receive side (router +
+        // per-peer decode/PLC/render) is ALWAYS live so a voice-only
+        // client still shows peers who do send video. OSN_VIDEO_RENDER=0
+        // keeps everything headless (decode + conceal, no windows) for
+        // CI / EC2 test clients.
+        const bool video_enabled { env_int("OSN_VIDEO", 0) != 0 };
+        const int  video_fps     { std::clamp(env_int("OSN_VIDEO_FPS", 15), 1, 60) };
+        int video_width  { env_int("OSN_VIDEO_W", 320) };
+        int video_height { env_int("OSN_VIDEO_H", 240) };
+
+        bool render_ok { false };
+        if (env_int("OSN_VIDEO_RENDER", 1) != 0)
+        {
+
+            render_ok = ::SDL_InitSubSystem(SDL_INIT_VIDEO);
+            if (!render_ok) std::printf("[main] SDL video subsystem unavailable (%s) — remote video will decode headless\n", ::SDL_GetError());
+
+        }
+
+        const OpenSocialNet::Plc::VideoPlcStrategy video_plc_strategy { parse_video_plc_strategy(env_str("OSN_VIDEO_PLC", "motion")) };
+        OpenSocialNet::Network::PeerVideoRouter video_router { video_plc_strategy, render_ok };
+        std::printf("[main] video PLC strategy=%s render=%d\n", video_plc_strategy_name(video_plc_strategy), render_ok ? 1 : 0);
+
+        OpenSocialNet::Video::VideoCapture video_capture {};
+        OpenSocialNet::Video::VideoEncoder video_encoder {};
+        OpenSocialNet::Video::VideoPacketizer video_packetizer {};
+        SyntheticVideoSource synthetic_video {};
+        bool use_camera { false };
+        bool video_send { false };
+        std::vector<std::uint8_t> video_yuv {};
+        std::vector<std::byte> video_h264 {};
+
+        if (video_enabled)
+        {
+
+            const std::string video_device { env_str("OSN_VIDEO_DEVICE", "/dev/video0") };
+            use_camera = video_capture.init(video_device.c_str(), video_width, video_height, video_fps);
+            if (use_camera)
+            {
+
+                video_width = video_capture.width();
+                video_height = video_capture.height();
+                std::printf("[main] camera %s open at %dx%d@%d\n", video_device.c_str(), video_width, video_height, video_fps);
+
+            }
+            else
+            {
+
+                synthetic_video.width = video_width;
+                synthetic_video.height = video_height;
+                std::printf("[main] no camera at %s — synthetic video source %dx%d@%d\n", video_device.c_str(), video_width, video_height, video_fps);
+
+            }
+
+            video_send = video_encoder.init(video_width, video_height, video_fps);
+            if (video_send)
+            {
+
+                // Camera stream ssrc: the signaling-assigned (audio) ssrc
+                // with the high bit set, so mic + cam from the same peer
+                // demux into distinct receive lanes. Falls back to peer_id
+                // when there was no signaling round-trip (loopback mode).
+                const std::uint32_t video_ssrc { (assigned_ssrc != 0 ? assigned_ssrc : peer_id) | 0x80000000u };
+                video_packetizer.init(video_ssrc, 90000u / static_cast<std::uint32_t>(video_fps));
+                video_yuv.resize(static_cast<std::size_t>(video_width) * video_height * 3 / 2);
+                video_h264.resize(video_yuv.size());
+                std::printf("[main] video send on: ssrc=%u %dx%d@%d\n", video_ssrc, video_width, video_height, video_fps);
+
+            }
+            else std::printf("[main] x264 init failed — video send disabled\n");
+
+        }
+
         // Adversarial sender-side conditions; all default to 0 (bypass).
         // SIM_LOSS_PCT=8 SIM_JITTER_MS=20 SIM_OOO_PCT=2 ./network
         OpenSocialNet::Network::LossSim sim {{
@@ -432,7 +613,7 @@ int main()
 
         };
 
-        std::thread rx { receive_thread, std::ref(receiver), std::ref(incoming_queue) };
+        std::thread rx { receive_thread, std::ref(receiver), std::ref(incoming_queue), std::ref(*video_queue) };
 
         std::array<float, 480> chunk {};
         std::cout << "[main] starting capture loop...\n";
@@ -463,6 +644,12 @@ int main()
         constexpr int reap_tick_interval { 500 };
         int ticks_since_reap { 0 };
 
+        // Video frame pacing off the same 10ms tick: 15fps = every ~6 ticks.
+        const int video_tick_interval { std::max(1, 100 / video_fps) };
+        int ticks_since_video { 0 };
+        std::uint64_t video_frames_sent { 0 };
+        std::uint64_t video_packets_sent { 0 };
+
         while (running)
         {
 
@@ -486,6 +673,64 @@ int main()
                 sim.submit(std::move(packet), sim_send);
                 ++packets_sent;
                 ticks_since_send = 0;
+
+            }
+
+            // Video send: capture (or synthesize) one frame per pacing
+            // interval, encode, fragment, stamp routing identity, ship.
+            // Encoded video keeps the keepalive timer fed too.
+            if (video_send and ++ticks_since_video >= video_tick_interval)
+            {
+
+                ticks_since_video = 0;
+
+                bool have_frame { false };
+                if (use_camera) have_frame = video_capture.capture_frame(std::span<std::uint8_t> { video_yuv }) > 0;
+                else { synthetic_video.fill(video_yuv); have_frame = true; }
+
+                if (have_frame)
+                {
+
+                    const int encoded { video_encoder.encode_frame(video_yuv.data(), video_width, std::span<std::byte> { video_h264 }) };
+                    if (encoded > 0)
+                    {
+
+                        auto packets { video_packetizer.packetize_frame(std::span<const std::byte> { video_h264.data(), static_cast<std::size_t>(encoded) }) };
+                        for (auto& p : packets)
+                        {
+
+                            p.header.room_id = room_id;
+                            p.header.peer_id = peer_id;
+                            sim.submit(std::move(p), sim_send);
+                            ++video_packets_sent;
+
+                        }
+                        ++video_frames_sent;
+                        ticks_since_send = 0;
+
+                    }
+
+                }
+
+            }
+
+            // Drain inbound video into the per-peer router, then decode +
+            // conceal + render whatever became complete. Always runs —
+            // voice-only clients still show peers' video.
+            {
+
+                OpenSocialNet::Network::Packet vp {};
+                while (video_queue->try_pop(vp)) video_router.route(vp);
+                video_router.pump();
+
+            }
+
+            // Keep the SDL windows responsive (close button, expose, move).
+            if (render_ok)
+            {
+
+                SDL_Event ev;
+                while (::SDL_PollEvent(&ev)) {}
 
             }
 
@@ -523,6 +768,7 @@ int main()
             {
 
                 mixer.reap_idle(std::chrono::seconds { 10 });
+                video_router.reap_idle(std::chrono::seconds { 10 });
                 ticks_since_reap = 0;
 
             }
@@ -546,6 +792,27 @@ int main()
                     packets_sent,
                     static_cast<unsigned long long>(agg.concealments),
                     live_peers);
+
+                const auto vagg { video_router.stats() };
+                if (vagg.sources > 0 or video_send)
+                {
+
+                    std::printf("[vid-stats] src=%zu obs=%llu lost=%llu ooo=%llu jb=%zu dec=%llu plc=%llu dropped=%llu missed=%llu rendered=%llu sent_frames=%llu sent_pkts=%llu drop_overflow=%llu\n",
+                        vagg.sources,
+                        static_cast<unsigned long long>(vagg.packets_observed),
+                        static_cast<unsigned long long>(vagg.packets_lost),
+                        static_cast<unsigned long long>(vagg.packets_out_of_order),
+                        vagg.buffered_packets,
+                        static_cast<unsigned long long>(vagg.frames_decoded),
+                        static_cast<unsigned long long>(vagg.frames_concealed),
+                        static_cast<unsigned long long>(vagg.frames_dropped),
+                        static_cast<unsigned long long>(vagg.frames_missed),
+                        static_cast<unsigned long long>(vagg.frames_rendered),
+                        static_cast<unsigned long long>(video_frames_sent),
+                        static_cast<unsigned long long>(video_packets_sent),
+                        static_cast<unsigned long long>(video_packets_dropped_overflow.load(std::memory_order_relaxed)));
+
+                }
                 ticks_since_stats = 0;
 
             }
