@@ -676,17 +676,23 @@ int main()
 
             }
 
-            // Video send: capture (or synthesize) one frame per pacing
-            // interval, encode, fragment, stamp routing identity, ship.
-            // Encoded video keeps the keepalive timer fed too.
-            if (video_send and ++ticks_since_video >= video_tick_interval)
+            // Video send: encode + ship one frame when a source has one.
+            // The camera is non-blocking and paces itself (poll every tick,
+            // EAGAIN means not ready yet); the synthetic source is paced by
+            // the tick counter. Encoded video feeds the keepalive timer too.
+            if (video_send)
             {
-
-                ticks_since_video = 0;
 
                 bool have_frame { false };
                 if (use_camera) have_frame = video_capture.capture_frame(std::span<std::uint8_t> { video_yuv }) > 0;
-                else { synthetic_video.fill(video_yuv); have_frame = true; }
+                else if (++ticks_since_video >= video_tick_interval)
+                {
+
+                    ticks_since_video = 0;
+                    synthetic_video.fill(video_yuv);
+                    have_frame = true;
+
+                }
 
                 if (have_frame)
                 {

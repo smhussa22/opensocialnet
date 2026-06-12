@@ -32,7 +32,10 @@ namespace OpenSocialNet::Video
     bool VideoCapture::init(const char* device_path, int width, int height, int framerate) noexcept
     {
 
-        device_fd = ::open(device_path, O_RDWR);
+        // O_NONBLOCK: DQBUF returns EAGAIN instead of stalling the caller
+        // until the camera's next frame — the call client polls from its
+        // 10ms main loop and must never block behind a 30fps exposure.
+        device_fd = ::open(device_path, O_RDWR | O_NONBLOCK);
 
         ::v4l2_capability cap { };
         int verify_status { ::ioctl(device_fd, VIDIOC_QUERYCAP, &cap) };
