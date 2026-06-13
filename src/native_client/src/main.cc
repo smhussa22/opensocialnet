@@ -3,9 +3,15 @@
 // c sys headers
 #include <cstdio>
 #include <cstdlib>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 // cpp stdlib headers
 #include <string>
+#include <vector>
+#include <thread>
+#include <atomic>
 
 // 3rd party headers
 #include <SDL3/SDL.h>
@@ -31,6 +37,18 @@ namespace
         return val ? std::string { val } : default_val;
     }
 
+    pid_t network_pid { -1 };
+
+    void cleanup_network()
+    {
+        if (network_pid > 0)
+        {
+            kill(network_pid, SIGTERM);
+            waitpid(network_pid, nullptr, 0);
+            network_pid = -1;
+        }
+    }
+
 }
 
 int main()
@@ -39,6 +57,8 @@ int main()
     std::setvbuf(stdout, nullptr, _IONBF, 0);
 
     const std::string user_name { env_str("OSN_USER", "alice") };
+    const std::string signaling_host { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
+    const std::string auth_secret { env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123") };
     const std::string room_name { env_str("OSN_ROOM", "general") };
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
@@ -72,8 +92,62 @@ int main()
     bool audio_enabled { true };
     bool video_enabled { true };
     bool screenshare_enabled { false };
+    std::string connection_status { "Starting network..." };
+    std::atomic<bool> network_connected { false };
 
-    std::printf("native_client: user=%s room=%s\n", user_name.c_str(), room_name.c_str());
+    // Spawn the network binary as a child process
+    std::printf("native_client: spawning network client (user=%s, signaling=%s)\n", user_name.c_str(), signaling_host.c_str());
+
+    network_pid = fork();
+    if (network_pid == 0)
+    {
+        // Child process — run the network binary
+        const std::string relay_host { signaling_host };
+        const std::string local_port { "0" };
+
+        char* env_vars[] {
+            (char*)"OSN_SIGNALING_HOST",
+            (char*)signaling_host.c_str(),
+            (char*)"OSN_ROOM",
+            (char*)room_name.c_str(),
+            (char*)"OSN_USER",
+            (char*)user_name.c_str(),
+            (char*)"OPENSOCIALNET_AUTH_SECRET",
+            (char*)auth_secret.c_str(),
+            (char*)"OSN_LOCAL_PORT",
+            (char*)local_port.c_str(),
+            nullptr
+        };
+
+        for (int i = 0; env_vars[i]; i += 2)
+        {
+            setenv(env_vars[i], env_vars[i+1], 1);
+        }
+
+        // Construct absolute path to network binary
+        char cwd[1024] { };
+        if (!getcwd(cwd, sizeof cwd))
+        {
+            std::printf("native_client: getcwd failed\n");
+            exit(1);
+        }
+        std::string network_bin { std::string(cwd) + "/src/network/build/network" };
+        execl(network_bin.c_str(), network_bin.c_str(), nullptr);
+        std::printf("native_client: failed to exec %s: %m\n", network_bin.c_str());
+        exit(1);
+    }
+    else if (network_pid < 0)
+    {
+        std::printf("native_client: fork failed\n");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    std::printf("native_client: network pid=%d\n", network_pid);
+    connection_status = "Network running (pid=" + std::to_string(network_pid) + ")";
+    network_connected = true;
 
     bool running { true };
     while (running)
@@ -99,7 +173,13 @@ int main()
             ImGui::Separator();
             ImGui::Text("User: %s", user_name.c_str());
             ImGui::Text("Room: %s", room_name.c_str());
-            ImGui::Text("Status: ready");
+            ImGui::Text("Signaling: %s", signaling_host.c_str());
+            ImGui::Separator();
+            ImGui::TextUnformatted(connection_status.c_str());
+            if (network_connected)
+            {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Connected");
+            }
         }
         ImGui::End();
 
@@ -159,6 +239,8 @@ int main()
         SDL_RenderPresent(renderer);
 
     }
+
+    cleanup_network();
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
