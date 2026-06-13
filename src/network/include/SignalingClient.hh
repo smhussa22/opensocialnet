@@ -8,6 +8,7 @@
 
 // cpp stdlib headers
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -88,6 +89,17 @@ namespace OpenSocialNet::Network
         // is unaffected. Returns false on any send error.
         bool send_heartbeat();
 
+        // Send a chat SendMessage on a channel. Doubles as the transport
+        // for ICE SDP exchange — the gateway persists it and fans the
+        // resulting ChatMessageEvent out to every channel subscriber.
+        // Serialised with the other senders via m_send_mu.
+        bool send_chat(const std::string& channel_id, const std::string& content);
+
+        // Register a sink for inbound ChatMessageEvent frames. Fires on
+        // the reader thread; our own messages (echo + fanout) are
+        // filtered out by sender_id. Call before start_event_reader().
+        void set_chat_handler(std::function<void(const std::string& sender_id, const std::string& content)> handler) { m_on_chat = std::move(handler); }
+
         // Snapshot of the current peer list (NOT including self). The
         // reader thread keeps this updated; main thread reads under
         // m_peers_mu. Returns a copy so the caller doesn't have to hold
@@ -113,7 +125,10 @@ namespace OpenSocialNet::Network
         mutable std::mutex         m_peers_mu   { };  // guards m_peers
         std::vector<VoicePeerInfo> m_peers      { };  // remote peers in our voice room
 
-        std::mutex                 m_send_mu    { };  // serialises send_binary across send_heartbeat / future senders
+        std::mutex                 m_send_mu    { };  // serialises send_binary across send_heartbeat / send_chat
+
+        std::function<void(const std::string&, const std::string&)> m_on_chat { }; // inbound chat sink (reader thread)
+        std::uint32_t              m_nonce      { 0 }; // client_nonce uniqueness counter, guarded by m_send_mu
 
 
         // Reader thread entry point. Loops on m_ws.recv_binary, parses

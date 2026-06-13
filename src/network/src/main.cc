@@ -2,18 +2,23 @@
 
 // c sys headers
 #include <cctype>
+#include <cerrno>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <unistd.h>
 
 // cpp stdlib headers
 #include <thread>
 #include <atomic>
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <memory>
+#include <mutex>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -32,9 +37,11 @@
 #include "PeerMixer.hh"
 #include "SpscQueue.hh"
 #include "LossSim.hh"
+#include "IceTransport.hh"
 #include "AudioPlc.hh"
 #include "SignalingClient.hh"
 #include "PeerVideoRouter.hh"
+#include "ScreenCapture.hh"
 #include "VideoCapture.hh"
 #include "VideoEncoder.hh"
 #include "VideoPacketizer.hh"
@@ -440,6 +447,16 @@ int main()
         const std::uint16_t local_port { static_cast<std::uint16_t>(env_int("OSN_LOCAL_PORT", 50100)) };
         std::uint32_t assigned_ssrc { 0 };
 
+        // OSN_ICE=1 negotiates a direct peer-to-peer lane via libnice
+        // after signaling, instead of sending media through the relay.
+        // The mailbox below is filled by the signaling reader thread when
+        // the remote peer's SDP arrives over the chat path; the
+        // negotiation loop further down polls it.
+        const bool  ice_enabled { env_int("OSN_ICE", 0) != 0 };
+        std::mutex  ice_mailbox_mu { };
+        std::string ice_remote_user { };
+        std::string ice_remote_sdp { };
+
         OpenSocialNet::Network::SignalingClient signaling { };
         const std::string signaling_host { env_str("OSN_SIGNALING_HOST", "") };
         if (!signaling_host.empty())
@@ -474,6 +491,20 @@ int main()
             relay_host    = self_peer.ip;
             relay_port    = self_peer.port;
             assigned_ssrc = self_peer.ssrc;
+
+            // ICE SDP exchange rides the chat path: cache the latest
+            // "OSN-ICE1|<sdp>" message from the remote peer so the
+            // negotiation loop below can pick it up. 1:1 only for now —
+            // a later peer's SDP simply overwrites an earlier one.
+            if (ice_enabled) signaling.set_chat_handler([&ice_mailbox_mu, &ice_remote_user, &ice_remote_sdp](const std::string& sender_id, const std::string& content)
+            {
+
+                if (!content.starts_with("OSN-ICE1|")) return;
+                std::scoped_lock<std::mutex> lock { ice_mailbox_mu };
+                ice_remote_user = sender_id;
+                ice_remote_sdp  = content.substr(sizeof("OSN-ICE1|") - 1);
+
+            });
 
             // Kick off the background reader so VoicePeerJoined / Left
             // for peers who arrive AFTER us show up in the [net-stats]
@@ -514,6 +545,110 @@ int main()
             room_str.c_str(), static_cast<unsigned long>(room_id),
             user_str.c_str(), peer_id, assigned_ssrc);
 
+        // ---- ICE: peer-to-peer media lane via libnice (OSN_ICE=1) ----
+        //
+        // Connectivity only: the exact same stamped Packets ride the
+        // nominated candidate pair instead of the relay socket. SDP goes
+        // over the signaling chat path, so this needs signaling mode. Any
+        // failure falls back to the relay path picked above.
+        OpenSocialNet::Network::IceTransport ice { };
+        bool ice_active { false };
+        if (ice_enabled and signaling_host.empty()) std::printf("[main] OSN_ICE=1 needs OSN_SIGNALING_HOST for the SDP exchange — staying on the relay path\n");
+        else if (ice_enabled)
+        {
+
+            OpenSocialNet::Network::IceConfig ice_config { };
+            ice_config.stun_host = env_str("OSN_STUN_HOST", "");
+            ice_config.stun_port = static_cast<std::uint16_t>(env_int("OSN_STUN_PORT", 3478));
+            ice_config.turn_host = env_str("OSN_TURN_HOST", "");
+            ice_config.turn_port = static_cast<std::uint16_t>(env_int("OSN_TURN_PORT", 3478));
+            ice_config.turn_user = env_str("OSN_TURN_USER", "");
+            ice_config.turn_pass = env_str("OSN_TURN_PASS", "");
+
+            // Inbound ICE datagrams take receive_thread's place as the
+            // single producer for both SPSC rings — the relay rx thread
+            // is not spawned when the ICE lane wins. Runs on the GLib
+            // loop thread.
+            const auto ice_recv = [&incoming_queue, &video_queue](std::span<const std::uint8_t> datagram)
+            {
+
+                OpenSocialNet::Network::Packet packet { };
+                if (datagram.size() > sizeof(packet)) return;
+                std::memcpy(&packet, datagram.data(), datagram.size());
+                if (!OpenSocialNet::Network::packet_from_wire(packet, datagram.size())) return;
+                if (packet.header.payload_size == 0) return;
+
+                const bool is_video { packet.header.payload_type == OpenSocialNet::Network::PayloadType::H264 or packet.header.payload_type == OpenSocialNet::Network::PayloadType::H264_Screen };
+                if (is_video)
+                {
+
+                    if (!video_queue->try_push(packet)) video_packets_dropped_overflow.fetch_add(1, std::memory_order_relaxed);
+
+                }
+                else if (!incoming_queue.try_push(packet)) packets_dropped_overflow.fetch_add(1, std::memory_order_relaxed);
+
+            };
+
+            if (!ice.init(ice_config, ice_recv)) std::printf("[main] ICE init failed — staying on the relay path\n");
+            else if (!ice.wait_gathered(10'000)) std::printf("[main] ICE gathering timed out — staying on the relay path\n");
+            else
+            {
+
+                // Publish our SDP, then wait for the remote one — both
+                // sides do the same dance. Re-publish every ~2s so a peer
+                // that subscribed after our first send still gets it.
+                const std::string local_blob { "OSN-ICE1|" + ice.local_description() };
+                signaling.send_chat(room_str, local_blob);
+                std::printf("[main] ICE: local SDP published to channel \"%s\", waiting for a peer (60s)...\n", room_str.c_str());
+
+                std::string remote_user { };
+                std::string remote_sdp { };
+                const auto ice_deadline { std::chrono::steady_clock::now() + std::chrono::seconds { 60 } };
+                int polls { 0 };
+                while (running and remote_sdp.empty() and std::chrono::steady_clock::now() < ice_deadline)
+                {
+
+                    {
+
+                        std::scoped_lock<std::mutex> lock { ice_mailbox_mu };
+                        remote_user = ice_remote_user;
+                        remote_sdp  = ice_remote_sdp;
+
+                    }
+                    if (remote_sdp.empty())
+                    {
+
+                        if (++polls % 20 == 0) signaling.send_chat(room_str, local_blob);
+                        std::this_thread::sleep_for(std::chrono::milliseconds { 100 });
+
+                    }
+
+                }
+
+                // The peer's SDP arriving proves they joined (and thus
+                // subscribed) AFTER some of our earlier publishes may have
+                // fanned out to nobody — publish once more so a peer that
+                // missed those definitely gets ours.
+                if (!remote_sdp.empty()) signaling.send_chat(room_str, local_blob);
+
+                // Deterministic role tie-break: lower user id controls.
+                if (remote_sdp.empty()) std::printf("[main] ICE: no peer SDP arrived — staying on the relay path\n");
+                else if (!ice.start_checks(remote_sdp, user_str < remote_user)) std::printf("[main] ICE: remote SDP rejected — staying on the relay path\n");
+                else if (!ice.wait_ready(15'000)) std::printf("[main] ICE: connectivity checks failed — staying on the relay path\n");
+                else
+                {
+
+                    ice_active = true;
+                    std::printf("[main] ICE CONNECTED to %s — media flows peer-to-peer, relay bypassed\n", remote_user.c_str());
+
+                }
+
+            }
+
+            if (!ice_active) ice.shutdown();
+
+        }
+
         // ---- video: camera (or synthetic stand-in) -> x264 -> Packets ----
         //
         // OSN_VIDEO=1 turns the send side on. The receive side (router +
@@ -552,7 +687,18 @@ int main()
         {
 
             const std::string video_device { env_str("OSN_VIDEO_DEVICE", "/dev/video0") };
-            use_camera = video_capture.init(video_device.c_str(), video_width, video_height, video_fps);
+
+            // Retry with a beat between attempts: on WSL/usbipd the device
+            // can linger busy for a moment after a previous client was
+            // killed mid-stream.
+            for (int attempt { 0 }; attempt < 3 and !use_camera; ++attempt)
+            {
+
+                if (attempt > 0) std::this_thread::sleep_for(std::chrono::milliseconds { 300 });
+                use_camera = video_capture.init(video_device.c_str(), video_width, video_height, video_fps);
+
+            }
+
             if (use_camera)
             {
 
@@ -566,6 +712,12 @@ int main()
 
                 synthetic_video.width = video_width;
                 synthetic_video.height = video_height;
+
+                // The recurring WSL failure mode: the shell predates the
+                // user's 'video' group membership, so the device node is
+                // there but unreadable.
+                if (::access(video_device.c_str(), R_OK | W_OK) != 0 and errno == EACCES) std::printf("[main] %s: permission denied — this shell may predate your 'video' group membership; run 'newgrp video' or open a fresh terminal\n", video_device.c_str());
+
                 std::printf("[main] no camera at %s — synthetic video source %dx%d@%d\n", video_device.c_str(), video_width, video_height, video_fps);
 
             }
@@ -589,6 +741,53 @@ int main()
 
         }
 
+        // ---- screenshare: X11 root grab -> x264 -> H264_Screen Packets ----
+        //
+        // OSN_SCREEN=1 turns it on, independent of OSN_VIDEO so a peer can
+        // share their screen without a camera. Same encoder/packetizer
+        // shape as the camera lane, just a different payload type + ssrc
+        // bit so receivers demux it into its own window.
+        const bool screen_enabled { env_int("OSN_SCREEN", 0) != 0 };
+        const int  screen_fps     { std::clamp(env_int("OSN_SCREEN_FPS", 10), 1, 30) };
+        OpenSocialNet::Video::ScreenCapture screen_capture {};
+        OpenSocialNet::Video::VideoEncoder screen_encoder {};
+        OpenSocialNet::Video::VideoPacketizer screen_packetizer {};
+        bool screen_send { false };
+        std::vector<std::uint8_t> screen_yuv {};
+        std::vector<std::byte> screen_h264 {};
+
+        if (screen_enabled)
+        {
+
+            // OSN_SCREEN_WINDOW=0x<id> grabs that X11 window (xwininfo
+            // shows ids); 0/unset = auto-latch onto the largest window.
+            const unsigned long screen_window { std::strtoul(env_str("OSN_SCREEN_WINDOW", "0").c_str(), nullptr, 0) };
+            if (screen_capture.init(env_int("OSN_SCREEN_W", 640), env_int("OSN_SCREEN_H", 360), screen_window))
+            {
+
+                const int screen_width { screen_capture.width() };
+                const int screen_height { screen_capture.height() };
+                screen_send = screen_encoder.init(screen_width, screen_height, screen_fps);
+                if (screen_send)
+                {
+
+                    // Screen lane ssrc: bit 30 marks screenshare the way
+                    // bit 31 marks camera, so mic + cam + screen from one
+                    // peer land in three distinct receive lanes.
+                    const std::uint32_t screen_ssrc { (assigned_ssrc != 0 ? assigned_ssrc : peer_id) | 0x40000000u };
+                    screen_packetizer.init(screen_ssrc, 90000u / static_cast<std::uint32_t>(screen_fps), OpenSocialNet::Network::PayloadType::H264_Screen);
+                    screen_yuv.resize(static_cast<std::size_t>(screen_width) * screen_height * 3 / 2);
+                    screen_h264.resize(screen_yuv.size());
+                    std::printf("[main] screenshare on: ssrc=%u %dx%d@%d\n", screen_ssrc, screen_width, screen_height, screen_fps);
+
+                }
+                else std::printf("[main] x264 init failed — screenshare disabled\n");
+
+            }
+            else std::printf("[main] screen capture init failed — screenshare disabled\n");
+
+        }
+
         // Adversarial sender-side conditions; all default to 0 (bypass).
         // SIM_LOSS_PCT=8 SIM_JITTER_MS=20 SIM_OOO_PCT=2 ./network
         OpenSocialNet::Network::LossSim sim {{
@@ -605,15 +804,20 @@ int main()
         }
 
         // Stamp at capture time so wire-level sequence reflects capture order;
-        // LossSim's deferred sends then go via send_raw without re-stamping.
-        const auto sim_send = [&sender](OpenSocialNet::Network::Packet p)
+        // LossSim's deferred sends then go out without re-stamping — over
+        // the ICE lane when it won, otherwise via the relay socket.
+        const auto sim_send = [&sender, &ice, &ice_active](OpenSocialNet::Network::Packet p)
         {
 
-            sender.send_raw(std::move(p));
+            if (ice_active) ice.send(OpenSocialNet::Network::packet_to_wire(p));
+            else sender.send_raw(std::move(p));
 
         };
 
-        std::thread rx { receive_thread, std::ref(receiver), std::ref(incoming_queue), std::ref(*video_queue) };
+        // The relay rx thread and the ICE recv callback are alternative
+        // sole producers for the SPSC rings — never both.
+        std::thread rx { };
+        if (!ice_active) rx = std::thread { receive_thread, std::ref(receiver), std::ref(incoming_queue), std::ref(*video_queue) };
 
         std::array<float, 480> chunk {};
         std::cout << "[main] starting capture loop...\n";
@@ -649,6 +853,12 @@ int main()
         int ticks_since_video { 0 };
         std::uint64_t video_frames_sent { 0 };
         std::uint64_t video_packets_sent { 0 };
+
+        // Screenshare pacing, same scheme at its own (lower) rate.
+        const int screen_tick_interval { std::max(1, 100 / screen_fps) };
+        int ticks_since_screen { 0 };
+        std::uint64_t screen_frames_sent { 0 };
+        std::uint64_t screen_packets_sent { 0 };
 
         while (running)
         {
@@ -720,6 +930,38 @@ int main()
 
             }
 
+            // Screenshare send: tick-paced grab -> encode -> packetize,
+            // same shape as the camera lane but on the H264_Screen lane.
+            if (screen_send and ++ticks_since_screen >= screen_tick_interval)
+            {
+
+                ticks_since_screen = 0;
+                if (screen_capture.capture_frame(std::span<std::uint8_t> { screen_yuv }) > 0)
+                {
+
+                    const int encoded { screen_encoder.encode_frame(screen_yuv.data(), screen_capture.width(), std::span<std::byte> { screen_h264 }) };
+                    if (encoded > 0)
+                    {
+
+                        auto packets { screen_packetizer.packetize_frame(std::span<const std::byte> { screen_h264.data(), static_cast<std::size_t>(encoded) }) };
+                        for (auto& p : packets)
+                        {
+
+                            p.header.room_id = room_id;
+                            p.header.peer_id = peer_id;
+                            sim.submit(std::move(p), sim_send);
+                            ++screen_packets_sent;
+
+                        }
+                        ++screen_frames_sent;
+                        ticks_since_send = 0;
+
+                    }
+
+                }
+
+            }
+
             // Drain inbound video into the per-peer router, then decode +
             // conceal + render whatever became complete. Always runs —
             // voice-only clients still show peers' video.
@@ -749,7 +991,17 @@ int main()
                 OpenSocialNet::Network::Packet keepalive { };
                 keepalive.header.payload_type = OpenSocialNet::Network::PayloadType::Opus;
                 keepalive.header.payload_size = 0;
-                sender.send(keepalive);
+                if (ice_active)
+                {
+
+                    // libnice keeps the pair alive with STUN checks; this
+                    // just keeps the peer's reap timers fed. Must not hit
+                    // the relay socket — that would register us there.
+                    sender.stamp(keepalive);
+                    ice.send(OpenSocialNet::Network::packet_to_wire(keepalive));
+
+                }
+                else sender.send(keepalive);
                 ticks_since_send = 0;
 
             }
@@ -800,10 +1052,10 @@ int main()
                     live_peers);
 
                 const auto vagg { video_router.stats() };
-                if (vagg.sources > 0 or video_send)
+                if (vagg.sources > 0 or video_send or screen_send)
                 {
 
-                    std::printf("[vid-stats] src=%zu obs=%llu lost=%llu ooo=%llu jb=%zu dec=%llu plc=%llu dropped=%llu missed=%llu rendered=%llu sent_frames=%llu sent_pkts=%llu drop_overflow=%llu\n",
+                    std::printf("[vid-stats] src=%zu obs=%llu lost=%llu ooo=%llu jb=%zu dec=%llu plc=%llu dropped=%llu missed=%llu rendered=%llu sent_frames=%llu sent_pkts=%llu scr_frames=%llu scr_pkts=%llu drop_overflow=%llu\n",
                         vagg.sources,
                         static_cast<unsigned long long>(vagg.packets_observed),
                         static_cast<unsigned long long>(vagg.packets_lost),
@@ -816,6 +1068,8 @@ int main()
                         static_cast<unsigned long long>(vagg.frames_rendered),
                         static_cast<unsigned long long>(video_frames_sent),
                         static_cast<unsigned long long>(video_packets_sent),
+                        static_cast<unsigned long long>(screen_frames_sent),
+                        static_cast<unsigned long long>(screen_packets_sent),
                         static_cast<unsigned long long>(video_packets_dropped_overflow.load(std::memory_order_relaxed)));
 
                 }
@@ -832,7 +1086,8 @@ int main()
         running = false;
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         receiver.shutdown();
-        rx.join();
+        if (rx.joinable()) rx.join();
+        ice.shutdown();
 
         capture.shutdown();
 

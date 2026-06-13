@@ -105,6 +105,7 @@ namespace OpenSocialNet::Network
             Video::VideoRenderer                  renderer          { };       // one window per remote stream, opened lazily
             std::uint32_t                         peer_id           { 0 };     // for the window title + logs
             std::uint32_t                         ssrc              { 0 };     // for the window title + logs
+            bool                                  is_screen         { false }; // H264_Screen stream — labelled in the window title
             bool                                  renderer_started  { false }; // window opened (needs first frame's dimensions)
             bool                                  renderer_dead     { false }; // window init failed once — stop retrying
             std::uint32_t                         current_timestamp { 0 };     // timestamp of the frame being reassembled

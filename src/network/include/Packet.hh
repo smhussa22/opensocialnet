@@ -4,9 +4,12 @@
 // related headers
 
 // c sys headers
+#include <netinet/in.h>
+#include <endian.h>
 #include <cstdint>
 
 // cpp stdlib headers
+#include <cstddef>
 #include <span>
 
 // 3rd party headers
@@ -110,6 +113,53 @@ namespace OpenSocialNet::Network
         }
 
     };
+
+
+    // Packet IS the wire layout (header + payload contiguous), so
+    // serialization is just an in-place host -> network swap of the
+    // multi-byte header fields; 1-byte fields (version / flags /
+    // payload_type / reserved) need none. Returns the wire bytes as a
+    // span over the packet itself — the header is left in network order,
+    // so hand in a copy if the caller still needs it.
+    inline std::span<const std::uint8_t> packet_to_wire(Packet& packet) noexcept
+    {
+
+        const std::uint16_t wire_size { packet.wire_size() };
+
+        packet.header.reserved2    = htonl(packet.header.reserved2);
+        packet.header.room_id      = htobe64(packet.header.room_id);
+        packet.header.peer_id      = htonl(packet.header.peer_id);
+        packet.header.ssrc         = htonl(packet.header.ssrc);
+        packet.header.timestamp    = htonl(packet.header.timestamp);
+        packet.header.sequence     = htons(packet.header.sequence);
+        packet.header.payload_size = htons(packet.header.payload_size);
+
+        return { reinterpret_cast<const std::uint8_t*>(&packet), wire_size };
+
+    }
+
+
+    // Mirror image of packet_to_wire: swaps a just-received packet's
+    // header network -> host in place, then rejects short reads, unknown
+    // wire versions, oversized payload claims, and length mismatches.
+    inline bool packet_from_wire(Packet& packet, std::size_t received_bytes) noexcept
+    {
+
+        if (received_bytes < sizeof(PacketHeader)) return false;
+
+        packet.header.reserved2    = ntohl(packet.header.reserved2);
+        packet.header.room_id      = be64toh(packet.header.room_id);
+        packet.header.peer_id      = ntohl(packet.header.peer_id);
+        packet.header.ssrc         = ntohl(packet.header.ssrc);
+        packet.header.timestamp    = ntohl(packet.header.timestamp);
+        packet.header.sequence     = ntohs(packet.header.sequence);
+        packet.header.payload_size = ntohs(packet.header.payload_size);
+
+        if (packet.header.version != packet_protocol_version) return false;
+        if (packet.header.payload_size > maximum_packet_size) return false;
+        return received_bytes == packet.wire_size();
+
+    }
 
 }
 

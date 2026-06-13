@@ -56,7 +56,8 @@ namespace OpenSocialNet::Network
             }
             source->peer_id = packet.header.peer_id;
             source->ssrc = packet.header.ssrc;
-            std::printf("[vid-router] new source peer=%08x ssrc=%u\n", packet.header.peer_id, packet.header.ssrc);
+            source->is_screen = packet.header.payload_type == PayloadType::H264_Screen;
+            std::printf("[vid-router] new source peer=%08x ssrc=%u kind=%s\n", packet.header.peer_id, packet.header.ssrc, source->is_screen ? "screen" : "camera");
             it = m_sources.emplace(key, std::move(source)).first;
 
         }
@@ -178,7 +179,7 @@ namespace OpenSocialNet::Network
         {
 
             char title[64] {};
-            std::snprintf(title, sizeof(title), "peer %08x ssrc %u", source.peer_id, source.ssrc);
+            std::snprintf(title, sizeof(title), "peer %08x %s (ssrc %u)", source.peer_id, source.is_screen ? "screen" : "camera", source.ssrc);
             if (!source.renderer.init(width, height, title))
             {
 

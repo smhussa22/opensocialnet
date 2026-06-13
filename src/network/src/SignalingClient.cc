@@ -265,6 +265,16 @@ namespace OpenSocialNet::Network
 
                 }
 
+                case ::signaling::Envelope::kChatMessageEvent:
+                {
+
+                    const auto& evt { env.chat_message_event() };
+                    if (evt.sender_id() == m_user_id) break; // our own echo / fanout copy
+                    if (m_on_chat) m_on_chat(evt.sender_id(), evt.content());
+                    break;
+
+                }
+
                 case ::signaling::Envelope::kHeartbeatAck:
                 case ::signaling::Envelope::kReady:
                     // expected / harmless
@@ -275,8 +285,7 @@ namespace OpenSocialNet::Network
                     break;
 
                 default:
-                    // Unknown frame types (chat etc) are ignored here; we
-                    // only care about voice events.
+                    // Unknown frame types are ignored.
                     break;
 
             }
@@ -297,6 +306,23 @@ namespace OpenSocialNet::Network
         env.mutable_heartbeat()->set_nonce(0);
 
         std::scoped_lock<std::mutex> lock { m_send_mu };
+        return send_envelope_impl(m_ws, env);
+
+    }
+
+
+    bool SignalingClient::send_chat(const std::string& channel_id, const std::string& content)
+    {
+
+        if (!m_ws.is_open()) return false;
+
+        std::scoped_lock<std::mutex> lock { m_send_mu };
+
+        ::signaling::Envelope env { };
+        auto* msg = env.mutable_send_message();
+        msg->set_client_nonce(m_session_id + "-" + std::to_string(m_nonce++));
+        msg->set_channel_id(channel_id);
+        msg->set_content(content);
         return send_envelope_impl(m_ws, env);
 
     }

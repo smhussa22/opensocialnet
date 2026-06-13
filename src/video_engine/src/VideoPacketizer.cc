@@ -14,13 +14,14 @@
 namespace OpenSocialNet::Video
 {
 
-    void VideoPacketizer::init(std::uint32_t new_ssrc, std::uint32_t timestamp_step_per_frame) noexcept
+    void VideoPacketizer::init(std::uint32_t new_ssrc, std::uint32_t timestamp_step_per_frame, OpenSocialNet::Network::PayloadType new_payload_type) noexcept
     {
 
         ssrc = new_ssrc;
         sequence = 0;
         timestamp = 0;
         timestamp_step = timestamp_step_per_frame;
+        payload_type = new_payload_type;
 
     }
 
@@ -46,7 +47,7 @@ namespace OpenSocialNet::Video
             pkt.header.timestamp = timestamp;
             pkt.header.sequence = sequence++;
             pkt.header.payload_size = static_cast<std::uint16_t>(this_chunk);
-            pkt.header.payload_type = OpenSocialNet::Network::PayloadType::H264;
+            pkt.header.payload_type = payload_type;
             pkt.header.flags        = is_last ? OpenSocialNet::Network::PacketFlag::marker : std::uint8_t { 0 };
 
             std::memcpy(pkt.payload, h264_bytes.data() + offset, this_chunk);

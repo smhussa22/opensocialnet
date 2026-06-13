@@ -471,6 +471,12 @@ namespace OpenSocialNet::Signaling
         if (sess == nullptr or channel_id.empty()) return;
 
         ws->unsubscribe("voice:" + channel_id);
+
+        // Mirror of join's chat-topic subscribe. Harmless even if the
+        // user was also subscribed via user_channels at Hello — today
+        // that table is empty, and once it isn't, join/leave-voice should
+        // become refcount-aware anyway.
+        ws->unsubscribe(channel_id);
         const std::vector<VoiceRoomPeer> remaining { remove_from_voice_room(state, *sess, channel_id) };
         sess->current_voice_room_id.clear();
 
@@ -511,6 +517,13 @@ namespace OpenSocialNet::Signaling
         // future-proofing for the kafka-fanout path.
         const std::string channel { req.channel_id() };
         ws->subscribe("voice:" + channel);
+
+        // Chat topic too: the Kafka fanout publishes ChatMessageEvents to
+        // the bare channel name, and a voice participant needs those even
+        // when user_channels (the Hello-time subscription source) doesn't
+        // list them — in-room text chat and the ICE SDP exchange both
+        // ride that path.
+        ws->subscribe(channel);
         sess->current_voice_room_id = channel;
 
         const std::uint32_t assigned_ssrc { state.next_ssrc.fetch_add(1, std::memory_order_relaxed) };

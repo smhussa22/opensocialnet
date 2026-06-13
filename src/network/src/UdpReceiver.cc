@@ -53,24 +53,8 @@ namespace OpenSocialNet::Network
 
         };
 
-        if (received_bytes < static_cast<ssize_t>(sizeof(PacketHeader))) return false;
-
-        // Convert every multi-byte header field network → host. 1-byte fields
-        // (version / flags / payload_type / reserved) are untouched. Mirror
-        // image of UdpSender::send_raw's swap path.
-        packet.header.reserved2    = ntohl(packet.header.reserved2);
-        packet.header.room_id      = be64toh(packet.header.room_id);
-        packet.header.peer_id      = ntohl(packet.header.peer_id);
-        packet.header.ssrc         = ntohl(packet.header.ssrc);
-        packet.header.timestamp    = ntohl(packet.header.timestamp);
-        packet.header.sequence     = ntohs(packet.header.sequence);
-        packet.header.payload_size = ntohs(packet.header.payload_size);
-
-        // Reject any wire version we don't speak so a future v2 packet doesn't
-        // get misinterpreted as a corrupted v1.
-        if (packet.header.version != packet_protocol_version) return false;
-
-        return received_bytes == static_cast<ssize_t>(packet.wire_size());
+        if (received_bytes < 0) return false;
+        return packet_from_wire(packet, static_cast<std::size_t>(received_bytes));
 
     }
 

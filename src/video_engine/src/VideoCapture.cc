@@ -2,8 +2,10 @@
 #include "VideoCapture.hh"
 
 // c sys headers
+#include <cerrno>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -26,6 +28,21 @@ extern "C"
 
 // project headers
 
+namespace
+{
+
+    // Init failures were previously silent, which made the WSL camera
+    // flakiness (EACCES from stale group membership vs EBUSY from a
+    // not-yet-released device) impossible to tell apart from the logs.
+    void log_init_failure(const char* device_path, const char* step) noexcept
+    {
+
+        std::printf("[vid-cap] %s: %s failed: %s\n", device_path, step, std::strerror(errno));
+
+    }
+
+}
+
 namespace OpenSocialNet::Video
 {
 
@@ -36,12 +53,20 @@ namespace OpenSocialNet::Video
         // until the camera's next frame — the call client polls from its
         // 10ms main loop and must never block behind a 30fps exposure.
         device_fd = ::open(device_path, O_RDWR | O_NONBLOCK);
+        if (device_fd == -1)
+        {
+
+            log_init_failure(device_path, "open");
+            return false;
+
+        }
 
         ::v4l2_capability cap { };
         int verify_status { ::ioctl(device_fd, VIDIOC_QUERYCAP, &cap) };
         if (verify_status == -1)
         {
 
+            log_init_failure(device_path, "VIDIOC_QUERYCAP (not a v4l2 device?)");
             shutdown();
             return false;
 
@@ -50,6 +75,7 @@ namespace OpenSocialNet::Video
         if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
         {
 
+            std::printf("[vid-cap] %s: device lacks V4L2_CAP_VIDEO_CAPTURE\n", device_path);
             shutdown();
             return false;
 
@@ -66,6 +92,7 @@ namespace OpenSocialNet::Video
         if (::ioctl(device_fd, VIDIOC_S_FMT, &format) == -1)
         {
 
+            log_init_failure(device_path, "VIDIOC_S_FMT");
             shutdown();
             return false;
 
@@ -75,6 +102,7 @@ namespace OpenSocialNet::Video
         if (format.fmt.pix.pixelformat != V4L2_PIX_FMT_MJPEG)
         {
 
+            std::printf("[vid-cap] %s: driver refused MJPEG (gave fourcc %08x)\n", device_path, format.fmt.pix.pixelformat);
             shutdown();
             return false;
 
@@ -116,6 +144,7 @@ namespace OpenSocialNet::Video
         if (::ioctl(device_fd, VIDIOC_REQBUFS, &req) == -1)
         {
 
+            log_init_failure(device_path, "VIDIOC_REQBUFS (device busy / previous instance not released?)");
             shutdown();
             return false;
 
@@ -132,6 +161,7 @@ namespace OpenSocialNet::Video
             if (::ioctl(device_fd, VIDIOC_QUERYBUF, &buf) == -1)
             {
 
+                log_init_failure(device_path, "VIDIOC_QUERYBUF");
                 shutdown();
                 return false;
 
@@ -142,6 +172,7 @@ namespace OpenSocialNet::Video
             if (buffers[i] == MAP_FAILED)
             {
 
+                log_init_failure(device_path, "mmap");
                 buffers[i] = nullptr;
                 shutdown();
                 return false;
@@ -161,6 +192,7 @@ namespace OpenSocialNet::Video
             if (::ioctl(device_fd, VIDIOC_QBUF, &buf) == -1)
             {
 
+                log_init_failure(device_path, "VIDIOC_QBUF");
                 shutdown();
                 return false;
 
@@ -172,6 +204,7 @@ namespace OpenSocialNet::Video
         if (::ioctl(device_fd, VIDIOC_STREAMON, &type) == -1)
         {
 
+            log_init_failure(device_path, "VIDIOC_STREAMON");
             shutdown();
             return false;
 

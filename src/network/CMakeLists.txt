@@ -23,6 +23,13 @@ pkg_check_modules(OPUS REQUIRED IMPORTED_TARGET opus)
 pkg_check_modules(X264 REQUIRED IMPORTED_TARGET x264)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavutil libswscale)
 
+# Screenshare grabs the X11 root window through MIT-SHM (Xext).
+pkg_check_modules(X11 REQUIRED IMPORTED_TARGET x11 xext)
+
+# ICE (STUN/TURN NAT traversal) for the peer-to-peer media lane. libnice
+# drags in GLib; both come from the same pkg-config module.
+pkg_check_modules(NICE REQUIRED IMPORTED_TARGET nice)
+
 # Signaling client (Hello/JoinVoice handshake against signaling_server)
 # needs protobuf for the Envelope wire format and OpenSSL for the SHA1
 # step of the WebSocket upgrade handshake. The generated pb files live
@@ -62,6 +69,7 @@ add_executable(network
     src/LossSim.cc
     src/WebSocketClient.cc
     src/SignalingClient.cc
+    src/IceTransport.cc
     ../audio_engine/src/AudioStream.cc
     ../audio_engine/src/AudioCapture.cc
     ../audio_engine/src/AudioEncoder.cc
@@ -75,6 +83,7 @@ add_executable(network
     ../video_engine/src/VideoRenderer.cc
     ../video_engine/src/VideoPacketizer.cc
     ../video_engine/src/VideoReassembler.cc
+    ../video_engine/src/ScreenCapture.cc
     ${SIGNALING_PB_CC}
 )
 
@@ -92,6 +101,8 @@ target_link_libraries(network PRIVATE
     PkgConfig::OPUS
     PkgConfig::X264
     PkgConfig::FFMPEG
+    PkgConfig::X11
+    PkgConfig::NICE
     ${Protobuf_LIBRARIES}
     OpenSSL::Crypto
 )

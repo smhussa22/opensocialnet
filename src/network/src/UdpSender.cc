@@ -103,26 +103,15 @@ namespace OpenSocialNet::Network
     bool UdpSender::send_raw(Packet packet) noexcept
     {
 
-        // payload size in host order before we clobber it for the wire.
-        const std::uint16_t host_payload_size { packet.header.payload_size };
-
-        // Byte-swap every multi-byte field in place. 1-byte fields
-        // (version / flags / payload_type / reserved) need no swap.
-        packet.header.reserved2    = htonl(packet.header.reserved2);
-        packet.header.room_id      = htobe64(packet.header.room_id);
-        packet.header.peer_id      = htonl(packet.header.peer_id);
-        packet.header.ssrc         = htonl(packet.header.ssrc);
-        packet.header.timestamp    = htonl(packet.header.timestamp);
-        packet.header.sequence     = htons(packet.header.sequence);
-        packet.header.payload_size = htons(host_payload_size);
+        const std::span<const std::uint8_t> wire { packet_to_wire(packet) };
 
         const ssize_t sent
         {
 
             ::sendto(
                 socket.get_socket_fd(),
-                &packet,
-                sizeof(PacketHeader) + host_payload_size,
+                wire.data(),
+                wire.size(),
                 0,
                 reinterpret_cast<const ::sockaddr*>(&receiver_address),
                 sizeof(receiver_address)
