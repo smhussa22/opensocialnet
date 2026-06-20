@@ -163,10 +163,23 @@ static std::uint32_t fnv1a_32(std::string_view s) noexcept
 
 static std::atomic<bool> running {true};
 
+// Runtime media controls toggled by signals from a parent (native_client).
+// SIGUSR1 toggles audio mute, SIGUSR2 toggles video send, SIGURG toggles
+// screenshare send. SIGURG over SIGHUP because terminals send SIGHUP when
+// closed — we don't want a terminal close to accidentally fire a toggle.
+// Encoders stay initialised across toggles so flipping back on costs nothing.
+static std::atomic<bool> audio_muted  { false };
+static std::atomic<bool> video_active { true  };
+static std::atomic<bool> screen_active{ false };
+
 static void on_signal(int)
 {
     running = false;
 }
+
+static void on_audio_toggle (int) { audio_muted  = !audio_muted .load(); }
+static void on_video_toggle (int) { video_active = !video_active.load(); }
+static void on_screen_toggle(int) { screen_active = !screen_active.load(); }
 
 // SPSC ring sized for ~1.28s of headroom at 100 packets/s (Opus 10ms frames).
 // Power of two so SpscQueue's mask wrap-around fires.
@@ -354,8 +367,16 @@ static void on_playback(void* userdata, SDL_AudioStream* stream, int additional,
 
 int main()
 {
+    // Unbuffered stdout — when launched as a child of native_client our
+    // stdout is a regular file (not a tty), and full buffering would hide
+    // every [main]/[net-stats] line until 4KB had accumulated.
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+
     std::signal(SIGINT, on_signal);
     std::signal(SIGTERM, on_signal);
+    std::signal(SIGUSR1, on_audio_toggle);
+    std::signal(SIGUSR2, on_video_toggle);
+    std::signal(SIGURG,  on_screen_toggle);
 
     if (!SDL_Init(SDL_INIT_AUDIO))
     {
@@ -869,6 +890,10 @@ int main()
                 size_t got = capture.read(std::span<float>{chunk});
                 if (got != OpenSocialNet::Audio::samples_per_frame) break;
 
+                // Drain capture buffer even when muted so we don't backlog;
+                // just skip the encode/send.
+                if (audio_muted.load(std::memory_order_relaxed)) continue;
+
                 OpenSocialNet::Network::Packet packet {};
                 const int encoded_bytes { encoder.encode_samples(
                     std::span<const float>     { chunk.data(), got },
@@ -890,7 +915,7 @@ int main()
             // The camera is non-blocking and paces itself (poll every tick,
             // EAGAIN means not ready yet); the synthetic source is paced by
             // the tick counter. Encoded video feeds the keepalive timer too.
-            if (video_send)
+            if (video_send and video_active.load(std::memory_order_relaxed))
             {
 
                 bool have_frame { false };
@@ -932,7 +957,7 @@ int main()
 
             // Screenshare send: tick-paced grab -> encode -> packetize,
             // same shape as the camera lane but on the H264_Screen lane.
-            if (screen_send and ++ticks_since_screen >= screen_tick_interval)
+            if (screen_send and screen_active.load(std::memory_order_relaxed) and ++ticks_since_screen >= screen_tick_interval)
             {
 
                 ticks_since_screen = 0;

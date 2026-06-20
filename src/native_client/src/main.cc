@@ -37,6 +37,22 @@ namespace
         return val ? std::string { val } : default_val;
     }
 
+    // Shell out to openssl to compute HMAC-SHA256(user, secret) — same
+    // recipe the gateway runs on its side to verify the Hello frame. The
+    // network binary takes the already-computed hex token via OSN_AUTH_TOKEN.
+    std::string compute_auth_token(const std::string& user, const std::string& secret)
+    {
+        const std::string cmd { "printf %s '" + user + "' | openssl dgst -sha256 -hmac '" + secret + "' | awk '{print $NF}'" };
+        FILE* pipe { popen(cmd.c_str(), "r") };
+        if (!pipe) return { };
+        char buf[256] { };
+        std::string token { };
+        if (fgets(buf, sizeof buf, pipe)) token = buf;
+        pclose(pipe);
+        if (!token.empty() and token.back() == '\n') token.pop_back();
+        return token;
+    }
+
     pid_t network_pid { -1 };
 
     void cleanup_network()
@@ -60,8 +76,17 @@ int main()
     const std::string signaling_host { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
     const std::string auth_secret { env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123") };
     const std::string room_name { env_str("OSN_ROOM", "general") };
+    const std::string auth_token { compute_auth_token(user_name, auth_secret) };
+    if (auth_token.empty())
+    {
+        std::printf("native_client: failed to compute auth token (is openssl installed?)\n");
+        return 1;
+    }
 
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
+    // VIDEO only — the audio subsystem is owned by the spawned network child,
+    // and initialising it twice on the same machine collides with WSL's
+    // pulseaudio/ALSA layer and crashes the second instance.
+    if (!SDL_Init(SDL_INIT_VIDEO))
     {
         std::printf("native_client: SDL_Init failed: %s\n", SDL_GetError());
         return 1;
@@ -105,24 +130,18 @@ int main()
         const std::string relay_host { signaling_host };
         const std::string local_port { "0" };
 
-        char* env_vars[] {
-            (char*)"OSN_SIGNALING_HOST",
-            (char*)signaling_host.c_str(),
-            (char*)"OSN_ROOM",
-            (char*)room_name.c_str(),
-            (char*)"OSN_USER",
-            (char*)user_name.c_str(),
-            (char*)"OPENSOCIALNET_AUTH_SECRET",
-            (char*)auth_secret.c_str(),
-            (char*)"OSN_LOCAL_PORT",
-            (char*)local_port.c_str(),
-            nullptr
-        };
-
-        for (int i = 0; env_vars[i]; i += 2)
-        {
-            setenv(env_vars[i], env_vars[i+1], 1);
-        }
+        // Carry over the parent's env then layer on the runtime config. We
+        // initialise both video and screen *capabilities* (OSN_VIDEO=1 /
+        // OSN_SCREEN=1) so the encoders boot. The actual send is gated at
+        // runtime by signals from the parent — flipping back on costs nothing.
+        setenv("OSN_SIGNALING_HOST",          signaling_host.c_str(), 1);
+        setenv("OSN_ROOM",                    room_name.c_str(),      1);
+        setenv("OSN_USER",                    user_name.c_str(),      1);
+        setenv("OSN_AUTH_TOKEN",              auth_token.c_str(),     1);
+        setenv("OSN_LOCAL_PORT",              local_port.c_str(),     1);
+        setenv("OSN_VIDEO",                   "1",                    1);
+        setenv("OSN_SCREEN",                  "1",                    1);
+        setenv("OSN_ICE",                     "1",                    1);
 
         // Construct absolute path to network binary
         char cwd[1024] { };
@@ -188,22 +207,27 @@ int main()
             ImGui::TextUnformatted("Media");
             ImGui::Separator();
 
-            if (ImGui::Button(audio_enabled ? "🔊 Mute" : "🔇 Unmute", ImVec2(-1, 40)))
+            // SIGUSR1/SIGUSR2/SIGURG flip atomic toggles inside the network
+            // child. Encoders are already initialised so flipping is instant.
+            if (ImGui::Button(audio_enabled ? "Mute" : "Unmute", ImVec2(-1, 40)))
             {
                 audio_enabled = !audio_enabled;
-                std::printf("[ui] audio %s\n", audio_enabled ? "enabled" : "disabled");
+                if (network_pid > 0) kill(network_pid, SIGUSR1);
+                std::printf("[ui] audio %s -> SIGUSR1\n", audio_enabled ? "enabled" : "disabled");
             }
 
-            if (ImGui::Button(video_enabled ? "📹 Camera Off" : "📹 Camera On", ImVec2(-1, 40)))
+            if (ImGui::Button(video_enabled ? "Camera Off" : "Camera On", ImVec2(-1, 40)))
             {
                 video_enabled = !video_enabled;
-                std::printf("[ui] video %s\n", video_enabled ? "enabled" : "disabled");
+                if (network_pid > 0) kill(network_pid, SIGUSR2);
+                std::printf("[ui] video %s -> SIGUSR2\n", video_enabled ? "enabled" : "disabled");
             }
 
-            if (ImGui::Button(screenshare_enabled ? "🖥️ Stop Share" : "🖥️ Share Screen", ImVec2(-1, 40)))
+            if (ImGui::Button(screenshare_enabled ? "Stop Share" : "Share Screen", ImVec2(-1, 40)))
             {
                 screenshare_enabled = !screenshare_enabled;
-                std::printf("[ui] screenshare %s\n", screenshare_enabled ? "enabled" : "disabled");
+                if (network_pid > 0) kill(network_pid, SIGURG);
+                std::printf("[ui] screenshare %s -> SIGURG\n", screenshare_enabled ? "enabled" : "disabled");
             }
         }
         ImGui::End();
