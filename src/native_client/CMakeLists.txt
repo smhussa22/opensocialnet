@@ -11,6 +11,19 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 include(FetchContent)
 
+# ---- Google OAuth desktop loopback flow deps ----
+# OpenSSL: PKCE verifier hashing (SHA256) + httplib HTTPS for the token
+# exchange. cpp-httplib pulls in the same dep transitively when its
+# OPENSSL_SUPPORT define is on.
+find_package(OpenSSL REQUIRED)
+FetchContent_Declare(
+    cpp-httplib
+    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+    GIT_TAG        v0.15.3
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(cpp-httplib)
+
 # ---- SDL3 (windowing + audio + renderer) ----
 # Kept on the shared default for now to match src/network's loopback exe.
 # For a distributable single-binary build we'll flip SDL_STATIC=ON +
@@ -51,6 +64,7 @@ set(IMGUI_SOURCES
 
 add_executable(native_client
     src/main.cc
+    src/OAuthClient.cc
     ${IMGUI_SOURCES}
 )
 
@@ -62,6 +76,13 @@ target_include_directories(native_client PRIVATE
 
 target_link_libraries(native_client PRIVATE
     SDL3::SDL3
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    httplib::httplib
 )
+
+# cpp-httplib's HTTPS code only compiles when this is defined — gated as
+# a target define so SDL/ImGui aren't pulled into the SSL conditional.
+target_compile_definitions(native_client PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 
 target_compile_options(native_client PRIVATE -Wall -Wextra -Wpedantic)

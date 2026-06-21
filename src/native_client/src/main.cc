@@ -20,6 +20,7 @@
 #include <imgui_impl_sdlrenderer3.h>
 
 // project headers
+#include "OAuthClient.hh"
 
 namespace
 {
@@ -110,15 +111,62 @@ int main()
 
     std::setvbuf(stdout, nullptr, _IONBF, 0);
 
-    const std::string user_name { env_str("OSN_USER", "alice") };
-    const std::string signaling_host { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
-    const std::string auth_secret { env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123") };
-    const std::string room_name { env_str("OSN_ROOM", "general") };
-    const std::string auth_token { compute_auth_token(user_name, auth_secret) };
-    if (auth_token.empty())
+    // Two auth modes share this main() depending on env:
+    //
+    //   OSN_GOOGLE_CLIENT_ID set -> Google OAuth desktop loopback flow.
+    //     Browser pops, user signs in, we get an RS256 JWT back. user_id
+    //     becomes the Google `sub`, display name is profile name / email.
+    //
+    //   OSN_GOOGLE_CLIENT_ID unset -> HMAC dev fallback. Uses the
+    //     existing OSN_USER + OPENSOCIALNET_AUTH_SECRET pair so tests
+    //     and CI keep working without going through Google.
+    const std::string google_client_id { env_str("OSN_GOOGLE_CLIENT_ID", "") };
+    const std::string signaling_host   { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
+    const std::string room_name        { env_str("OSN_ROOM", "general") };
+
+    std::string user_name  { };
+    std::string auth_token { };
+
+    if (!google_client_id.empty())
     {
-        std::printf("native_client: failed to compute auth token (is openssl installed?)\n");
-        return 1;
+
+        std::printf("native_client: starting Google sign-in (client_id=%s...)\n", google_client_id.substr(0, 12).c_str());
+        const auto oauth { OpenSocialNet::NativeClient::google_login(google_client_id) };
+        if (!oauth.ok)
+        {
+
+            std::printf("native_client: Google sign-in failed: %s\n", oauth.error.c_str());
+            return 1;
+
+        }
+
+        // sub is the stable user_id; the network child re-uses this for
+        // routing (fnv1a_32(user_id) -> peer_id) and for the Hello
+        // envelope. Display name preference: profile name > email > sub.
+        user_name  = oauth.sub;
+        auth_token = oauth.id_token;
+
+        std::string display { oauth.name };
+        if (display.empty()) display = oauth.email;
+        if (display.empty()) display = oauth.sub;
+        std::printf("native_client: signed in as %s (sub=%s)\n", display.c_str(), oauth.sub.c_str());
+
+    }
+    else
+    {
+
+        user_name = env_str("OSN_USER", "alice");
+        const std::string auth_secret { env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123") };
+        auth_token = compute_auth_token(user_name, auth_secret);
+        if (auth_token.empty())
+        {
+
+            std::printf("native_client: failed to compute HMAC auth token (is openssl installed?)\n");
+            return 1;
+
+        }
+        std::printf("native_client: HMAC dev auth as user=%s\n", user_name.c_str());
+
     }
 
     // VIDEO only — the audio subsystem is owned by the spawned network child,
