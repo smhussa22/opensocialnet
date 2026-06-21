@@ -36,6 +36,8 @@ namespace OpenSocialNet::Network
         H264        = 2, // H264 camera video
         H264_Screen = 3, // H264 screen-capture video (separate so receivers tile it apart from camera)
         H265        = 4, // future codec slot
+        RttPing     = 5, // 8-byte payload: sender's steady_clock ns at send time, mirrored verbatim into a Pong
+        RttPong     = 6, // 8-byte payload: copied from the Ping that triggered this Pong (closes the RTT loop)
 
     };
 

@@ -70,6 +70,7 @@ add_executable(network
     src/WebSocketClient.cc
     src/SignalingClient.cc
     src/IceTransport.cc
+    src/RttProber.cc
     ../audio_engine/src/AudioStream.cc
     ../audio_engine/src/AudioCapture.cc
     ../audio_engine/src/AudioEncoder.cc
