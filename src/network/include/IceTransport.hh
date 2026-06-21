@@ -34,6 +34,7 @@ namespace OpenSocialNet::Network
         std::uint16_t turn_port { 3478 }; // TURN UDP port
         std::string   turn_user { };      // TURN long-term credential username
         std::string   turn_pass { };      // TURN long-term credential password
+        bool          force_relay { false }; // strip host/srflx candidates from both SDPs — relay path only, debug knob for validating the TURN leg without two networks
 
     };
 
@@ -99,6 +100,7 @@ namespace OpenSocialNet::Network
         std::thread loop_thread { };               // pumps the context; all libnice callbacks fire here
         std::atomic<bool> loop_running { false };  // loop thread exit flag
         ::guint stream_id { 0 };                   // the single negotiated stream
+        bool force_relay { false };                // copied from IceConfig::force_relay — gates SDP candidate filtering
         std::atomic<bool> gathered { false };      // candidate-gathering-done fired
         std::atomic<unsigned> state { 0 };         // latest NiceComponentState
         RecvCallback on_recv { };                  // inbound datagram sink (loop thread)

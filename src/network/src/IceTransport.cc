@@ -10,6 +10,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <string_view>
 
 // 3rd party headers
 
@@ -55,6 +56,49 @@ namespace
 
     }
 
+    // Drop every "a=candidate:..." line whose type token isn't "relay".
+    // libnice's SDP format is one candidate per line, the type is the
+    // word right after " typ ". Non-candidate lines pass through
+    // unchanged so credentials (ufrag/pwd) and stream metadata survive.
+    std::string filter_relay_only(const std::string& sdp) noexcept
+    {
+
+        std::string out { };
+        out.reserve(sdp.size());
+
+        std::size_t i { 0 };
+        while (i < sdp.size())
+        {
+
+            const std::size_t nl { sdp.find('\n', i) };
+            const std::size_t end { nl == std::string::npos ? sdp.size() : nl + 1 };
+            const std::string_view line { sdp.data() + i, end - i };
+
+            bool keep { true };
+            if (line.rfind("a=candidate:", 0) == 0)
+            {
+
+                const std::size_t typ { line.find(" typ ") };
+                if (typ != std::string_view::npos)
+                {
+
+                    const std::string_view tail { line.substr(typ + 5) };
+                    const std::size_t stop { tail.find_first_of(" \r\n") };
+                    const std::string_view type { tail.substr(0, stop) };
+                    if (type != "relay") keep = false;
+
+                }
+
+            }
+
+            if (keep) out.append(line);
+            i = end;
+
+        }
+        return out;
+
+    }
+
     // Poll an atomic until predicate-true or the deadline passes. The
     // flags are flipped by the loop thread; 20ms granularity is plenty
     // for one-shot negotiation steps.
@@ -83,6 +127,8 @@ namespace OpenSocialNet::Network
     {
 
         on_recv = std::move(recv_callback);
+        force_relay = config.force_relay;
+        if (force_relay) std::printf("[ice] force-relay mode — host/srflx candidates will be stripped from SDPs (debug knob)\n");
 
         context.reset(::g_main_context_new());
         agent.reset(::nice_agent_new(context.get(), NICE_COMPATIBILITY_RFC5245));
@@ -177,7 +223,10 @@ namespace OpenSocialNet::Network
         if (!agent) return { };
 
         const GCharPtr raw { ::nice_agent_generate_local_sdp(agent.get()) };
-        return raw != nullptr ? std::string { raw.get() } : std::string { };
+        if (raw == nullptr) return { };
+        std::string sdp { raw.get() };
+        if (force_relay) sdp = filter_relay_only(sdp);
+        return sdp;
 
     }
 
@@ -188,7 +237,8 @@ namespace OpenSocialNet::Network
 
         ::g_object_set(G_OBJECT(agent.get()), "controlling-mode", controlling ? TRUE : FALSE, nullptr);
 
-        const int added { ::nice_agent_parse_remote_sdp(agent.get(), remote_sdp.c_str()) };
+        const std::string sdp_to_parse { force_relay ? filter_relay_only(remote_sdp) : remote_sdp };
+        const int added { ::nice_agent_parse_remote_sdp(agent.get(), sdp_to_parse.c_str()) };
         if (added <= 0)
         {
 
