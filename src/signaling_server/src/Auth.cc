@@ -48,4 +48,20 @@ namespace OpenSocialNet::Signaling
 
     }
 
+
+    bool looks_like_jwt(const std::string& token) noexcept
+    {
+
+        // JWTs are exactly two dots between three non-empty base64url
+        // segments. HMAC tokens are 64 lowercase hex chars with no dots.
+        // We don't validate the segment contents here; the verifier will
+        // reject malformed payloads — this only routes the request.
+        if (token.empty()) return false;
+
+        int dots { 0 };
+        for (char c : token) if (c == '.') ++dots;
+        return dots == 2;
+
+    }
+
 }

@@ -25,6 +25,7 @@ namespace OpenSocialNet::Signaling
     class ScyllaClient;
     class KafkaBus;
     class SessionRegistry;
+    class JwksCache;
 
 
     // One entry in a voice room's membership list. session_id is the
@@ -54,7 +55,9 @@ namespace OpenSocialNet::Signaling
         ScyllaClient* scylla { nullptr }; // borrowed: Scylla connection + prepared statements
         KafkaBus* kafka { nullptr }; // borrowed: producer + consumer thread
         SessionRegistry* sessions { nullptr }; // borrowed: live session_id -> WS map
-        std::string auth_secret { }; // HMAC key for Hello auth; empty means "not configured"
+        JwksCache* jwks { nullptr }; // borrowed: Google JWKS for ID-token verification
+        std::string auth_secret { }; // HMAC dev fallback; empty means "no HMAC, JWT-only"
+        std::string google_client_id { }; // expected `aud` claim on incoming ID tokens; empty disables JWT auth
 
         // Relay endpoint shipped back to clients on JoinVoice. Same value
         // for every peer in every room — the relay does fan-out by

@@ -43,6 +43,16 @@ namespace OpenSocialNet::Signaling
         // to. Called exactly once per connection (in on_hello).
         std::vector<std::string> user_channels(const std::string& user_id);
 
+
+        // Idempotent INSERT into the `users` table — on Hello via JWT, the
+        // gateway upserts the row keyed by the Google `sub` so a fresh
+        // login becomes a first-class user record without a separate
+        // signup flow. Synchronous because it happens exactly once per
+        // connection on the WS loop thread and the latency is negligible
+        // against the round-trip the client is already waiting on.
+        // Returns false on driver/CQL failure (caller logs + proceeds).
+        bool upsert_user(const std::string& user_id, const std::string& username);
+
         // Raw accessors. EnvelopeHandlers needs these for async bind/execute
         // since the Cass driver works in terms of these handle types.
         ::CassSession* session();
@@ -61,6 +71,7 @@ namespace OpenSocialNet::Signaling
         CassPreparedPtr m_prep_insert_message { }; // INSERT INTO messages ...
         CassPreparedPtr m_prep_fetch_history { }; // SELECT ... FROM messages ...
         CassPreparedPtr m_prep_user_channels { }; // SELECT channel_id FROM user_channels ...
+        CassPreparedPtr m_prep_upsert_user { }; // INSERT INTO users (user_id, username, created_at) VALUES (?, ?, toTimestamp(now()))
 
     };
 

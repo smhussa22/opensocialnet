@@ -15,6 +15,7 @@
 // project headers
 #include "EnvelopeHandlers.hh"
 #include "GatewayState.hh"
+#include "JwksCache.hh"
 #include "KafkaBus.hh"
 #include "ScyllaClient.hh"
 #include "Session.hh"
@@ -35,10 +36,23 @@ int main()
         state.auth_secret = secret;
 
     }
-    else
+
+    // Google OAuth client_id for Hello frames carrying an ID token. When
+    // unset, the gateway falls back to HMAC-only — useful for local dev
+    // / CI where there's no Google project. In a published build this
+    // should always be set; the HMAC path should compile out.
+    if (const char* client_id = std::getenv("OSN_GOOGLE_CLIENT_ID"); client_id && *client_id)
     {
 
-        std::cerr << "[auth] WARNING: OPENSOCIALNET_AUTH_SECRET is unset; all Hello frames will be rejected\n";
+        state.google_client_id = client_id;
+        std::cerr << "[auth] Google client_id configured (JWT path enabled)\n";
+
+    }
+
+    if (state.auth_secret.empty() && state.google_client_id.empty())
+    {
+
+        std::cerr << "[auth] WARNING: neither OPENSOCIALNET_AUTH_SECRET nor OSN_GOOGLE_CLIENT_ID is set; all Hello frames will be rejected\n";
 
     }
 
@@ -89,10 +103,16 @@ int main()
     // Live session_id -> WS map.
     OpenSocialNet::Signaling::SessionRegistry sessions { };
 
+    // Google JWKS cache. Lazily fetches on the first JWT Hello; safe to
+    // construct unconditionally — empty client_id just means the cache
+    // is never consulted.
+    OpenSocialNet::Signaling::JwksCache jwks { };
+
     // Wire everything into the shared state holder before we hand it to handlers.
     state.scylla = &scylla;
     state.kafka = &kafka;
     state.sessions = &sessions;
+    state.jwks = &jwks;
     // Capture this thread's uWS Loop BEFORE any worker threads start so that
     // background paths (kafka consumer, the future native-voice relay control
     // path) can Loop::defer back onto the right loop instead of their own.

@@ -55,6 +55,10 @@ namespace OpenSocialNet::Signaling
         m_prep_insert_message = prepare("INSERT INTO messages (channel_id, message_id, sender_id, content) VALUES (?, ?, ?, ?)");
         m_prep_fetch_history = prepare("SELECT message_id, sender_id, content FROM messages WHERE channel_id = ? AND message_id < ? LIMIT ?");
         m_prep_user_channels = prepare("SELECT channel_id FROM user_channels WHERE user_id = ?");
+        // Idempotent: overwriting an existing row with the same primary
+        // key just refreshes username + created_at, which is fine for our
+        // "first login wins, every subsequent login is a no-op" semantics.
+        m_prep_upsert_user = prepare("INSERT INTO users (user_id, username, created_at) VALUES (?, ?, toTimestamp(now()))");
 
     }
 
@@ -125,6 +129,30 @@ namespace OpenSocialNet::Signaling
     {
 
         return m_prep_fetch_history.get();
+
+    }
+
+
+    bool ScyllaClient::upsert_user(const std::string& user_id, const std::string& username)
+    {
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_upsert_user.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
+        ::cass_statement_bind_string(stmt.get(), 1, username.c_str());
+
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK)
+        {
+
+            const char* msg { nullptr };
+            std::size_t msg_len { 0 };
+            ::cass_future_error_message(fut.get(), &msg, &msg_len);
+            std::cerr << "[users] upsert " << user_id << " failed: " << std::string_view { msg, msg_len } << '\n';
+            return false;
+
+        }
+        return true;
 
     }
 

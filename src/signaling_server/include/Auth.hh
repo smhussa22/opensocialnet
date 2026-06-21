@@ -26,6 +26,13 @@ namespace OpenSocialNet::Signaling
     // misconfigured server denies everyone instead of accepting anything.
     bool verify_hello_auth(const std::string& secret, const std::string& user_id, const std::string& provided_token);
 
+
+    // Cheap, structural test that doesn't validate anything — just tells
+    // the Hello handler which verifier to route to. A JWT is three
+    // base64url segments separated by dots. The HMAC token is 64 hex
+    // chars, so the two are unambiguous on shape alone.
+    bool looks_like_jwt(const std::string& token) noexcept;
+
 }
 
 #endif // SIGNALING_SERVER_AUTH_HH

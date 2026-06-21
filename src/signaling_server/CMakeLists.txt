@@ -17,6 +17,31 @@ find_package(unofficial-uwebsockets CONFIG REQUIRED)
 # symbols, so we have to link it ourselves.
 find_package(OpenSSL REQUIRED)
 
+# ---- Google OAuth verification deps (header-only via FetchContent) ----
+# cpp-httplib: HTTPS GET for the JWKS endpoint. Compiled with OpenSSL so
+# it can talk to https://www.googleapis.com/oauth2/v3/certs directly.
+# jwt-cpp: RS256 JWT verification against the JWKS-derived public key.
+include(FetchContent)
+FetchContent_Declare(
+        cpp-httplib
+        GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+        GIT_TAG        v0.15.3
+        GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(cpp-httplib)
+
+FetchContent_Declare(
+        jwt-cpp
+        GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp.git
+        GIT_TAG        v0.7.0
+        GIT_SHALLOW    TRUE
+)
+# Tell jwt-cpp to skip the default OpenSSL search — we already have the
+# OpenSSL::SSL/Crypto targets from find_package above.
+set(JWT_DISABLE_PICOJSON OFF CACHE BOOL "" FORCE)
+set(JWT_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(jwt-cpp)
+
 # cassandra-cpp-driver: built from source into $HOME/local (vcpkg dropped this port).
 # Find the header + .so by hint rather than CMake config since the driver doesn't
 # install one. Embed an RPATH so the binary can locate libcassandra.so at runtime.
@@ -65,6 +90,8 @@ add_executable(signaling_server
         src/main.cc
         src/Auth.cc
         src/EnvelopeHandlers.cc
+        src/JwksCache.cc
+        src/JwtVerifier.cc
         src/KafkaBus.cc
         src/ScyllaClient.cc
         src/Session.cc
@@ -89,7 +116,15 @@ target_link_libraries(signaling_server PRIVATE
         unofficial::uwebsockets::uwebsockets
         ${CASSANDRA_LIB}
         OpenSSL::Crypto
+        OpenSSL::SSL          # cpp-httplib needs SSL for the HTTPS JWKS fetch
+        httplib::httplib
+        jwt-cpp::jwt-cpp
 )
+
+# cpp-httplib needs the OpenSSL macro toggled on so its HTTPS code path
+# compiles into the header. Set it as a target define rather than a global
+# one so other deps don't get pulled into the SSL conditional.
+target_compile_definitions(signaling_server PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 
 set_target_properties(signaling_server PROPERTIES
         BUILD_RPATH   "$ENV{HOME}/local/lib"

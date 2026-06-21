@@ -22,6 +22,8 @@
 #include "Auth.hh"
 #include "CassandraDeleters.hh"
 #include "GatewayState.hh"
+#include "JwksCache.hh"
+#include "JwtVerifier.hh"
 #include "KafkaBus.hh"
 #include "ScyllaClient.hh"
 #include "Session.hh"
@@ -260,35 +262,86 @@ namespace OpenSocialNet::Signaling
         // sess is borrowed -- uWS owns the Session inside the WS handle.
         auto* sess = ws->getUserData();
 
-        if (state.auth_secret.empty())
+        // Two auth paths share one Hello envelope: a Google OAuth ID token
+        // (RS256 JWT, three dot-separated base64url segments) for real
+        // users, or the legacy HMAC hex digest for dev/integration runs.
+        // The shape of the token unambiguously picks the path.
+        const bool jwt_path { looks_like_jwt(hello.auth_token()) };
+
+        if (jwt_path)
         {
 
-            send_error(ws, 401, "auth not configured");
-            ws->close();
-            return;
+            if (state.google_client_id.empty() or state.jwks == nullptr)
+            {
+
+                send_error(ws, 401, "JWT auth not configured");
+                ws->close();
+                return;
+
+            }
+
+            const JwtVerifyResult verify { verify_google_id_token(*state.jwks, hello.auth_token(), state.google_client_id) };
+            if (!verify.ok)
+            {
+
+                std::cerr << "[auth] JWT rejected: " << verify.error << '\n';
+                send_error(ws, 401, "invalid ID token");
+                ws->close();
+                return;
+
+            }
+
+            // Use the Google `sub` as user_id — stable, unique, never
+            // changes if the user changes their email. The display name is
+            // best-effort: prefer profile name, fall back to email, fall
+            // back to sub (so the row is never written with an empty
+            // username).
+            sess->user_id = verify.sub;
+            std::string username { verify.name };
+            if (username.empty()) username = verify.email;
+            if (username.empty()) username = verify.sub;
+            state.scylla->upsert_user(verify.sub, username);
+
+            std::cerr << "[auth] JWT ok: sub=" << verify.sub << " email=" << verify.email << '\n';
+
+        }
+        else
+        {
+
+            // HMAC dev path — gated by env, never enabled in prod builds
+            // once we ship.
+            if (state.auth_secret.empty())
+            {
+
+                send_error(ws, 401, "auth not configured");
+                ws->close();
+                return;
+
+            }
+
+            if (hello.user_id().empty())
+            {
+
+                send_error(ws, 400, "missing user_id");
+                ws->close();
+                return;
+
+            }
+
+            if (!verify_hello_auth(state.auth_secret, hello.user_id(), hello.auth_token()))
+            {
+
+                std::cerr << "[auth] HMAC denied user=" << hello.user_id() << '\n';
+                send_error(ws, 401, "invalid auth token");
+                ws->close();
+                return;
+
+            }
+
+            sess->user_id = hello.user_id();
 
         }
 
-        if (hello.user_id().empty())
-        {
-
-            send_error(ws, 400, "missing user_id");
-            ws->close();
-            return;
-
-        }
-
-        if (!verify_hello_auth(state.auth_secret, hello.user_id(), hello.auth_token()))
-        {
-
-            std::cerr << "[auth] denied user=" << hello.user_id() << '\n';
-            send_error(ws, 401, "invalid auth token");
-            ws->close();
-            return;
-
-        }
-
-        sess->user_id = hello.user_id();
         sess->session_id = make_session_id();
         sess->authenticated = true;
 
