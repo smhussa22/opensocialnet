@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <ctime>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <iostream>
@@ -38,6 +40,7 @@
 #include "SpscQueue.hh"
 #include "LossSim.hh"
 #include "IceTransport.hh"
+#include "RttProber.hh"
 #include "AudioPlc.hh"
 #include "SignalingClient.hh"
 #include "PeerVideoRouter.hh"
@@ -192,7 +195,8 @@ using VideoQueue = OpenSocialNet::Network::SpscQueue<OpenSocialNet::Network::Pac
 static std::atomic<std::uint64_t> packets_dropped_overflow       { 0 }; // audio SpscQueue full at try_push
 static std::atomic<std::uint64_t> video_packets_dropped_overflow { 0 }; // video SpscQueue full at try_push
 
-void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue& audio_queue, VideoQueue& video_queue)
+void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue& audio_queue, VideoQueue& video_queue,
+                    OpenSocialNet::Network::UdpSender& sender, OpenSocialNet::Network::RttProber& rtt_prober, std::uint32_t self_peer_id)
 {
 
     OpenSocialNet::Network::Packet packet {};
@@ -203,6 +207,24 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue
         if (!receiver.receive(packet)) continue;
         if (packet.header.payload_size == 0) continue;
         if (packet.header.payload_size > OpenSocialNet::Network::maximum_packet_size) continue;
+
+        // RTT lane: intercepted before any queue so pings/pongs never
+        // touch the audio jitter buffer or the video router. Pong is
+        // sent back inline — it's just a 32+8 byte stamp+sendto.
+        if (packet.header.payload_type == OpenSocialNet::Network::PayloadType::RttPing)
+        {
+
+            sender.send_raw(rtt_prober.build_pong(packet, self_peer_id));
+            continue;
+
+        }
+        if (packet.header.payload_type == OpenSocialNet::Network::PayloadType::RttPong)
+        {
+
+            rtt_prober.on_pong(packet.header.peer_id, packet, std::chrono::steady_clock::now());
+            continue;
+
+        }
 
         // Demux by payload kind: video fragments go to the main loop's
         // router (decode + render on the main thread), everything else to
@@ -431,6 +453,11 @@ int main()
         // decoder + PLC per inbound (peer_id, ssrc), mixed to one stream.
         OpenSocialNet::Network::PeerMixer mixer { plc_strategy, adaptive_jb };
 
+        // RTT prober — 1Hz ping to the room, EWMA of returning pongs per
+        // remote peer. Lives next to the mixer so its lifetime tracks the
+        // session. Receive thread + ICE recv callback both reach into it.
+        OpenSocialNet::Network::RttProber rtt_prober { std::chrono::milliseconds { 1000 } };
+
         PlaybackContext playback_context { &incoming_queue, &mixer };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
         OpenSocialNet::Audio::AudioStream audio_stream { spec, playback_id, on_playback, &playback_context };
@@ -566,6 +593,49 @@ int main()
             room_str.c_str(), static_cast<unsigned long>(room_id),
             user_str.c_str(), peer_id, assigned_ssrc);
 
+        // Per-session stats logs — gitignored ./logs/ at the repo root,
+        // filenames embed start time + user so each run is identifiable
+        // after the fact. Two outputs: a .log mirroring the current
+        // [net-stats]/[vid-stats] format for at-a-glance reading, and a
+        // .csv for plotting (one row per stats tick). stdout stays clean
+        // of stats; other diagnostic prints ([main], [ice], …) still go
+        // there because they matter for setup / failure triage.
+        std::filesystem::create_directories("logs");
+        const auto session_clock_start { std::chrono::system_clock::now() };
+        const auto session_t_c         { std::chrono::system_clock::to_time_t(session_clock_start) };
+        std::tm    session_tm          { };
+        ::localtime_r(&session_t_c, &session_tm);
+        char ts_buf[32] { };
+        std::strftime(ts_buf, sizeof ts_buf, "%Y-%m-%d_%H%M%S", &session_tm);
+        const std::string log_basename { std::string { "logs/" } + ts_buf + "_" + user_str };
+        const std::string log_path     { log_basename + ".log" };
+        const std::string csv_path     { log_basename + ".csv" };
+        FILE* stats_log_fp { std::fopen(log_path.c_str(), "w") };
+        FILE* stats_csv_fp { std::fopen(csv_path.c_str(), "w") };
+        if (stats_log_fp == nullptr or stats_csv_fp == nullptr)
+        {
+
+            std::printf("[main] WARN: could not open stats files (%s / %s) — stats will be silently dropped this session\n", log_path.c_str(), csv_path.c_str());
+
+        }
+        else
+        {
+
+            // Line-buffered so 'tail -f logs/...log' shows every tick the
+            // moment it lands without needing fflush calls at every site.
+            std::setvbuf(stats_log_fp, nullptr, _IOLBF, 0);
+            std::setvbuf(stats_csv_fp, nullptr, _IOLBF, 0);
+            std::fprintf(stats_csv_fp,
+                "elapsed_s,sources,packets_observed,packets_lost,packets_ooo,jitter_ms,"
+                "spsc_size,jb_buffered,jb_threshold,jb_adapts,drop_overflow,sent,plc,peers,"
+                "vid_sources,vid_observed,vid_lost,vid_ooo,vid_jb,vid_decoded,vid_concealed,"
+                "vid_dropped,vid_missed,vid_rendered,vid_sent_frames,vid_sent_pkts,"
+                "scr_frames,scr_pkts,vid_drop_overflow,rtt_summary\n");
+            std::printf("[main] stats -> %s + %s (stdout suppressed for [net-stats]/[vid-stats])\n", log_path.c_str(), csv_path.c_str());
+
+        }
+        const auto session_steady_start { std::chrono::steady_clock::now() };
+
         // ---- ICE: peer-to-peer media lane via libnice (OSN_ICE=1) ----
         //
         // Connectivity only: the exact same stamped Packets ride the
@@ -585,12 +655,13 @@ int main()
             ice_config.turn_port = static_cast<std::uint16_t>(env_int("OSN_TURN_PORT", 3478));
             ice_config.turn_user = env_str("OSN_TURN_USER", "");
             ice_config.turn_pass = env_str("OSN_TURN_PASS", "");
+            ice_config.force_relay = env_int("OSN_ICE_FORCE_RELAY", 0) != 0;
 
             // Inbound ICE datagrams take receive_thread's place as the
             // single producer for both SPSC rings — the relay rx thread
             // is not spawned when the ICE lane wins. Runs on the GLib
             // loop thread.
-            const auto ice_recv = [&incoming_queue, &video_queue](std::span<const std::uint8_t> datagram)
+            const auto ice_recv = [&incoming_queue, &video_queue, &ice, &rtt_prober, peer_id](std::span<const std::uint8_t> datagram)
             {
 
                 OpenSocialNet::Network::Packet packet { };
@@ -598,6 +669,25 @@ int main()
                 std::memcpy(&packet, datagram.data(), datagram.size());
                 if (!OpenSocialNet::Network::packet_from_wire(packet, datagram.size())) return;
                 if (packet.header.payload_size == 0) return;
+
+                // RTT lane on the ICE path — same as the relay receive
+                // thread: intercept before any queue, echo the Pong
+                // straight back over the nominated candidate pair.
+                if (packet.header.payload_type == OpenSocialNet::Network::PayloadType::RttPing)
+                {
+
+                    auto pong { rtt_prober.build_pong(packet, peer_id) };
+                    ice.send(OpenSocialNet::Network::packet_to_wire(pong));
+                    return;
+
+                }
+                if (packet.header.payload_type == OpenSocialNet::Network::PayloadType::RttPong)
+                {
+
+                    rtt_prober.on_pong(packet.header.peer_id, packet, std::chrono::steady_clock::now());
+                    return;
+
+                }
 
                 const bool is_video { packet.header.payload_type == OpenSocialNet::Network::PayloadType::H264 or packet.header.payload_type == OpenSocialNet::Network::PayloadType::H264_Screen };
                 if (is_video)
@@ -838,7 +928,7 @@ int main()
         // The relay rx thread and the ICE recv callback are alternative
         // sole producers for the SPSC rings — never both.
         std::thread rx { };
-        if (!ice_active) rx = std::thread { receive_thread, std::ref(receiver), std::ref(incoming_queue), std::ref(*video_queue) };
+        if (!ice_active) rx = std::thread { receive_thread, std::ref(receiver), std::ref(incoming_queue), std::ref(*video_queue), std::ref(sender), std::ref(rtt_prober), peer_id };
 
         std::array<float, 480> chunk {};
         std::cout << "[main] starting capture loop...\n";
@@ -1007,6 +1097,24 @@ int main()
 
             }
 
+            // RTT prober tick — emits one Ping when the interval has
+            // elapsed, otherwise no-op. Same byte order swap as audio.
+            // Goes around LossSim so the RTT we measure reflects the
+            // actual network, not the simulator's adversarial drops.
+            {
+
+                const auto now { std::chrono::steady_clock::now() };
+                if (rtt_prober.should_send_ping(now))
+                {
+
+                    auto ping { rtt_prober.build_ping(room_id, peer_id, now) };
+                    if (ice_active) ice.send(OpenSocialNet::Network::packet_to_wire(ping));
+                    else sender.send_raw(ping);
+
+                }
+
+            }
+
             // Keepalive when audio's gone quiet for a while. Skips the LossSim
             // path on purpose — keepalives must actually reach the relay even
             // when SIM_LOSS_PCT=100 stress-tests are running.
@@ -1059,28 +1167,83 @@ int main()
             if (++ticks_since_stats >= stats_tick_interval)
             {
 
-                const auto agg { mixer.stats() };
+                const auto agg          { mixer.stats() };
+                const auto vagg         { video_router.stats() };
                 const std::size_t live_peers { signaling_host.empty() ? std::size_t { 0 } : signaling.peers().size() };
-                std::printf("[net-stats] src=%zu obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu peers=%zu\n",
-                    agg.sources,
-                    static_cast<unsigned long long>(agg.packets_observed),
-                    static_cast<unsigned long long>(agg.packets_lost),
-                    static_cast<unsigned long long>(agg.packets_out_of_order),
-                    agg.max_jitter_ms,
-                    incoming_queue.size(),
-                    agg.buffered_packets,
-                    agg.max_playout_threshold,
-                    static_cast<unsigned long long>(agg.adaptations),
-                    static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
-                    packets_sent,
-                    static_cast<unsigned long long>(agg.concealments),
-                    live_peers);
+                const std::string rtt_fragment { rtt_prober.format_for_stats() };
+                const double elapsed_s { std::chrono::duration<double>(std::chrono::steady_clock::now() - session_steady_start).count() };
 
-                const auto vagg { video_router.stats() };
-                if (vagg.sources > 0 or video_send or screen_send)
+                // Human-readable .log line, same format as the old stdout
+                // print. Tail this with `tail -f logs/<name>.log` during a run.
+                if (stats_log_fp != nullptr)
                 {
 
-                    std::printf("[vid-stats] src=%zu obs=%llu lost=%llu ooo=%llu jb=%zu dec=%llu plc=%llu dropped=%llu missed=%llu rendered=%llu sent_frames=%llu sent_pkts=%llu scr_frames=%llu scr_pkts=%llu drop_overflow=%llu\n",
+                    std::fprintf(stats_log_fp, "[net-stats] t=%.1fs src=%zu obs=%llu lost=%llu ooo=%llu jitter_ms=%.2f spsc=%zu jb=%zu jb_th=%zu jb_adapts=%llu drop_overflow=%llu sent=%d plc=%llu peers=%zu rtt=[%s]\n",
+                        elapsed_s,
+                        agg.sources,
+                        static_cast<unsigned long long>(agg.packets_observed),
+                        static_cast<unsigned long long>(agg.packets_lost),
+                        static_cast<unsigned long long>(agg.packets_out_of_order),
+                        agg.max_jitter_ms,
+                        incoming_queue.size(),
+                        agg.buffered_packets,
+                        agg.max_playout_threshold,
+                        static_cast<unsigned long long>(agg.adaptations),
+                        static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
+                        packets_sent,
+                        static_cast<unsigned long long>(agg.concealments),
+                        live_peers,
+                        rtt_fragment.c_str());
+
+                    if (vagg.sources > 0 or video_send or screen_send)
+                    {
+
+                        std::fprintf(stats_log_fp, "[vid-stats] t=%.1fs src=%zu obs=%llu lost=%llu ooo=%llu jb=%zu dec=%llu plc=%llu dropped=%llu missed=%llu rendered=%llu sent_frames=%llu sent_pkts=%llu scr_frames=%llu scr_pkts=%llu drop_overflow=%llu\n",
+                            elapsed_s,
+                            vagg.sources,
+                            static_cast<unsigned long long>(vagg.packets_observed),
+                            static_cast<unsigned long long>(vagg.packets_lost),
+                            static_cast<unsigned long long>(vagg.packets_out_of_order),
+                            vagg.buffered_packets,
+                            static_cast<unsigned long long>(vagg.frames_decoded),
+                            static_cast<unsigned long long>(vagg.frames_concealed),
+                            static_cast<unsigned long long>(vagg.frames_dropped),
+                            static_cast<unsigned long long>(vagg.frames_missed),
+                            static_cast<unsigned long long>(vagg.frames_rendered),
+                            static_cast<unsigned long long>(video_frames_sent),
+                            static_cast<unsigned long long>(video_packets_sent),
+                            static_cast<unsigned long long>(screen_frames_sent),
+                            static_cast<unsigned long long>(screen_packets_sent),
+                            static_cast<unsigned long long>(video_packets_dropped_overflow.load(std::memory_order_relaxed)));
+
+                    }
+
+                }
+
+                // CSV row: one per stats tick, columns match the header
+                // written at startup. RTT goes into a quoted field because
+                // it can contain spaces.
+                if (stats_csv_fp != nullptr)
+                {
+
+                    std::fprintf(stats_csv_fp,
+                        "%.2f,%zu,%llu,%llu,%llu,%.3f,%zu,%zu,%zu,%llu,%llu,%d,%llu,%zu,"
+                        "%zu,%llu,%llu,%llu,%zu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,"
+                        "\"%s\"\n",
+                        elapsed_s,
+                        agg.sources,
+                        static_cast<unsigned long long>(agg.packets_observed),
+                        static_cast<unsigned long long>(agg.packets_lost),
+                        static_cast<unsigned long long>(agg.packets_out_of_order),
+                        agg.max_jitter_ms,
+                        incoming_queue.size(),
+                        agg.buffered_packets,
+                        agg.max_playout_threshold,
+                        static_cast<unsigned long long>(agg.adaptations),
+                        static_cast<unsigned long long>(packets_dropped_overflow.load(std::memory_order_relaxed)),
+                        packets_sent,
+                        static_cast<unsigned long long>(agg.concealments),
+                        live_peers,
                         vagg.sources,
                         static_cast<unsigned long long>(vagg.packets_observed),
                         static_cast<unsigned long long>(vagg.packets_lost),
@@ -1095,9 +1258,11 @@ int main()
                         static_cast<unsigned long long>(video_packets_sent),
                         static_cast<unsigned long long>(screen_frames_sent),
                         static_cast<unsigned long long>(screen_packets_sent),
-                        static_cast<unsigned long long>(video_packets_dropped_overflow.load(std::memory_order_relaxed)));
+                        static_cast<unsigned long long>(video_packets_dropped_overflow.load(std::memory_order_relaxed)),
+                        rtt_fragment.c_str());
 
                 }
+
                 ticks_since_stats = 0;
 
             }
@@ -1115,6 +1280,9 @@ int main()
         ice.shutdown();
 
         capture.shutdown();
+
+        if (stats_log_fp != nullptr) { std::fclose(stats_log_fp); stats_log_fp = nullptr; }
+        if (stats_csv_fp != nullptr) { std::fclose(stats_csv_fp); stats_csv_fp = nullptr; }
 
     } // audio_stream + mixer + sender + receiver destroyed here, before SDL_Quit
 
