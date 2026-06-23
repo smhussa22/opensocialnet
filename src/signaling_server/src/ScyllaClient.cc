@@ -58,8 +58,10 @@ namespace OpenSocialNet::Signaling
         // Idempotent: overwriting an existing row with the same primary
         // key just refreshes username + created_at, which is fine for our
         // "first login wins, every subsequent login is a no-op" semantics.
-        m_prep_upsert_user = prepare("INSERT INTO users (user_id, username, created_at) VALUES (?, ?, toTimestamp(now()))");
-        m_prep_username_for = prepare("SELECT username FROM users WHERE user_id = ?");
+        m_prep_upsert_user        = prepare("INSERT INTO users (user_id, username, email, created_at) VALUES (?, ?, ?, toTimestamp(now()))");
+        m_prep_upsert_user_email  = prepare("INSERT INTO users_by_email (email, user_id, username) VALUES (?, ?, ?)");
+        m_prep_username_for       = prepare("SELECT username FROM users WHERE user_id = ?");
+        m_prep_lookup_user_by_email = prepare("SELECT user_id, username FROM users_by_email WHERE email = ?");
 
         m_prep_ensure_channel     = prepare("INSERT INTO channels (channel_id, name, kind) VALUES (?, ?, ?)");
         m_prep_add_channel_member = prepare("INSERT INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, toTimestamp(now()))");
@@ -144,12 +146,13 @@ namespace OpenSocialNet::Signaling
     }
 
 
-    bool ScyllaClient::upsert_user(const std::string& user_id, const std::string& username)
+    bool ScyllaClient::upsert_user(const std::string& user_id, const std::string& username, const std::string& email)
     {
 
         CassStatementPtr stmt { ::cass_prepared_bind(m_prep_upsert_user.get()) };
         ::cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
         ::cass_statement_bind_string(stmt.get(), 1, username.c_str());
+        ::cass_statement_bind_string(stmt.get(), 2, email.c_str());
 
         CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
         ::cass_future_wait(fut.get());
@@ -163,7 +166,57 @@ namespace OpenSocialNet::Signaling
             return false;
 
         }
+
+        // Mirror into the email index when we have one. Empty email means
+        // the user signed in without the email scope (or HMAC dev path);
+        // no point indexing a blank key.
+        if (!email.empty())
+        {
+
+            CassStatementPtr e_stmt { ::cass_prepared_bind(m_prep_upsert_user_email.get()) };
+            ::cass_statement_bind_string(e_stmt.get(), 0, email.c_str());
+            ::cass_statement_bind_string(e_stmt.get(), 1, user_id.c_str());
+            ::cass_statement_bind_string(e_stmt.get(), 2, username.c_str());
+            CassFuturePtr e_fut { ::cass_session_execute(m_session.get(), e_stmt.get()) };
+            ::cass_future_wait(e_fut.get());
+            if (::cass_future_error_code(e_fut.get()) != CASS_OK)
+            {
+
+                std::cerr << "[users] upsert email index for " << email << " failed (non-fatal)\n";
+                // not fatal — main row landed, lookup-by-email will just miss
+
+            }
+
+        }
         return true;
+
+    }
+
+
+    ScyllaClient::UserByEmail ScyllaClient::lookup_user_by_email(const std::string& email)
+    {
+
+        UserByEmail out { };
+        if (email.empty()) return out;
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_lookup_user_by_email.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, email.c_str());
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK) return out;
+
+        CassResultPtr result { ::cass_future_get_result(fut.get()) };
+        const auto* row { ::cass_result_first_row(result.get()) };
+        if (row == nullptr) return out;
+
+        const char* s { nullptr };
+        std::size_t len { 0 };
+        ::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len);
+        out.user_id = std::string { s, len };
+        ::cass_value_get_string(::cass_row_get_column(row, 1), &s, &len);
+        out.username = std::string { s, len };
+        out.email = email;
+        return out;
 
     }
 

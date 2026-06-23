@@ -24,6 +24,7 @@ message Envelope
     AcceptFriendRequest  accept_friend_request  = 21; // "I accept X's friend request"
     RejectFriendRequest  reject_friend_request  = 22; // "delete X's pending request without becoming friends"
     FetchFriends         fetch_friends          = 23; // "list my friends + pending incoming requests"
+    LookupUser           lookup_user            = 24; // "find a user by email (so the GUI doesn't make the user paste a Google sub)"
 
     // ---- server -> client ----
     Ready                       ready                          = 30;
@@ -36,6 +37,7 @@ message Envelope
     FriendRequestEvent          friend_request_event           = 42; // delivered to recipient in real time
     FriendListResponse          friend_list_response           = 43; // reply to FetchFriends
     FriendRequestAcceptedEvent  friend_request_accepted_event  = 44; // delivered to original requester on accept
+    LookupUserResponse          lookup_user_response           = 45; // reply to LookupUser
 
     // Tags 16-19 and 37-41 are reserved — they used to carry the WebRTC
     // SDP / ICE / screen-share envelopes for the browser+libdatachannel
@@ -221,6 +223,26 @@ message FriendRequestAcceptedEvent
   string user_id        = 1; // the new friend's user_id
   string username       = 2; // their display name
   string dm_channel_id  = 3; // the shared DM channel just created
+
+}
+
+
+message LookupUser
+{
+
+  string request_id = 1; // client-generated, echoed in the response for correlation
+  string email      = 2; // exact-match for now; could grow to prefix search later
+
+}
+
+message LookupUserResponse
+{
+
+  string request_id  = 1;
+  bool   found       = 2;
+  string user_id     = 3; // empty when found=false
+  string username    = 4;
+  string email       = 5;
 
 }
 

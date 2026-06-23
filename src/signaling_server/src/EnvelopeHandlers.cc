@@ -300,7 +300,7 @@ namespace OpenSocialNet::Signaling
             std::string username { verify.name };
             if (username.empty()) username = verify.email;
             if (username.empty()) username = verify.sub;
-            state.scylla->upsert_user(verify.sub, username);
+            state.scylla->upsert_user(verify.sub, username, verify.email);
 
             std::cerr << "[auth] JWT ok: sub=" << verify.sub << " email=" << verify.email << '\n';
 
@@ -793,6 +793,37 @@ namespace OpenSocialNet::Signaling
     }
 
 
+    void on_lookup_user(GatewayState& state, WebSocket* ws, const ::signaling::LookupUser& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        ::signaling::Envelope envelope { };
+        auto* resp { envelope.mutable_lookup_user_response() };
+        resp->set_request_id(req.request_id());
+
+        const auto hit { state.scylla->lookup_user_by_email(req.email()) };
+        if (hit.user_id.empty())
+        {
+
+            resp->set_found(false);
+
+        }
+        else
+        {
+
+            resp->set_found(true);
+            resp->set_user_id(hit.user_id);
+            resp->set_username(hit.username);
+            resp->set_email(hit.email);
+
+        }
+        send_envelope(ws, envelope);
+
+    }
+
+
     void on_fetch_friends(GatewayState& state, WebSocket* ws, const ::signaling::FetchFriends& /*req*/)
     {
 
@@ -880,6 +911,10 @@ namespace OpenSocialNet::Signaling
 
             case ::signaling::Envelope::kFetchFriends:
                 on_fetch_friends(state, ws, envelope.fetch_friends());
+                break;
+
+            case ::signaling::Envelope::kLookupUser:
+                on_lookup_user(state, ws, envelope.lookup_user());
                 break;
 
             default:

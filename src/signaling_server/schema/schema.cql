@@ -47,7 +47,18 @@ CREATE TABLE IF NOT EXISTS channels (
 CREATE TABLE IF NOT EXISTS users (
   user_id     text PRIMARY KEY,
   username    text,
+  email       text,
   created_at  timestamp
+);
+
+
+-- Reverse index: email -> user_id, for friend lookup by email. Scylla
+-- doesn't do JOINs and SIs are awkward at scale, so we denormalize on
+-- write (every upsert_user writes both tables).
+CREATE TABLE IF NOT EXISTS users_by_email (
+  email       text PRIMARY KEY,
+  user_id     text,
+  username    text
 );
 
 

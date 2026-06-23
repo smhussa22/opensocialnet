@@ -115,6 +115,20 @@ namespace
 
     };
 
+    // Last LookupUser response stashed for the Add Friend modal to show.
+    // Empty user_id means either "no query in flight" or "no match" —
+    // disambiguated by `looked_up`, set to true once any response lands.
+    struct LookupResult
+    {
+
+        bool        looked_up { false };
+        bool        found     { false };
+        std::string user_id   { };
+        std::string username  { };
+        std::string email     { };
+
+    };
+
     struct AppState
     {
 
@@ -127,6 +141,7 @@ namespace
         std::vector<FriendEntry>                              friends_       { };
         std::vector<PendingRequest>                           pending        { };
         std::unordered_map<std::string, std::deque<ChatLine>> chat_history  { };
+        LookupResult                                          last_lookup   { };
 
         // UI signal flags — toggled by the reader thread, consumed by the
         // UI thread when it next renders. Cheap booleans guard whether
@@ -240,6 +255,20 @@ namespace
                 // pull it into the channel list locally so the sidebar
                 // surfaces it without waiting for a re-Ready.
                 state.channels.push_back(evt.dm_channel_id());
+                break;
+
+            }
+
+            case ::signaling::Envelope::kLookupUserResponse:
+            {
+
+                const auto& resp { env.lookup_user_response() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.last_lookup.looked_up = true;
+                state.last_lookup.found     = resp.found();
+                state.last_lookup.user_id   = resp.user_id();
+                state.last_lookup.username  = resp.username();
+                state.last_lookup.email     = resp.email();
                 break;
 
             }
@@ -672,33 +701,90 @@ int main()
         {
 
             ImGui::OpenPopup("Add Friend");
+            // Clear the last lookup result so a stale match from a
+            // previous open doesn't haunt the new search.
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.last_lookup = { };
+
+            }
+            add_friend_input[0]   = '\0';
             show_add_friend_modal = false;
 
         }
         if (ImGui::BeginPopupModal("Add Friend", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
 
-            ImGui::TextDisabled("Paste your friend's Google `sub` (their user_id).");
+            ImGui::TextDisabled("Look up a friend by their Google account email.");
             ImGui::SetNextItemWidth(360);
-            ImGui::InputText("##friend_id", add_friend_input, sizeof add_friend_input);
+            const bool enter_pressed { ImGui::InputText("##friend_email", add_friend_input, sizeof add_friend_input, ImGuiInputTextFlags_EnterReturnsTrue) };
 
-            if (ImGui::Button("Send Request", ImVec2 { 140, 0 }))
+            const bool search_clicked { ImGui::Button("Search", ImVec2 { 100, 0 }) };
+            ImGui::SameLine();
+            if (ImGui::Button("Close", ImVec2 { 100, 0 })) ImGui::CloseCurrentPopup();
+
+            if ((search_clicked or enter_pressed) and add_friend_input[0] != '\0')
             {
 
-                if (add_friend_input[0] != '\0')
+                ::signaling::Envelope env { };
+                auto* lookup { env.mutable_lookup_user() };
+                lookup->set_email(add_friend_input);
+                lookup->set_request_id(std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()));
+                ipc.send_envelope(env);
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.last_lookup = { }; // mark in-flight: looked_up stays false until response
+
+            }
+
+            ImGui::Separator();
+
+            // Snapshot the lookup result so the modal can render it
+            // without holding the lock across UI calls.
+            LookupResult snap { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                snap = state.last_lookup;
+
+            }
+
+            if (!snap.looked_up)
+            {
+
+                ImGui::TextDisabled("(no result yet)");
+
+            }
+            else if (!snap.found)
+            {
+
+                ImGui::TextColored(ImVec4 { 1.0f, 0.5f, 0.3f, 1.0f }, "No user found with that email.");
+
+            }
+            else
+            {
+
+                ImGui::Text("%s", snap.username.empty() ? snap.user_id.c_str() : snap.username.c_str());
+                ImGui::TextDisabled("%s", snap.email.c_str());
+                if (ImGui::Button("Send Friend Request", ImVec2 { 200, 0 }))
                 {
 
                     ::signaling::Envelope env { };
-                    env.mutable_send_friend_request()->set_to_user_id(add_friend_input);
+                    env.mutable_send_friend_request()->set_to_user_id(snap.user_id);
                     ipc.send_envelope(env);
+                    {
+
+                        std::scoped_lock<std::mutex> lock { state.mu };
+                        state.last_lookup = { };
+
+                    }
                     add_friend_input[0] = '\0';
+                    ImGui::CloseCurrentPopup();
 
                 }
-                ImGui::CloseCurrentPopup();
 
             }
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel", ImVec2 { 100, 0 })) ImGui::CloseCurrentPopup();
+
             ImGui::EndPopup();
 
         }
