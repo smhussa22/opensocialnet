@@ -14,21 +14,28 @@ message Envelope
   {
 
     // ---- client -> server ----
-    Hello          hello                = 10;
-    Heartbeat      heartbeat            = 11;
-    SendMessage    send_message         = 12;
-    FetchHistory   fetch_history        = 13;
-    JoinVoice      join_voice           = 14; // native client asks to join a voice room
-    LeaveVoice     leave_voice          = 15; // native client leaves a voice room
+    Hello                hello                  = 10;
+    Heartbeat            heartbeat              = 11;
+    SendMessage          send_message           = 12;
+    FetchHistory         fetch_history          = 13;
+    JoinVoice            join_voice             = 14; // native client asks to join a voice room
+    LeaveVoice           leave_voice            = 15; // native client leaves a voice room
+    SendFriendRequest    send_friend_request    = 20; // "I want to friend user X"
+    AcceptFriendRequest  accept_friend_request  = 21; // "I accept X's friend request"
+    RejectFriendRequest  reject_friend_request  = 22; // "delete X's pending request without becoming friends"
+    FetchFriends         fetch_friends          = 23; // "list my friends + pending incoming requests"
 
     // ---- server -> client ----
-    Ready             ready                = 30;
-    HeartbeatAck      heartbeat_ack        = 31;
-    ChatMessageEvent  chat_message_event   = 32;
-    HistoryResponse   history_response     = 33;
-    VoicePeerJoined   voice_peer_joined    = 34; // someone else joined this voice room — here's their UDP endpoint + SSRC
-    VoicePeerLeft     voice_peer_left      = 35;
-    ErrorEvent        error                = 36;
+    Ready                       ready                          = 30;
+    HeartbeatAck                heartbeat_ack                  = 31;
+    ChatMessageEvent            chat_message_event             = 32;
+    HistoryResponse             history_response               = 33;
+    VoicePeerJoined             voice_peer_joined              = 34; // someone else joined this voice room — here's their UDP endpoint + SSRC
+    VoicePeerLeft               voice_peer_left                = 35;
+    ErrorEvent                  error                          = 36;
+    FriendRequestEvent          friend_request_event           = 42; // delivered to recipient in real time
+    FriendListResponse          friend_list_response           = 43; // reply to FetchFriends
+    FriendRequestAcceptedEvent  friend_request_accepted_event  = 44; // delivered to original requester on accept
 
     // Tags 16-19 and 37-41 are reserved — they used to carry the WebRTC
     // SDP / ICE / screen-share envelopes for the browser+libdatachannel
@@ -134,6 +141,86 @@ message VoicePeerLeft
 
   string channel_id = 1;
   string user_id    = 2;
+
+}
+
+// ---- friends / DMs ----
+// A friend request is a directed pending row in friend_requests, indexed
+// by the recipient. Accepting it inserts two rows in friendships (both
+// directions) and creates a 1-on-1 DM channel keyed by sorted user_ids
+// so both sides derive the same channel_id deterministically.
+
+message SendFriendRequest
+{
+
+  // The user_id you want to friend. Must be the Google `sub` of an
+  // existing user (sub-form, not email — that's what's stored).
+  string to_user_id = 1;
+
+}
+
+message AcceptFriendRequest
+{
+
+  // The user_id whose pending request you're accepting. Server looks
+  // for the row in friend_requests((self), from_user_id) and ignores
+  // the call if no such row exists.
+  string from_user_id = 1;
+
+}
+
+message RejectFriendRequest
+{
+
+  // Just deletes the pending row in friend_requests((self), from_user_id).
+  string from_user_id = 1;
+
+}
+
+message FetchFriends { }
+
+message FriendSummary
+{
+
+  string user_id        = 1;
+  string username       = 2; // display name from the users table
+  string dm_channel_id  = 3; // shared 1-on-1 channel — both sides hold this same value
+  int64  since_ms       = 4; // friendship.since as ms since epoch
+
+}
+
+message PendingFriendRequest
+{
+
+  string from_user_id      = 1;
+  string from_username     = 2; // joined from users.username for display
+  int64  created_at_ms     = 3;
+
+}
+
+message FriendListResponse
+{
+
+  repeated FriendSummary        friends   = 1;
+  repeated PendingFriendRequest incoming  = 2; // requests waiting on this user
+
+}
+
+message FriendRequestEvent
+{
+
+  string from_user_id   = 1;
+  string from_username  = 2;
+  int64  created_at_ms  = 3;
+
+}
+
+message FriendRequestAcceptedEvent
+{
+
+  string user_id        = 1; // the new friend's user_id
+  string username       = 2; // their display name
+  string dm_channel_id  = 3; // the shared DM channel just created
 
 }
 

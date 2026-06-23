@@ -74,3 +74,31 @@ CREATE TABLE IF NOT EXISTS user_channels (
   joined_at   timestamp,
   PRIMARY KEY ((user_id), channel_id)
 );
+
+
+-- ============================================================
+-- Friends / DMs
+-- ============================================================
+
+-- Pending friend requests, partitioned by recipient so "show me my
+-- incoming requests" is one read. Row gets deleted when accepted
+-- (and a friendships row appears) or when rejected.
+CREATE TABLE IF NOT EXISTS friend_requests (
+  to_user_id    text,
+  from_user_id  text,
+  created_at    timestamp,
+  PRIMARY KEY ((to_user_id), from_user_id)
+);
+
+
+-- Bidirectional friendships. Each pair gets two rows so lookup-by-
+-- either-side is one partition read with no secondary index.
+-- dm_channel_id is the shared 1-on-1 channel that gets created on
+-- accept; same channel_id appears in both rows of the pair.
+CREATE TABLE IF NOT EXISTS friendships (
+  user_id         text,
+  friend_user_id  text,
+  dm_channel_id   text,
+  since           timestamp,
+  PRIMARY KEY ((user_id), friend_user_id)
+);

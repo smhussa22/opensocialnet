@@ -351,6 +351,12 @@ namespace OpenSocialNet::Signaling
 
         std::cerr << "[hello] user=" << sess->user_id << " session=" << sess->session_id << '\n';
 
+        // Auto-join the default `general` channel so a brand-new sign-in
+        // has somewhere to chat without an explicit signup ceremony. Both
+        // writes are idempotent — repeat sign-ins are cheap no-ops on the
+        // partition keys.
+        state.scylla->add_user_to_channel("general", sess->user_id);
+
         ::signaling::Envelope envelope { };
         auto* ready = envelope.mutable_ready();
         ready->set_session_id(sess->session_id);
@@ -627,6 +633,198 @@ namespace OpenSocialNet::Signaling
 
     }
 
+
+    // ============================================================
+    // Friends / DMs
+    // ============================================================
+
+    namespace
+    {
+
+        // Deterministic DM channel id from a pair of user_ids. Sorting
+        // first means both sides derive the same id without coordinating;
+        // the `dm:` prefix keeps DMs visually distinct from group channels
+        // when you scan the channels table by eye.
+        std::string dm_channel_id_for(const std::string& a, const std::string& b)
+        {
+
+            const auto [lo, hi] { std::minmax(a, b) };
+            return "dm:" + lo + "_" + hi;
+
+        }
+
+
+        // Deliver an envelope to every active session for `user_id`. Used
+        // by friend request notifications — the recipient may be online on
+        // one or more devices and we want all of them to update in real
+        // time. Iterates under the registry's lock (snapshotted by
+        // for_each) so multi-device fanout is one pass.
+        void notify_user(GatewayState& state, const std::string& user_id, const ::signaling::Envelope& envelope)
+        {
+
+            std::string buf { };
+            envelope.SerializeToString(&buf);
+
+            state.sessions->for_each([&](const std::string&, WebSocket* peer_ws)
+            {
+
+                if (peer_ws == nullptr) return;
+                auto* peer_sess { peer_ws->getUserData() };
+                if (peer_sess->user_id == user_id) peer_ws->send(buf, ::uWS::OpCode::BINARY);
+
+            });
+
+        }
+
+    }
+
+
+    void on_send_friend_request(GatewayState& state, WebSocket* ws, const ::signaling::SendFriendRequest& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        const std::string& to_user_id { req.to_user_id() };
+        if (to_user_id.empty() or to_user_id == sess->user_id)
+        {
+
+            send_error(ws, 400, "invalid to_user_id");
+            return;
+
+        }
+
+        if (!state.scylla->insert_friend_request(to_user_id, sess->user_id))
+        {
+
+            send_error(ws, 500, "could not record friend request");
+            return;
+
+        }
+        std::cerr << "[friend] request " << sess->user_id << " -> " << to_user_id << '\n';
+
+        // Live notification to the recipient (any session of theirs that
+        // happens to be connected right now). If they're offline, the
+        // request sits in friend_requests and surfaces on their next
+        // FetchFriends.
+        ::signaling::Envelope evt { };
+        auto* event { evt.mutable_friend_request_event() };
+        event->set_from_user_id(sess->user_id);
+        event->set_from_username(state.scylla->username_for(sess->user_id));
+        event->set_created_at_ms(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+        notify_user(state, to_user_id, evt);
+
+    }
+
+
+    void on_accept_friend_request(GatewayState& state, WebSocket* ws, const ::signaling::AcceptFriendRequest& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        const std::string& from_user_id { req.from_user_id() };
+        if (from_user_id.empty() or from_user_id == sess->user_id)
+        {
+
+            send_error(ws, 400, "invalid from_user_id");
+            return;
+
+        }
+
+        // Materialize the friendship: two friendships rows + a DM channel
+        // that both sides hold so chat fanout via Kafka routes correctly.
+        const std::string dm_channel { dm_channel_id_for(sess->user_id, from_user_id) };
+        if (!state.scylla->ensure_channel(dm_channel, dm_channel, "dm")
+            or !state.scylla->add_user_to_channel(dm_channel, sess->user_id)
+            or !state.scylla->add_user_to_channel(dm_channel, from_user_id)
+            or !state.scylla->insert_friendship_pair(sess->user_id, from_user_id, dm_channel))
+        {
+
+            send_error(ws, 500, "could not materialize friendship");
+            return;
+
+        }
+        state.scylla->delete_friend_request(sess->user_id, from_user_id);
+
+        // Self subscribes to the new DM so messages route on this socket.
+        ws->subscribe(dm_channel);
+
+        std::cerr << "[friend] accept " << sess->user_id << " <-> " << from_user_id << " dm=" << dm_channel << '\n';
+
+        // Notify the original requester (if online on any session) — and
+        // subscribe each of their sockets to the DM so they receive
+        // messages without waiting for a reconnect.
+        ::signaling::Envelope evt { };
+        auto* event { evt.mutable_friend_request_accepted_event() };
+        event->set_user_id(sess->user_id);
+        event->set_username(state.scylla->username_for(sess->user_id));
+        event->set_dm_channel_id(dm_channel);
+
+        std::string buf { };
+        evt.SerializeToString(&buf);
+
+        state.sessions->for_each([&](const std::string&, WebSocket* peer_ws)
+        {
+
+            if (peer_ws == nullptr) return;
+            auto* peer_sess { peer_ws->getUserData() };
+            if (peer_sess->user_id != from_user_id) return;
+            peer_ws->subscribe(dm_channel);
+            peer_ws->send(buf, ::uWS::OpCode::BINARY);
+
+        });
+
+    }
+
+
+    void on_reject_friend_request(GatewayState& state, WebSocket* ws, const ::signaling::RejectFriendRequest& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        const std::string& from_user_id { req.from_user_id() };
+        if (from_user_id.empty()) { send_error(ws, 400, "invalid from_user_id"); return; }
+
+        state.scylla->delete_friend_request(sess->user_id, from_user_id);
+        std::cerr << "[friend] reject " << sess->user_id << " <- " << from_user_id << '\n';
+
+    }
+
+
+    void on_fetch_friends(GatewayState& state, WebSocket* ws, const ::signaling::FetchFriends& /*req*/)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        ::signaling::Envelope envelope { };
+        auto* resp { envelope.mutable_friend_list_response() };
+
+        for (const auto& f : state.scylla->list_friendships(sess->user_id))
+        {
+
+            auto* fs { resp->add_friends() };
+            fs->set_user_id(f.friend_user_id);
+            fs->set_username(state.scylla->username_for(f.friend_user_id));
+            fs->set_dm_channel_id(f.dm_channel_id);
+            fs->set_since_ms(f.since_ms);
+
+        }
+        for (const auto& p : state.scylla->list_friend_requests(sess->user_id))
+        {
+
+            auto* in { resp->add_incoming() };
+            in->set_from_user_id(p.from_user_id);
+            in->set_from_username(state.scylla->username_for(p.from_user_id));
+            in->set_created_at_ms(p.created_at_ms);
+
+        }
+        send_envelope(ws, envelope);
+
+    }
+
     void on_message(GatewayState& state, WebSocket* ws, std::string_view data, ::uWS::OpCode op)
     {
 
@@ -665,7 +863,23 @@ namespace OpenSocialNet::Signaling
                 break;
 
             case ::signaling::Envelope::kHeartbeat:
-                on_heartbeat(ws, envelope.heartbeat()); 
+                on_heartbeat(ws, envelope.heartbeat());
+                break;
+
+            case ::signaling::Envelope::kSendFriendRequest:
+                on_send_friend_request(state, ws, envelope.send_friend_request());
+                break;
+
+            case ::signaling::Envelope::kAcceptFriendRequest:
+                on_accept_friend_request(state, ws, envelope.accept_friend_request());
+                break;
+
+            case ::signaling::Envelope::kRejectFriendRequest:
+                on_reject_friend_request(state, ws, envelope.reject_friend_request());
+                break;
+
+            case ::signaling::Envelope::kFetchFriends:
+                on_fetch_friends(state, ws, envelope.fetch_friends());
                 break;
 
             default:

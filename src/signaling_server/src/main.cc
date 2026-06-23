@@ -94,6 +94,11 @@ int main()
     OpenSocialNet::Signaling::ScyllaClient scylla { };
     scylla.init(env_or("SCYLLA_HOST", "127.0.0.1"));
 
+    // Make sure the default `general` channel exists. Idempotent INSERT;
+    // on_hello auto-adds every fresh sign-in to it so a brand-new user
+    // has somewhere to chat without an explicit signup ceremony.
+    scylla.ensure_channel("general", "general", "text");
+
     // Kafka producer; consumer thread is started once we have the App.
     // KAFKA_BOOTSTRAP overrides the default ("localhost:19092" for laptop dev,
     // "kafka:19092" for the docker compose network).

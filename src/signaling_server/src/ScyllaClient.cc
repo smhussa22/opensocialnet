@@ -59,6 +59,17 @@ namespace OpenSocialNet::Signaling
         // key just refreshes username + created_at, which is fine for our
         // "first login wins, every subsequent login is a no-op" semantics.
         m_prep_upsert_user = prepare("INSERT INTO users (user_id, username, created_at) VALUES (?, ?, toTimestamp(now()))");
+        m_prep_username_for = prepare("SELECT username FROM users WHERE user_id = ?");
+
+        m_prep_ensure_channel     = prepare("INSERT INTO channels (channel_id, name, kind) VALUES (?, ?, ?)");
+        m_prep_add_channel_member = prepare("INSERT INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, toTimestamp(now()))");
+        m_prep_add_user_channel   = prepare("INSERT INTO user_channels (user_id, channel_id, joined_at) VALUES (?, ?, toTimestamp(now()))");
+
+        m_prep_insert_friend_request = prepare("INSERT INTO friend_requests (to_user_id, from_user_id, created_at) VALUES (?, ?, toTimestamp(now()))");
+        m_prep_list_friend_requests  = prepare("SELECT from_user_id, created_at FROM friend_requests WHERE to_user_id = ?");
+        m_prep_delete_friend_request = prepare("DELETE FROM friend_requests WHERE to_user_id = ? AND from_user_id = ?");
+        m_prep_insert_friendship     = prepare("INSERT INTO friendships (user_id, friend_user_id, dm_channel_id, since) VALUES (?, ?, ?, toTimestamp(now()))");
+        m_prep_list_friendships      = prepare("SELECT friend_user_id, dm_channel_id, since FROM friendships WHERE user_id = ?");
 
     }
 
@@ -153,6 +164,191 @@ namespace OpenSocialNet::Signaling
 
         }
         return true;
+
+    }
+
+
+    std::string ScyllaClient::username_for(const std::string& user_id)
+    {
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_username_for.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
+
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK) return { };
+
+        CassResultPtr result { ::cass_future_get_result(fut.get()) };
+        const auto* row { ::cass_result_first_row(result.get()) };
+        if (row == nullptr) return { };
+
+        const char* s { nullptr };
+        std::size_t len { 0 };
+        ::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len);
+        return std::string { s, len };
+
+    }
+
+
+    bool ScyllaClient::ensure_channel(const std::string& channel_id, const std::string& name, const std::string& kind)
+    {
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_ensure_channel.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, channel_id.c_str());
+        ::cass_statement_bind_string(stmt.get(), 1, name.c_str());
+        ::cass_statement_bind_string(stmt.get(), 2, kind.c_str());
+
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        return ::cass_future_error_code(fut.get()) == CASS_OK;
+
+    }
+
+
+    bool ScyllaClient::add_user_to_channel(const std::string& channel_id, const std::string& user_id)
+    {
+
+        // Both denormalized indices get the same row. Cheap inline writes
+        // (sub-ms each on local Scylla) so doing them sequentially on the
+        // WS thread is fine.
+        CassStatementPtr stmt_member { ::cass_prepared_bind(m_prep_add_channel_member.get()) };
+        ::cass_statement_bind_string(stmt_member.get(), 0, channel_id.c_str());
+        ::cass_statement_bind_string(stmt_member.get(), 1, user_id.c_str());
+        CassFuturePtr fut_member { ::cass_session_execute(m_session.get(), stmt_member.get()) };
+        ::cass_future_wait(fut_member.get());
+        const bool ok_member { ::cass_future_error_code(fut_member.get()) == CASS_OK };
+
+        CassStatementPtr stmt_user { ::cass_prepared_bind(m_prep_add_user_channel.get()) };
+        ::cass_statement_bind_string(stmt_user.get(), 0, user_id.c_str());
+        ::cass_statement_bind_string(stmt_user.get(), 1, channel_id.c_str());
+        CassFuturePtr fut_user { ::cass_session_execute(m_session.get(), stmt_user.get()) };
+        ::cass_future_wait(fut_user.get());
+        const bool ok_user { ::cass_future_error_code(fut_user.get()) == CASS_OK };
+
+        return ok_member and ok_user;
+
+    }
+
+
+    bool ScyllaClient::insert_friend_request(const std::string& to_user_id, const std::string& from_user_id)
+    {
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_insert_friend_request.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, to_user_id.c_str());
+        ::cass_statement_bind_string(stmt.get(), 1, from_user_id.c_str());
+
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        return ::cass_future_error_code(fut.get()) == CASS_OK;
+
+    }
+
+
+    std::vector<ScyllaClient::PendingFriendRequest> ScyllaClient::list_friend_requests(const std::string& to_user_id)
+    {
+
+        std::vector<PendingFriendRequest> out { };
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_list_friend_requests.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, to_user_id.c_str());
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK) return out;
+
+        CassResultPtr result { ::cass_future_get_result(fut.get()) };
+        CassIteratorPtr it { ::cass_iterator_from_result(result.get()) };
+        while (::cass_iterator_next(it.get()))
+        {
+
+            const auto* row { ::cass_iterator_get_row(it.get()) };
+
+            const char* s { nullptr };
+            std::size_t len { 0 };
+            ::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len);
+            std::string from { s, len };
+
+            ::cass_int64_t ts_ms { 0 };
+            ::cass_value_get_int64(::cass_row_get_column(row, 1), &ts_ms);
+
+            out.push_back(PendingFriendRequest { std::move(from), static_cast<std::int64_t>(ts_ms) });
+
+        }
+        return out;
+
+    }
+
+
+    bool ScyllaClient::delete_friend_request(const std::string& to_user_id, const std::string& from_user_id)
+    {
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_delete_friend_request.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, to_user_id.c_str());
+        ::cass_statement_bind_string(stmt.get(), 1, from_user_id.c_str());
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        return ::cass_future_error_code(fut.get()) == CASS_OK;
+
+    }
+
+
+    bool ScyllaClient::insert_friendship_pair(const std::string& user_a, const std::string& user_b, const std::string& dm_channel_id)
+    {
+
+        // Forward + reverse rows. Same dm_channel_id in both — either
+        // side can read just their own partition and know the channel.
+        const auto write { [this](const std::string& uid, const std::string& fid, const std::string& dm)
+        {
+
+            CassStatementPtr stmt { ::cass_prepared_bind(m_prep_insert_friendship.get()) };
+            ::cass_statement_bind_string(stmt.get(), 0, uid.c_str());
+            ::cass_statement_bind_string(stmt.get(), 1, fid.c_str());
+            ::cass_statement_bind_string(stmt.get(), 2, dm.c_str());
+            CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+            ::cass_future_wait(fut.get());
+            return ::cass_future_error_code(fut.get()) == CASS_OK;
+
+        } };
+
+        const bool ok_a { write(user_a, user_b, dm_channel_id) };
+        const bool ok_b { write(user_b, user_a, dm_channel_id) };
+        return ok_a and ok_b;
+
+    }
+
+
+    std::vector<ScyllaClient::Friendship> ScyllaClient::list_friendships(const std::string& user_id)
+    {
+
+        std::vector<Friendship> out { };
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_list_friendships.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK) return out;
+
+        CassResultPtr result { ::cass_future_get_result(fut.get()) };
+        CassIteratorPtr it { ::cass_iterator_from_result(result.get()) };
+        while (::cass_iterator_next(it.get()))
+        {
+
+            const auto* row { ::cass_iterator_get_row(it.get()) };
+
+            const char* s { nullptr };
+            std::size_t len { 0 };
+            ::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len);
+            std::string friend_id { s, len };
+
+            ::cass_value_get_string(::cass_row_get_column(row, 1), &s, &len);
+            std::string dm_channel { s, len };
+
+            ::cass_int64_t since_ms { 0 };
+            ::cass_value_get_int64(::cass_row_get_column(row, 2), &since_ms);
+
+            out.push_back(Friendship { std::move(friend_id), std::move(dm_channel), static_cast<std::int64_t>(since_ms) });
+
+        }
+        return out;
 
     }
 
