@@ -40,6 +40,7 @@
 #include "SpscQueue.hh"
 #include "LossSim.hh"
 #include "IceTransport.hh"
+#include "Ipc.hh"
 #include "RttProber.hh"
 #include "AudioPlc.hh"
 #include "SignalingClient.hh"
@@ -560,6 +561,44 @@ int main()
             // from dropping us mid-call; we send them from the main
             // loop's tick further down.
             signaling.start_event_reader();
+
+        }
+
+        // ---- IPC bridge to the GUI parent (native_client) ----
+        //
+        // When native_client forks this binary, it passes a
+        // socketpair fd through OSN_IPC_FD. We fan every inbound
+        // envelope from the gateway (chat, friends, history, ready)
+        // up to the parent, and forward every envelope the parent
+        // pushes down (SendMessage, SendFriendRequest, ...) back out
+        // to the gateway. Unset / -1 means there's no GUI — useful
+        // when network is launched standalone for relay tests.
+        OpenSocialNet::Ipc::Channel gui_ipc { };
+        const int ipc_fd { env_int("OSN_IPC_FD", -1) };
+        if (ipc_fd >= 0)
+        {
+
+            gui_ipc.attach(ipc_fd);
+            std::printf("[main] IPC bridge active on fd=%d\n", ipc_fd);
+
+            // Network -> GUI: every envelope the SignalingClient
+            // surfaces gets framed up to the parent. The generic
+            // envelope handler fires AFTER the type-specific switch,
+            // so chat handling for ICE SDP exchange is unaffected.
+            signaling.set_envelope_handler([&gui_ipc](const ::signaling::Envelope& env)
+            {
+
+                gui_ipc.send_envelope(env);
+
+            });
+
+            // GUI -> Network: forward whatever the parent pushes down.
+            gui_ipc.start_reader([&signaling](const ::signaling::Envelope& env)
+            {
+
+                signaling.send_envelope(env);
+
+            });
 
         }
 

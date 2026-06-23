@@ -15,6 +15,7 @@
 #include <vector>
 
 // 3rd party headers
+#include "proto/signaling.pb.h"
 
 // project headers
 #include "WebSocketClient.hh"
@@ -100,6 +101,21 @@ namespace OpenSocialNet::Network
         // filtered out by sender_id. Call before start_event_reader().
         void set_chat_handler(std::function<void(const std::string& sender_id, const std::string& content)> handler) { m_on_chat = std::move(handler); }
 
+        // Register a generic envelope sink — fires for EVERY inbound
+        // envelope on the reader thread, including ones the
+        // type-specific handlers above also cover. Used by the IPC
+        // bridge to forward server events verbatim to the GUI process
+        // (FriendRequestEvent, FriendListResponse, ChatMessageEvent,
+        // Ready, etc.) without SignalingClient needing to know about
+        // each event type individually.
+        void set_envelope_handler(std::function<void(const ::signaling::Envelope&)> handler) { m_on_envelope = std::move(handler); }
+
+        // Ship an arbitrary client->server envelope through the same
+        // send mutex the typed sends use. The IPC bridge wraps this so
+        // the GUI can issue SendFriendRequest / AcceptFriendRequest /
+        // FetchFriends without the protocol surface area leaking out.
+        bool send_envelope(const ::signaling::Envelope& env);
+
         // Snapshot of the current peer list (NOT including self). The
         // reader thread keeps this updated; main thread reads under
         // m_peers_mu. Returns a copy so the caller doesn't have to hold
@@ -128,6 +144,7 @@ namespace OpenSocialNet::Network
         std::mutex                 m_send_mu    { };  // serialises send_binary across send_heartbeat / send_chat
 
         std::function<void(const std::string&, const std::string&)> m_on_chat { }; // inbound chat sink (reader thread)
+        std::function<void(const ::signaling::Envelope&)>           m_on_envelope { }; // generic envelope sink (reader thread)
         std::uint32_t              m_nonce      { 0 }; // client_nonce uniqueness counter, guarded by m_send_mu
 
 

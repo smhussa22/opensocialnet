@@ -218,6 +218,13 @@ namespace OpenSocialNet::Network
             ::signaling::Envelope env { };
             if (!recv_envelope_impl(m_ws, env)) break;
 
+            // Fanout to the generic sink BEFORE the type-specific switch
+            // so the IPC bridge sees every event verbatim — friend events
+            // and history responses have no in-class handler today, and
+            // even events we DO handle internally (chat, voice peers)
+            // also need to reach the GUI.
+            if (m_on_envelope) m_on_envelope(env);
+
             switch (env.payload_case())
             {
 
@@ -323,6 +330,16 @@ namespace OpenSocialNet::Network
         msg->set_client_nonce(m_session_id + "-" + std::to_string(m_nonce++));
         msg->set_channel_id(channel_id);
         msg->set_content(content);
+        return send_envelope_impl(m_ws, env);
+
+    }
+
+
+    bool SignalingClient::send_envelope(const ::signaling::Envelope& env)
+    {
+
+        if (!m_ws.is_open()) return false;
+        std::scoped_lock<std::mutex> lock { m_send_mu };
         return send_envelope_impl(m_ws, env);
 
     }

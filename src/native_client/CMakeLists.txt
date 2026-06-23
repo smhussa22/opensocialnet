@@ -11,6 +11,28 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 include(FetchContent)
 
+# ---- Protobuf for the IPC bridge ----
+# The GUI <-> network-child link uses the same signaling.Envelope wire
+# format the gateway already speaks, so we regenerate it locally rather
+# than depending on the network module's build tree (keeps the two
+# binaries cleanly decoupled).
+find_package(Protobuf REQUIRED)
+
+set(SIGNALING_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../signaling_server/proto/signaling.proto)
+set(NATIVE_PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto_gen)
+file(MAKE_DIRECTORY ${NATIVE_PROTO_GEN_DIR}/proto)
+set(NATIVE_PB_CC ${NATIVE_PROTO_GEN_DIR}/proto/signaling.pb.cc)
+set(NATIVE_PB_H  ${NATIVE_PROTO_GEN_DIR}/proto/signaling.pb.h)
+add_custom_command(
+    OUTPUT ${NATIVE_PB_CC} ${NATIVE_PB_H}
+    COMMAND ${Protobuf_PROTOC_EXECUTABLE}
+            --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/../signaling_server/proto
+            --cpp_out=${NATIVE_PROTO_GEN_DIR}/proto
+            ${SIGNALING_PROTO_FILE}
+    DEPENDS ${SIGNALING_PROTO_FILE}
+    COMMENT "Generating signaling.pb.{cc,h} for native_client"
+)
+
 # ---- Google OAuth desktop loopback flow deps ----
 # OpenSSL: PKCE verifier hashing (SHA256) + httplib HTTPS for the token
 # exchange. cpp-httplib pulls in the same dep transitively when its
@@ -65,11 +87,15 @@ set(IMGUI_SOURCES
 add_executable(native_client
     src/main.cc
     src/OAuthClient.cc
+    ${NATIVE_PB_CC}
     ${IMGUI_SOURCES}
 )
 
 target_include_directories(native_client PRIVATE
     include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../network/include  # Ipc.hh (header-only)
+    ${NATIVE_PROTO_GEN_DIR}                         # generated signaling.pb.h
+    ${Protobuf_INCLUDE_DIRS}
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )
@@ -79,6 +105,7 @@ target_link_libraries(native_client PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
     httplib::httplib
+    ${Protobuf_LIBRARIES}
 )
 
 # cpp-httplib's HTTPS code only compiles when this is defined — gated as
