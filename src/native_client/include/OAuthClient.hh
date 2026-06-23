@@ -51,7 +51,14 @@ namespace OpenSocialNet::NativeClient
     //
     // Blocks until the user authorizes, the browser fails to launch, or
     // the timeout (`auth_timeout_seconds`) elapses.
-    OAuthResult google_login(const std::string& client_id, int auth_timeout_seconds = 120);
+    //
+    // client_secret note: Google's Desktop app type insists on the
+    // client_secret being POSTed at the token endpoint even with PKCE —
+    // their docs say it's "not truly secret" since it ships with the
+    // binary, but the /token endpoint will reject the exchange with
+    // 400 invalid_request / "client_secret is missing." without it.
+    // Pass it through here; the value goes on the wire to Google only.
+    OAuthResult google_login(const std::string& client_id, const std::string& client_secret, int auth_timeout_seconds = 120);
 
 }
 

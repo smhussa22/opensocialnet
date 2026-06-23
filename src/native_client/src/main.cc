@@ -298,9 +298,10 @@ int main()
     std::setvbuf(stdout, nullptr, _IONBF, 0);
 
     // ---- auth ----
-    const std::string google_client_id { env_str("OSN_GOOGLE_CLIENT_ID", "") };
-    const std::string signaling_host   { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
-    const std::string room_name        { env_str("OSN_ROOM", "general") };
+    const std::string google_client_id     { env_str("OSN_GOOGLE_CLIENT_ID",     "") };
+    const std::string google_client_secret { env_str("OSN_GOOGLE_CLIENT_SECRET", "") };
+    const std::string signaling_host       { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
+    const std::string room_name            { env_str("OSN_ROOM", "general") };
 
     std::string user_name  { };
     std::string auth_token { };
@@ -310,7 +311,7 @@ int main()
     {
 
         std::printf("native_client: starting Google sign-in (client_id=%s...)\n", google_client_id.substr(0, 12).c_str());
-        const auto oauth { OpenSocialNet::NativeClient::google_login(google_client_id) };
+        const auto oauth { OpenSocialNet::NativeClient::google_login(google_client_id, google_client_secret) };
         if (!oauth.ok)
         {
 

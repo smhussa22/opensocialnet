@@ -216,7 +216,7 @@ namespace
 namespace OpenSocialNet::NativeClient
 {
 
-    OAuthResult google_login(const std::string& client_id, int auth_timeout_seconds)
+    OAuthResult google_login(const std::string& client_id, const std::string& client_secret, int auth_timeout_seconds)
     {
 
         OAuthResult result { };
@@ -225,6 +225,16 @@ namespace OpenSocialNet::NativeClient
         {
 
             result.error = "empty client_id";
+            return result;
+
+        }
+        if (client_secret.empty())
+        {
+
+            // Google's Desktop app /token endpoint hard-requires it
+            // (see header comment). Fail fast rather than letting the
+            // POST come back with the confusing 400 from Google.
+            result.error = "empty client_secret — Google's Desktop OAuth requires it even with PKCE";
             return result;
 
         }
@@ -370,6 +380,7 @@ namespace OpenSocialNet::NativeClient
         ::httplib::Params params { };
         params.emplace("code",          received_code);
         params.emplace("client_id",     client_id);
+        params.emplace("client_secret", client_secret);
         params.emplace("redirect_uri",  redirect_uri);
         params.emplace("grant_type",    "authorization_code");
         params.emplace("code_verifier", verifier);
