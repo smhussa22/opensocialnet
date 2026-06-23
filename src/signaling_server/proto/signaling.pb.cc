@@ -234,6 +234,73 @@ struct PendingFriendRequestDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
     PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 PendingFriendRequestDefaultTypeInternal _PendingFriendRequest_default_instance_;
 
+inline constexpr LookupUserResponse::Impl_::Impl_(
+    ::_pbi::ConstantInitialized) noexcept
+      : _cached_size_{0},
+        request_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        user_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        username_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        email_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        found_{false} {}
+
+template <typename>
+PROTOBUF_CONSTEXPR LookupUserResponse::LookupUserResponse(::_pbi::ConstantInitialized)
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+    : ::google::protobuf::Message(LookupUserResponse_class_data_.base()),
+#else   // PROTOBUF_CUSTOM_VTABLE
+    : ::google::protobuf::Message(),
+#endif  // PROTOBUF_CUSTOM_VTABLE
+      _impl_(::_pbi::ConstantInitialized()) {
+}
+struct LookupUserResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LookupUserResponseDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LookupUserResponseDefaultTypeInternal() {}
+  union {
+    LookupUserResponse _instance;
+  };
+};
+
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
+    PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LookupUserResponseDefaultTypeInternal _LookupUserResponse_default_instance_;
+
+inline constexpr LookupUser::Impl_::Impl_(
+    ::_pbi::ConstantInitialized) noexcept
+      : _cached_size_{0},
+        request_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        email_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()) {}
+
+template <typename>
+PROTOBUF_CONSTEXPR LookupUser::LookupUser(::_pbi::ConstantInitialized)
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+    : ::google::protobuf::Message(LookupUser_class_data_.base()),
+#else   // PROTOBUF_CUSTOM_VTABLE
+    : ::google::protobuf::Message(),
+#endif  // PROTOBUF_CUSTOM_VTABLE
+      _impl_(::_pbi::ConstantInitialized()) {
+}
+struct LookupUserDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LookupUserDefaultTypeInternal() : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LookupUserDefaultTypeInternal() {}
+  union {
+    LookupUser _instance;
+  };
+};
+
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT
+    PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LookupUserDefaultTypeInternal _LookupUser_default_instance_;
+
 inline constexpr LeaveVoice::Impl_::Impl_(
     ::_pbi::ConstantInitialized) noexcept
       : _cached_size_{0},
@@ -732,7 +799,7 @@ const ::uint32_t
         0x085, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_._has_bits_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_._oneof_case_[0]),
-        26, // hasbit index offset
+        28, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.seq_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
@@ -755,7 +822,11 @@ const ::uint32_t
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
+        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
+        PROTOBUF_FIELD_OFFSET(::signaling::Envelope, _impl_.payload_),
         0,
+        ~0u,
+        ~0u,
         ~0u,
         ~0u,
         ~0u,
@@ -939,6 +1010,26 @@ const ::uint32_t
         1,
         2,
         0x081, // bitmap
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUser, _impl_._has_bits_),
+        5, // hasbit index offset
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUser, _impl_.request_id_),
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUser, _impl_.email_),
+        0,
+        1,
+        0x081, // bitmap
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUserResponse, _impl_._has_bits_),
+        8, // hasbit index offset
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUserResponse, _impl_.request_id_),
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUserResponse, _impl_.found_),
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUserResponse, _impl_.user_id_),
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUserResponse, _impl_.username_),
+        PROTOBUF_FIELD_OFFSET(::signaling::LookupUserResponse, _impl_.email_),
+        0,
+        4,
+        1,
+        2,
+        3,
+        0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::ErrorEvent, _impl_._has_bits_),
         5, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::ErrorEvent, _impl_.code_),
@@ -950,29 +1041,31 @@ const ::uint32_t
 static const ::_pbi::MigrationSchema
     schemas[] ABSL_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
         {0, sizeof(::signaling::Envelope)},
-        {47, sizeof(::signaling::Hello)},
-        {54, sizeof(::signaling::Ready)},
-        {61, sizeof(::signaling::Heartbeat)},
-        {66, sizeof(::signaling::HeartbeatAck)},
-        {71, sizeof(::signaling::SendMessage)},
-        {80, sizeof(::signaling::ChatMessageEvent)},
-        {95, sizeof(::signaling::FetchHistory)},
-        {106, sizeof(::signaling::HistoryResponse)},
-        {113, sizeof(::signaling::JoinVoice)},
-        {118, sizeof(::signaling::LeaveVoice)},
-        {123, sizeof(::signaling::VoicePeer)},
-        {134, sizeof(::signaling::VoicePeerJoined)},
-        {141, sizeof(::signaling::VoicePeerLeft)},
-        {148, sizeof(::signaling::SendFriendRequest)},
-        {153, sizeof(::signaling::AcceptFriendRequest)},
-        {158, sizeof(::signaling::RejectFriendRequest)},
-        {163, sizeof(::signaling::FetchFriends)},
-        {164, sizeof(::signaling::FriendSummary)},
-        {175, sizeof(::signaling::PendingFriendRequest)},
-        {184, sizeof(::signaling::FriendListResponse)},
-        {191, sizeof(::signaling::FriendRequestEvent)},
-        {200, sizeof(::signaling::FriendRequestAcceptedEvent)},
-        {209, sizeof(::signaling::ErrorEvent)},
+        {51, sizeof(::signaling::Hello)},
+        {58, sizeof(::signaling::Ready)},
+        {65, sizeof(::signaling::Heartbeat)},
+        {70, sizeof(::signaling::HeartbeatAck)},
+        {75, sizeof(::signaling::SendMessage)},
+        {84, sizeof(::signaling::ChatMessageEvent)},
+        {99, sizeof(::signaling::FetchHistory)},
+        {110, sizeof(::signaling::HistoryResponse)},
+        {117, sizeof(::signaling::JoinVoice)},
+        {122, sizeof(::signaling::LeaveVoice)},
+        {127, sizeof(::signaling::VoicePeer)},
+        {138, sizeof(::signaling::VoicePeerJoined)},
+        {145, sizeof(::signaling::VoicePeerLeft)},
+        {152, sizeof(::signaling::SendFriendRequest)},
+        {157, sizeof(::signaling::AcceptFriendRequest)},
+        {162, sizeof(::signaling::RejectFriendRequest)},
+        {167, sizeof(::signaling::FetchFriends)},
+        {168, sizeof(::signaling::FriendSummary)},
+        {179, sizeof(::signaling::PendingFriendRequest)},
+        {188, sizeof(::signaling::FriendListResponse)},
+        {195, sizeof(::signaling::FriendRequestEvent)},
+        {204, sizeof(::signaling::FriendRequestAcceptedEvent)},
+        {213, sizeof(::signaling::LookupUser)},
+        {220, sizeof(::signaling::LookupUserResponse)},
+        {233, sizeof(::signaling::ErrorEvent)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::signaling::_Envelope_default_instance_._instance,
@@ -998,11 +1091,13 @@ static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::signaling::_FriendListResponse_default_instance_._instance,
     &::signaling::_FriendRequestEvent_default_instance_._instance,
     &::signaling::_FriendRequestAcceptedEvent_default_instance_._instance,
+    &::signaling::_LookupUser_default_instance_._instance,
+    &::signaling::_LookupUserResponse_default_instance_._instance,
     &::signaling::_ErrorEvent_default_instance_._instance,
 };
 const char descriptor_table_protodef_signaling_2eproto[] ABSL_ATTRIBUTE_SECTION_VARIABLE(
     protodesc_cold) = {
-    "\n\017signaling.proto\022\tsignaling\"\311\010\n\010Envelop"
+    "\n\017signaling.proto\022\tsignaling\"\266\t\n\010Envelop"
     "e\022\013\n\003seq\030\001 \001(\004\022!\n\005hello\030\n \001(\0132\020.signalin"
     "g.HelloH\000\022)\n\theartbeat\030\013 \001(\0132\024.signaling"
     ".HeartbeatH\000\022.\n\014send_message\030\014 \001(\0132\026.sig"
@@ -1016,70 +1111,77 @@ const char descriptor_table_protodef_signaling_2eproto[] ABSL_ATTRIBUTE_SECTION_
     "uestH\000\022\?\n\025reject_friend_request\030\026 \001(\0132\036."
     "signaling.RejectFriendRequestH\000\0220\n\rfetch"
     "_friends\030\027 \001(\0132\027.signaling.FetchFriendsH"
-    "\000\022!\n\005ready\030\036 \001(\0132\020.signaling.ReadyH\000\0220\n\r"
-    "heartbeat_ack\030\037 \001(\0132\027.signaling.Heartbea"
-    "tAckH\000\0229\n\022chat_message_event\030  \001(\0132\033.sig"
-    "naling.ChatMessageEventH\000\0226\n\020history_res"
-    "ponse\030! \001(\0132\032.signaling.HistoryResponseH"
-    "\000\0227\n\021voice_peer_joined\030\" \001(\0132\032.signaling"
-    ".VoicePeerJoinedH\000\0223\n\017voice_peer_left\030# "
-    "\001(\0132\030.signaling.VoicePeerLeftH\000\022&\n\005error"
-    "\030$ \001(\0132\025.signaling.ErrorEventH\000\022=\n\024frien"
-    "d_request_event\030* \001(\0132\035.signaling.Friend"
-    "RequestEventH\000\022=\n\024friend_list_response\030+"
-    " \001(\0132\035.signaling.FriendListResponseH\000\022N\n"
-    "\035friend_request_accepted_event\030, \001(\0132%.s"
-    "ignaling.FriendRequestAcceptedEventH\000B\t\n"
-    "\007payload\",\n\005Hello\022\017\n\007user_id\030\001 \001(\t\022\022\n\nau"
-    "th_token\030\002 \001(\t\"0\n\005Ready\022\022\n\nsession_id\030\001 "
-    "\001(\t\022\023\n\013channel_ids\030\002 \003(\t\"\032\n\tHeartbeat\022\r\n"
-    "\005nonce\030\001 \001(\004\"\035\n\014HeartbeatAck\022\r\n\005nonce\030\001 "
-    "\001(\004\"H\n\013SendMessage\022\024\n\014client_nonce\030\001 \001(\t"
-    "\022\022\n\nchannel_id\030\002 \001(\t\022\017\n\007content\030\003 \001(\t\"\212\001"
-    "\n\020ChatMessageEvent\022\022\n\nmessage_id\030\001 \001(\t\022\024"
-    "\n\014client_nonce\030\002 \001(\t\022\022\n\nchannel_id\030\003 \001(\t"
-    "\022\021\n\tsender_id\030\004 \001(\t\022\017\n\007content\030\005 \001(\t\022\024\n\014"
-    "timestamp_ms\030\006 \001(\003\"`\n\014FetchHistory\022\022\n\nre"
-    "quest_id\030\001 \001(\t\022\022\n\nchannel_id\030\002 \001(\t\022\031\n\021be"
-    "fore_message_id\030\003 \001(\t\022\r\n\005limit\030\004 \001(\r\"P\n\017"
-    "HistoryResponse\022\022\n\nrequest_id\030\001 \001(\t\022)\n\004m"
-    "sgs\030\002 \003(\0132\033.signaling.ChatMessageEvent\"\037"
-    "\n\tJoinVoice\022\022\n\nchannel_id\030\001 \001(\t\" \n\nLeave"
-    "Voice\022\022\n\nchannel_id\030\001 \001(\t\"D\n\tVoicePeer\022\017"
-    "\n\007user_id\030\001 \001(\t\022\n\n\002ip\030\002 \001(\t\022\014\n\004port\030\003 \001("
-    "\r\022\014\n\004ssrc\030\004 \001(\r\"I\n\017VoicePeerJoined\022\022\n\nch"
-    "annel_id\030\001 \001(\t\022\"\n\004peer\030\002 \001(\0132\024.signaling"
-    ".VoicePeer\"4\n\rVoicePeerLeft\022\022\n\nchannel_i"
-    "d\030\001 \001(\t\022\017\n\007user_id\030\002 \001(\t\"\'\n\021SendFriendRe"
-    "quest\022\022\n\nto_user_id\030\001 \001(\t\"+\n\023AcceptFrien"
-    "dRequest\022\024\n\014from_user_id\030\001 \001(\t\"+\n\023Reject"
-    "FriendRequest\022\024\n\014from_user_id\030\001 \001(\t\"\016\n\014F"
-    "etchFriends\"[\n\rFriendSummary\022\017\n\007user_id\030"
-    "\001 \001(\t\022\020\n\010username\030\002 \001(\t\022\025\n\rdm_channel_id"
-    "\030\003 \001(\t\022\020\n\010since_ms\030\004 \001(\003\"Z\n\024PendingFrien"
-    "dRequest\022\024\n\014from_user_id\030\001 \001(\t\022\025\n\rfrom_u"
-    "sername\030\002 \001(\t\022\025\n\rcreated_at_ms\030\003 \001(\003\"r\n\022"
-    "FriendListResponse\022)\n\007friends\030\001 \003(\0132\030.si"
-    "gnaling.FriendSummary\0221\n\010incoming\030\002 \003(\0132"
-    "\037.signaling.PendingFriendRequest\"X\n\022Frie"
-    "ndRequestEvent\022\024\n\014from_user_id\030\001 \001(\t\022\025\n\r"
-    "from_username\030\002 \001(\t\022\025\n\rcreated_at_ms\030\003 \001"
-    "(\003\"V\n\032FriendRequestAcceptedEvent\022\017\n\007user"
-    "_id\030\001 \001(\t\022\020\n\010username\030\002 \001(\t\022\025\n\rdm_channe"
-    "l_id\030\003 \001(\t\"+\n\nErrorEvent\022\014\n\004code\030\001 \001(\r\022\017"
-    "\n\007message\030\002 \001(\tb\006proto3"
+    "\000\022,\n\013lookup_user\030\030 \001(\0132\025.signaling.Looku"
+    "pUserH\000\022!\n\005ready\030\036 \001(\0132\020.signaling.Ready"
+    "H\000\0220\n\rheartbeat_ack\030\037 \001(\0132\027.signaling.He"
+    "artbeatAckH\000\0229\n\022chat_message_event\030  \001(\013"
+    "2\033.signaling.ChatMessageEventH\000\0226\n\020histo"
+    "ry_response\030! \001(\0132\032.signaling.HistoryRes"
+    "ponseH\000\0227\n\021voice_peer_joined\030\" \001(\0132\032.sig"
+    "naling.VoicePeerJoinedH\000\0223\n\017voice_peer_l"
+    "eft\030# \001(\0132\030.signaling.VoicePeerLeftH\000\022&\n"
+    "\005error\030$ \001(\0132\025.signaling.ErrorEventH\000\022=\n"
+    "\024friend_request_event\030* \001(\0132\035.signaling."
+    "FriendRequestEventH\000\022=\n\024friend_list_resp"
+    "onse\030+ \001(\0132\035.signaling.FriendListRespons"
+    "eH\000\022N\n\035friend_request_accepted_event\030, \001"
+    "(\0132%.signaling.FriendRequestAcceptedEven"
+    "tH\000\022=\n\024lookup_user_response\030- \001(\0132\035.sign"
+    "aling.LookupUserResponseH\000B\t\n\007payload\",\n"
+    "\005Hello\022\017\n\007user_id\030\001 \001(\t\022\022\n\nauth_token\030\002 "
+    "\001(\t\"0\n\005Ready\022\022\n\nsession_id\030\001 \001(\t\022\023\n\013chan"
+    "nel_ids\030\002 \003(\t\"\032\n\tHeartbeat\022\r\n\005nonce\030\001 \001("
+    "\004\"\035\n\014HeartbeatAck\022\r\n\005nonce\030\001 \001(\004\"H\n\013Send"
+    "Message\022\024\n\014client_nonce\030\001 \001(\t\022\022\n\nchannel"
+    "_id\030\002 \001(\t\022\017\n\007content\030\003 \001(\t\"\212\001\n\020ChatMessa"
+    "geEvent\022\022\n\nmessage_id\030\001 \001(\t\022\024\n\014client_no"
+    "nce\030\002 \001(\t\022\022\n\nchannel_id\030\003 \001(\t\022\021\n\tsender_"
+    "id\030\004 \001(\t\022\017\n\007content\030\005 \001(\t\022\024\n\014timestamp_m"
+    "s\030\006 \001(\003\"`\n\014FetchHistory\022\022\n\nrequest_id\030\001 "
+    "\001(\t\022\022\n\nchannel_id\030\002 \001(\t\022\031\n\021before_messag"
+    "e_id\030\003 \001(\t\022\r\n\005limit\030\004 \001(\r\"P\n\017HistoryResp"
+    "onse\022\022\n\nrequest_id\030\001 \001(\t\022)\n\004msgs\030\002 \003(\0132\033"
+    ".signaling.ChatMessageEvent\"\037\n\tJoinVoice"
+    "\022\022\n\nchannel_id\030\001 \001(\t\" \n\nLeaveVoice\022\022\n\nch"
+    "annel_id\030\001 \001(\t\"D\n\tVoicePeer\022\017\n\007user_id\030\001"
+    " \001(\t\022\n\n\002ip\030\002 \001(\t\022\014\n\004port\030\003 \001(\r\022\014\n\004ssrc\030\004"
+    " \001(\r\"I\n\017VoicePeerJoined\022\022\n\nchannel_id\030\001 "
+    "\001(\t\022\"\n\004peer\030\002 \001(\0132\024.signaling.VoicePeer\""
+    "4\n\rVoicePeerLeft\022\022\n\nchannel_id\030\001 \001(\t\022\017\n\007"
+    "user_id\030\002 \001(\t\"\'\n\021SendFriendRequest\022\022\n\nto"
+    "_user_id\030\001 \001(\t\"+\n\023AcceptFriendRequest\022\024\n"
+    "\014from_user_id\030\001 \001(\t\"+\n\023RejectFriendReque"
+    "st\022\024\n\014from_user_id\030\001 \001(\t\"\016\n\014FetchFriends"
+    "\"[\n\rFriendSummary\022\017\n\007user_id\030\001 \001(\t\022\020\n\010us"
+    "ername\030\002 \001(\t\022\025\n\rdm_channel_id\030\003 \001(\t\022\020\n\010s"
+    "ince_ms\030\004 \001(\003\"Z\n\024PendingFriendRequest\022\024\n"
+    "\014from_user_id\030\001 \001(\t\022\025\n\rfrom_username\030\002 \001"
+    "(\t\022\025\n\rcreated_at_ms\030\003 \001(\003\"r\n\022FriendListR"
+    "esponse\022)\n\007friends\030\001 \003(\0132\030.signaling.Fri"
+    "endSummary\0221\n\010incoming\030\002 \003(\0132\037.signaling"
+    ".PendingFriendRequest\"X\n\022FriendRequestEv"
+    "ent\022\024\n\014from_user_id\030\001 \001(\t\022\025\n\rfrom_userna"
+    "me\030\002 \001(\t\022\025\n\rcreated_at_ms\030\003 \001(\003\"V\n\032Frien"
+    "dRequestAcceptedEvent\022\017\n\007user_id\030\001 \001(\t\022\020"
+    "\n\010username\030\002 \001(\t\022\025\n\rdm_channel_id\030\003 \001(\t\""
+    "/\n\nLookupUser\022\022\n\nrequest_id\030\001 \001(\t\022\r\n\005ema"
+    "il\030\002 \001(\t\"i\n\022LookupUserResponse\022\022\n\nreques"
+    "t_id\030\001 \001(\t\022\r\n\005found\030\002 \001(\010\022\017\n\007user_id\030\003 \001"
+    "(\t\022\020\n\010username\030\004 \001(\t\022\r\n\005email\030\005 \001(\t\"+\n\nE"
+    "rrorEvent\022\014\n\004code\030\001 \001(\r\022\017\n\007message\030\002 \001(\t"
+    "b\006proto3"
 };
 static ::absl::once_flag descriptor_table_signaling_2eproto_once;
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_signaling_2eproto = {
     false,
     false,
-    2623,
+    2888,
     descriptor_table_protodef_signaling_2eproto,
     "signaling.proto",
     &descriptor_table_signaling_2eproto_once,
     nullptr,
     0,
-    24,
+    26,
     schemas,
     file_default_instances,
     TableStruct_signaling_2eproto::offsets,
@@ -1229,6 +1331,19 @@ void Envelope::set_allocated_fetch_friends(::signaling::FetchFriends* PROTOBUF_N
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.fetch_friends)
 }
+void Envelope::set_allocated_lookup_user(::signaling::LookupUser* PROTOBUF_NULLABLE lookup_user) {
+  ::google::protobuf::Arena* message_arena = GetArena();
+  clear_payload();
+  if (lookup_user) {
+    ::google::protobuf::Arena* submessage_arena = lookup_user->GetArena();
+    if (message_arena != submessage_arena) {
+      lookup_user = ::google::protobuf::internal::GetOwnedMessage(message_arena, lookup_user, submessage_arena);
+    }
+    set_has_lookup_user();
+    _impl_.payload_.lookup_user_ = lookup_user;
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.lookup_user)
+}
 void Envelope::set_allocated_ready(::signaling::Ready* PROTOBUF_NULLABLE ready) {
   ::google::protobuf::Arena* message_arena = GetArena();
   clear_payload();
@@ -1359,6 +1474,19 @@ void Envelope::set_allocated_friend_request_accepted_event(::signaling::FriendRe
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.friend_request_accepted_event)
 }
+void Envelope::set_allocated_lookup_user_response(::signaling::LookupUserResponse* PROTOBUF_NULLABLE lookup_user_response) {
+  ::google::protobuf::Arena* message_arena = GetArena();
+  clear_payload();
+  if (lookup_user_response) {
+    ::google::protobuf::Arena* submessage_arena = lookup_user_response->GetArena();
+    if (message_arena != submessage_arena) {
+      lookup_user_response = ::google::protobuf::internal::GetOwnedMessage(message_arena, lookup_user_response, submessage_arena);
+    }
+    set_has_lookup_user_response();
+    _impl_.payload_.lookup_user_response_ = lookup_user_response;
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.Envelope.lookup_user_response)
+}
 Envelope::Envelope(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
 #if defined(PROTOBUF_CUSTOM_VTABLE)
     : ::google::protobuf::Message(arena, Envelope_class_data_.base()) {
@@ -1424,6 +1552,9 @@ Envelope::Envelope(
       case kFetchFriends:
         _impl_.payload_.fetch_friends_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.fetch_friends_);
         break;
+      case kLookupUser:
+        _impl_.payload_.lookup_user_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.lookup_user_);
+        break;
       case kReady:
         _impl_.payload_.ready_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.ready_);
         break;
@@ -1453,6 +1584,9 @@ Envelope::Envelope(
         break;
       case kFriendRequestAcceptedEvent:
         _impl_.payload_.friend_request_accepted_event_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.friend_request_accepted_event_);
+        break;
+      case kLookupUserResponse:
+        _impl_.payload_.lookup_user_response_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.lookup_user_response_);
         break;
   }
 
@@ -1570,6 +1704,14 @@ void Envelope::clear_payload() {
       }
       break;
     }
+    case kLookupUser: {
+      if (GetArena() == nullptr) {
+        delete _impl_.payload_.lookup_user_;
+      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.lookup_user_);
+      }
+      break;
+    }
     case kReady: {
       if (GetArena() == nullptr) {
         delete _impl_.payload_.ready_;
@@ -1650,6 +1792,14 @@ void Envelope::clear_payload() {
       }
       break;
     }
+    case kLookupUserResponse: {
+      if (GetArena() == nullptr) {
+        delete _impl_.payload_.lookup_user_response_;
+      } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+        ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.lookup_user_response_);
+      }
+      break;
+    }
     case PAYLOAD_NOT_SET: {
       break;
     }
@@ -1701,17 +1851,17 @@ Envelope::GetClassData() const {
   return Envelope_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<0, 21, 20, 0, 7>
+const ::_pbi::TcParseTable<0, 23, 22, 0, 7>
 Envelope::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(Envelope, _impl_._has_bits_),
     0, // no _extensions_
-    44, 0,  // max_field_number, fast_idx_mask
+    45, 0,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    528974334,  // skipmap
+    520585726,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    21,  // num_field_entries
-    20,  // num_aux_entries
+    23,  // num_field_entries
+    22,  // num_aux_entries
     offsetof(decltype(_table_), aux_entries),
     Envelope_class_data_.base(),
     nullptr,  // post_loop_handler
@@ -1726,7 +1876,7 @@ Envelope::_table_ = {
       PROTOBUF_FIELD_OFFSET(Envelope, _impl_.seq_)}},
   }}, {{
     33, 0, 1,
-    61936, 14,
+    57840, 15,
     65535, 65535
   }}, {{
     // uint64 seq = 1;
@@ -1751,26 +1901,30 @@ Envelope::_table_ = {
     {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.reject_friend_request_), _Internal::kOneofCaseOffset + 0, 8, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.FetchFriends fetch_friends = 23;
     {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.fetch_friends_), _Internal::kOneofCaseOffset + 0, 9, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    // .signaling.LookupUser lookup_user = 24;
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.lookup_user_), _Internal::kOneofCaseOffset + 0, 10, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.Ready ready = 30;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.ready_), _Internal::kOneofCaseOffset + 0, 10, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.ready_), _Internal::kOneofCaseOffset + 0, 11, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.HeartbeatAck heartbeat_ack = 31;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.heartbeat_ack_), _Internal::kOneofCaseOffset + 0, 11, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.heartbeat_ack_), _Internal::kOneofCaseOffset + 0, 12, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.ChatMessageEvent chat_message_event = 32;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.chat_message_event_), _Internal::kOneofCaseOffset + 0, 12, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.chat_message_event_), _Internal::kOneofCaseOffset + 0, 13, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.HistoryResponse history_response = 33;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.history_response_), _Internal::kOneofCaseOffset + 0, 13, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.history_response_), _Internal::kOneofCaseOffset + 0, 14, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.VoicePeerJoined voice_peer_joined = 34;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_joined_), _Internal::kOneofCaseOffset + 0, 14, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_joined_), _Internal::kOneofCaseOffset + 0, 15, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.VoicePeerLeft voice_peer_left = 35;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_left_), _Internal::kOneofCaseOffset + 0, 15, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.voice_peer_left_), _Internal::kOneofCaseOffset + 0, 16, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.ErrorEvent error = 36;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.error_), _Internal::kOneofCaseOffset + 0, 16, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.error_), _Internal::kOneofCaseOffset + 0, 17, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.FriendRequestEvent friend_request_event = 42;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.friend_request_event_), _Internal::kOneofCaseOffset + 0, 17, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.friend_request_event_), _Internal::kOneofCaseOffset + 0, 18, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.FriendListResponse friend_list_response = 43;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.friend_list_response_), _Internal::kOneofCaseOffset + 0, 18, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.friend_list_response_), _Internal::kOneofCaseOffset + 0, 19, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
     // .signaling.FriendRequestAcceptedEvent friend_request_accepted_event = 44;
-    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.friend_request_accepted_event_), _Internal::kOneofCaseOffset + 0, 19, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.friend_request_accepted_event_), _Internal::kOneofCaseOffset + 0, 20, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
+    // .signaling.LookupUserResponse lookup_user_response = 45;
+    {PROTOBUF_FIELD_OFFSET(Envelope, _impl_.payload_.lookup_user_response_), _Internal::kOneofCaseOffset + 0, 21, (0 | ::_fl::kFcOneof | ::_fl::kMessage | ::_fl::kTvTable)},
   }},
   {{
       {::_pbi::TcParser::GetTable<::signaling::Hello>()},
@@ -1783,6 +1937,7 @@ Envelope::_table_ = {
       {::_pbi::TcParser::GetTable<::signaling::AcceptFriendRequest>()},
       {::_pbi::TcParser::GetTable<::signaling::RejectFriendRequest>()},
       {::_pbi::TcParser::GetTable<::signaling::FetchFriends>()},
+      {::_pbi::TcParser::GetTable<::signaling::LookupUser>()},
       {::_pbi::TcParser::GetTable<::signaling::Ready>()},
       {::_pbi::TcParser::GetTable<::signaling::HeartbeatAck>()},
       {::_pbi::TcParser::GetTable<::signaling::ChatMessageEvent>()},
@@ -1793,6 +1948,7 @@ Envelope::_table_ = {
       {::_pbi::TcParser::GetTable<::signaling::FriendRequestEvent>()},
       {::_pbi::TcParser::GetTable<::signaling::FriendListResponse>()},
       {::_pbi::TcParser::GetTable<::signaling::FriendRequestAcceptedEvent>()},
+      {::_pbi::TcParser::GetTable<::signaling::LookupUserResponse>()},
   }},
   {{
   }},
@@ -1899,6 +2055,12 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
           stream);
       break;
     }
+    case kLookupUser: {
+      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
+          24, *this_._impl_.payload_.lookup_user_, this_._impl_.payload_.lookup_user_->GetCachedSize(), target,
+          stream);
+      break;
+    }
     case kReady: {
       target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
           30, *this_._impl_.payload_.ready_, this_._impl_.payload_.ready_->GetCachedSize(), target,
@@ -1956,6 +2118,12 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
     case kFriendRequestAcceptedEvent: {
       target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
           44, *this_._impl_.payload_.friend_request_accepted_event_, this_._impl_.payload_.friend_request_accepted_event_->GetCachedSize(), target,
+          stream);
+      break;
+    }
+    case kLookupUserResponse: {
+      target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessage(
+          45, *this_._impl_.payload_.lookup_user_response_, this_._impl_.payload_.lookup_user_response_->GetCachedSize(), target,
           stream);
       break;
     }
@@ -2056,6 +2224,12 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.fetch_friends_);
       break;
     }
+    // .signaling.LookupUser lookup_user = 24;
+    case kLookupUser: {
+      total_size += 2 +
+                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.lookup_user_);
+      break;
+    }
     // .signaling.Ready ready = 30;
     case kReady: {
       total_size += 2 +
@@ -2114,6 +2288,12 @@ PROTOBUF_NOINLINE void Envelope::Clear() {
     case kFriendRequestAcceptedEvent: {
       total_size += 2 +
                     ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.friend_request_accepted_event_);
+      break;
+    }
+    // .signaling.LookupUserResponse lookup_user_response = 45;
+    case kLookupUserResponse: {
+      total_size += 2 +
+                    ::google::protobuf::internal::WireFormatLite::MessageSize(*this_._impl_.payload_.lookup_user_response_);
       break;
     }
     case PAYLOAD_NOT_SET: {
@@ -2237,6 +2417,14 @@ void Envelope::MergeImpl(::google::protobuf::MessageLite& to_msg,
         }
         break;
       }
+      case kLookupUser: {
+        if (oneof_needs_init) {
+          _this->_impl_.payload_.lookup_user_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.lookup_user_);
+        } else {
+          _this->_impl_.payload_.lookup_user_->MergeFrom(*from._impl_.payload_.lookup_user_);
+        }
+        break;
+      }
       case kReady: {
         if (oneof_needs_init) {
           _this->_impl_.payload_.ready_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.ready_);
@@ -2314,6 +2502,14 @@ void Envelope::MergeImpl(::google::protobuf::MessageLite& to_msg,
           _this->_impl_.payload_.friend_request_accepted_event_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.friend_request_accepted_event_);
         } else {
           _this->_impl_.payload_.friend_request_accepted_event_->MergeFrom(*from._impl_.payload_.friend_request_accepted_event_);
+        }
+        break;
+      }
+      case kLookupUserResponse: {
+        if (oneof_needs_init) {
+          _this->_impl_.payload_.lookup_user_response_ = ::google::protobuf::Message::CopyConstruct(arena, *from._impl_.payload_.lookup_user_response_);
+        } else {
+          _this->_impl_.payload_.lookup_user_response_->MergeFrom(*from._impl_.payload_.lookup_user_response_);
         }
         break;
       }
@@ -9354,6 +9550,759 @@ void FriendRequestAcceptedEvent::InternalSwap(FriendRequestAcceptedEvent* PROTOB
 }
 
 ::google::protobuf::Metadata FriendRequestAcceptedEvent::GetMetadata() const {
+  return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
+}
+// ===================================================================
+
+class LookupUser::_Internal {
+ public:
+  using HasBits =
+      decltype(::std::declval<LookupUser>()._impl_._has_bits_);
+  static constexpr ::int32_t kHasBitsOffset =
+      8 * PROTOBUF_FIELD_OFFSET(LookupUser, _impl_._has_bits_);
+};
+
+LookupUser::LookupUser(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+    : ::google::protobuf::Message(arena, LookupUser_class_data_.base()) {
+#else   // PROTOBUF_CUSTOM_VTABLE
+    : ::google::protobuf::Message(arena) {
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  SharedCtor(arena);
+  // @@protoc_insertion_point(arena_constructor:signaling.LookupUser)
+}
+PROTOBUF_NDEBUG_INLINE LookupUser::Impl_::Impl_(
+    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
+    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+    [[maybe_unused]] const ::signaling::LookupUser& from_msg)
+      : _has_bits_{from._has_bits_},
+        _cached_size_{0},
+        request_id_(arena, from.request_id_),
+        email_(arena, from.email_) {}
+
+LookupUser::LookupUser(
+    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
+    const LookupUser& from)
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+    : ::google::protobuf::Message(arena, LookupUser_class_data_.base()) {
+#else   // PROTOBUF_CUSTOM_VTABLE
+    : ::google::protobuf::Message(arena) {
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  LookupUser* const _this = this;
+  (void)_this;
+  _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
+      from._internal_metadata_);
+  new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
+
+  // @@protoc_insertion_point(copy_constructor:signaling.LookupUser)
+}
+PROTOBUF_NDEBUG_INLINE LookupUser::Impl_::Impl_(
+    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
+    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
+      : _cached_size_{0},
+        request_id_(arena),
+        email_(arena) {}
+
+inline void LookupUser::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
+  new (&_impl_) Impl_(internal_visibility(), arena);
+}
+LookupUser::~LookupUser() {
+  // @@protoc_insertion_point(destructor:signaling.LookupUser)
+  SharedDtor(*this);
+}
+inline void LookupUser::SharedDtor(MessageLite& self) {
+  LookupUser& this_ = static_cast<LookupUser&>(self);
+  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
+    this_.CheckHasBitConsistency();
+  }
+  this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
+  ABSL_DCHECK(this_.GetArena() == nullptr);
+  this_._impl_.request_id_.Destroy();
+  this_._impl_.email_.Destroy();
+  this_._impl_.~Impl_();
+}
+
+inline void* PROTOBUF_NONNULL LookupUser::PlacementNew_(
+    const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena) {
+  return ::new (mem) LookupUser(arena);
+}
+constexpr auto LookupUser::InternalNewImpl_() {
+  return ::google::protobuf::internal::MessageCreator::CopyInit(sizeof(LookupUser),
+                                            alignof(LookupUser));
+}
+constexpr auto LookupUser::InternalGenerateClassData_() {
+  return ::google::protobuf::internal::ClassDataFull{
+      ::google::protobuf::internal::ClassData{
+          &_LookupUser_default_instance_._instance,
+          &_table_.header,
+          nullptr,  // OnDemandRegisterArenaDtor
+          nullptr,  // IsInitialized
+          &LookupUser::MergeImpl,
+          ::google::protobuf::Message::GetNewImpl<LookupUser>(),
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+          &LookupUser::SharedDtor,
+          ::google::protobuf::Message::GetClearImpl<LookupUser>(), &LookupUser::ByteSizeLong,
+              &LookupUser::_InternalSerialize,
+#endif  // PROTOBUF_CUSTOM_VTABLE
+          PROTOBUF_FIELD_OFFSET(LookupUser, _impl_._cached_size_),
+          false,
+      },
+      &LookupUser::kDescriptorMethods,
+      &descriptor_table_signaling_2eproto,
+      nullptr,  // tracker
+  };
+}
+
+PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 const
+    ::google::protobuf::internal::ClassDataFull LookupUser_class_data_ =
+        LookupUser::InternalGenerateClassData_();
+
+PROTOBUF_ATTRIBUTE_WEAK const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL
+LookupUser::GetClassData() const {
+  ::google::protobuf::internal::PrefetchToLocalCache(&LookupUser_class_data_);
+  ::google::protobuf::internal::PrefetchToLocalCache(LookupUser_class_data_.tc_table);
+  return LookupUser_class_data_.base();
+}
+PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
+const ::_pbi::TcParseTable<1, 2, 0, 44, 2>
+LookupUser::_table_ = {
+  {
+    PROTOBUF_FIELD_OFFSET(LookupUser, _impl_._has_bits_),
+    0, // no _extensions_
+    2, 8,  // max_field_number, fast_idx_mask
+    offsetof(decltype(_table_), field_lookup_table),
+    4294967292,  // skipmap
+    offsetof(decltype(_table_), field_entries),
+    2,  // num_field_entries
+    0,  // num_aux_entries
+    offsetof(decltype(_table_), field_names),  // no aux_entries
+    LookupUser_class_data_.base(),
+    nullptr,  // post_loop_handler
+    ::_pbi::TcParser::GenericFallback,  // fallback
+    #ifdef PROTOBUF_PREFETCH_PARSE_TABLE
+    ::_pbi::TcParser::GetTable<::signaling::LookupUser>(),  // to_prefetch
+    #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
+  }, {{
+    // string email = 2;
+    {::_pbi::TcParser::FastUS1,
+     {18, 1, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUser, _impl_.email_)}},
+    // string request_id = 1;
+    {::_pbi::TcParser::FastUS1,
+     {10, 0, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUser, _impl_.request_id_)}},
+  }}, {{
+    65535, 65535
+  }}, {{
+    // string request_id = 1;
+    {PROTOBUF_FIELD_OFFSET(LookupUser, _impl_.request_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string email = 2;
+    {PROTOBUF_FIELD_OFFSET(LookupUser, _impl_.email_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+  }},
+  // no aux_entries
+  {{
+    "\24\12\5\0\0\0\0\0"
+    "signaling.LookupUser"
+    "request_id"
+    "email"
+  }},
+};
+PROTOBUF_NOINLINE void LookupUser::Clear() {
+// @@protoc_insertion_point(message_clear_start:signaling.LookupUser)
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  ::uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.request_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.email_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
+}
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+::uint8_t* PROTOBUF_NONNULL LookupUser::_InternalSerialize(
+    const ::google::protobuf::MessageLite& base, ::uint8_t* PROTOBUF_NONNULL target,
+    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) {
+  const LookupUser& this_ = static_cast<const LookupUser&>(base);
+#else   // PROTOBUF_CUSTOM_VTABLE
+::uint8_t* PROTOBUF_NONNULL LookupUser::_InternalSerialize(
+    ::uint8_t* PROTOBUF_NONNULL target,
+    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+  const LookupUser& this_ = *this;
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
+    this_.CheckHasBitConsistency();
+  }
+  // @@protoc_insertion_point(serialize_to_array_start:signaling.LookupUser)
+  ::uint32_t cached_has_bits = 0;
+  (void)cached_has_bits;
+
+  cached_has_bits = this_._impl_._has_bits_[0];
+  // string request_id = 1;
+  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+    if (!this_._internal_request_id().empty()) {
+      const ::std::string& _s = this_._internal_request_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.LookupUser.request_id");
+      target = stream->WriteStringMaybeAliased(1, _s, target);
+    }
+  }
+
+  // string email = 2;
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_email().empty()) {
+      const ::std::string& _s = this_._internal_email();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.LookupUser.email");
+      target = stream->WriteStringMaybeAliased(2, _s, target);
+    }
+  }
+
+  if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
+    target =
+        ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+            this_._internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:signaling.LookupUser)
+  return target;
+}
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+::size_t LookupUser::ByteSizeLong(const MessageLite& base) {
+  const LookupUser& this_ = static_cast<const LookupUser&>(base);
+#else   // PROTOBUF_CUSTOM_VTABLE
+::size_t LookupUser::ByteSizeLong() const {
+  const LookupUser& this_ = *this;
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  // @@protoc_insertion_point(message_byte_size_start:signaling.LookupUser)
+  ::size_t total_size = 0;
+
+  ::uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void)cached_has_bits;
+
+  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
+  cached_has_bits = this_._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+    // string request_id = 1;
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!this_._internal_request_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_request_id());
+      }
+    }
+    // string email = 2;
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_email().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_email());
+      }
+    }
+  }
+  return this_.MaybeComputeUnknownFieldsSize(total_size,
+                                             &this_._impl_._cached_size_);
+}
+
+void LookupUser::MergeImpl(::google::protobuf::MessageLite& to_msg,
+                            const ::google::protobuf::MessageLite& from_msg) {
+   auto* const _this =
+      static_cast<LookupUser*>(&to_msg);
+  auto& from = static_cast<const LookupUser&>(from_msg);
+  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
+    from.CheckHasBitConsistency();
+  }
+  // @@protoc_insertion_point(class_specific_merge_from_start:signaling.LookupUser)
+  ABSL_DCHECK_NE(&from, _this);
+  ::uint32_t cached_has_bits = 0;
+  (void)cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!from._internal_request_id().empty()) {
+        _this->_internal_set_request_id(from._internal_request_id());
+      } else {
+        if (_this->_impl_.request_id_.IsDefault()) {
+          _this->_internal_set_request_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_email().empty()) {
+        _this->_internal_set_email(from._internal_email());
+      } else {
+        if (_this->_impl_.email_.IsDefault()) {
+          _this->_internal_set_email("");
+        }
+      }
+    }
+  }
+  _this->_impl_._has_bits_[0] |= cached_has_bits;
+  _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
+      from._internal_metadata_);
+}
+
+void LookupUser::CopyFrom(const LookupUser& from) {
+  // @@protoc_insertion_point(class_specific_copy_from_start:signaling.LookupUser)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+
+void LookupUser::InternalSwap(LookupUser* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
+  using ::std::swap;
+  auto* arena = GetArena();
+  ABSL_DCHECK_EQ(arena, other->GetArena());
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.request_id_, &other->_impl_.request_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.email_, &other->_impl_.email_, arena);
+}
+
+::google::protobuf::Metadata LookupUser::GetMetadata() const {
+  return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
+}
+// ===================================================================
+
+class LookupUserResponse::_Internal {
+ public:
+  using HasBits =
+      decltype(::std::declval<LookupUserResponse>()._impl_._has_bits_);
+  static constexpr ::int32_t kHasBitsOffset =
+      8 * PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_._has_bits_);
+};
+
+LookupUserResponse::LookupUserResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+    : ::google::protobuf::Message(arena, LookupUserResponse_class_data_.base()) {
+#else   // PROTOBUF_CUSTOM_VTABLE
+    : ::google::protobuf::Message(arena) {
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  SharedCtor(arena);
+  // @@protoc_insertion_point(arena_constructor:signaling.LookupUserResponse)
+}
+PROTOBUF_NDEBUG_INLINE LookupUserResponse::Impl_::Impl_(
+    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
+    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+    [[maybe_unused]] const ::signaling::LookupUserResponse& from_msg)
+      : _has_bits_{from._has_bits_},
+        _cached_size_{0},
+        request_id_(arena, from.request_id_),
+        user_id_(arena, from.user_id_),
+        username_(arena, from.username_),
+        email_(arena, from.email_) {}
+
+LookupUserResponse::LookupUserResponse(
+    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
+    const LookupUserResponse& from)
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+    : ::google::protobuf::Message(arena, LookupUserResponse_class_data_.base()) {
+#else   // PROTOBUF_CUSTOM_VTABLE
+    : ::google::protobuf::Message(arena) {
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  LookupUserResponse* const _this = this;
+  (void)_this;
+  _internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
+      from._internal_metadata_);
+  new (&_impl_) Impl_(internal_visibility(), arena, from._impl_, from);
+  _impl_.found_ = from._impl_.found_;
+
+  // @@protoc_insertion_point(copy_constructor:signaling.LookupUserResponse)
+}
+PROTOBUF_NDEBUG_INLINE LookupUserResponse::Impl_::Impl_(
+    [[maybe_unused]] ::google::protobuf::internal::InternalVisibility visibility,
+    [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
+      : _cached_size_{0},
+        request_id_(arena),
+        user_id_(arena),
+        username_(arena),
+        email_(arena) {}
+
+inline void LookupUserResponse::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
+  new (&_impl_) Impl_(internal_visibility(), arena);
+  _impl_.found_ = {};
+}
+LookupUserResponse::~LookupUserResponse() {
+  // @@protoc_insertion_point(destructor:signaling.LookupUserResponse)
+  SharedDtor(*this);
+}
+inline void LookupUserResponse::SharedDtor(MessageLite& self) {
+  LookupUserResponse& this_ = static_cast<LookupUserResponse&>(self);
+  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
+    this_.CheckHasBitConsistency();
+  }
+  this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
+  ABSL_DCHECK(this_.GetArena() == nullptr);
+  this_._impl_.request_id_.Destroy();
+  this_._impl_.user_id_.Destroy();
+  this_._impl_.username_.Destroy();
+  this_._impl_.email_.Destroy();
+  this_._impl_.~Impl_();
+}
+
+inline void* PROTOBUF_NONNULL LookupUserResponse::PlacementNew_(
+    const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+    ::google::protobuf::Arena* PROTOBUF_NULLABLE arena) {
+  return ::new (mem) LookupUserResponse(arena);
+}
+constexpr auto LookupUserResponse::InternalNewImpl_() {
+  return ::google::protobuf::internal::MessageCreator::CopyInit(sizeof(LookupUserResponse),
+                                            alignof(LookupUserResponse));
+}
+constexpr auto LookupUserResponse::InternalGenerateClassData_() {
+  return ::google::protobuf::internal::ClassDataFull{
+      ::google::protobuf::internal::ClassData{
+          &_LookupUserResponse_default_instance_._instance,
+          &_table_.header,
+          nullptr,  // OnDemandRegisterArenaDtor
+          nullptr,  // IsInitialized
+          &LookupUserResponse::MergeImpl,
+          ::google::protobuf::Message::GetNewImpl<LookupUserResponse>(),
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+          &LookupUserResponse::SharedDtor,
+          ::google::protobuf::Message::GetClearImpl<LookupUserResponse>(), &LookupUserResponse::ByteSizeLong,
+              &LookupUserResponse::_InternalSerialize,
+#endif  // PROTOBUF_CUSTOM_VTABLE
+          PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_._cached_size_),
+          false,
+      },
+      &LookupUserResponse::kDescriptorMethods,
+      &descriptor_table_signaling_2eproto,
+      nullptr,  // tracker
+  };
+}
+
+PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 const
+    ::google::protobuf::internal::ClassDataFull LookupUserResponse_class_data_ =
+        LookupUserResponse::InternalGenerateClassData_();
+
+PROTOBUF_ATTRIBUTE_WEAK const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL
+LookupUserResponse::GetClassData() const {
+  ::google::protobuf::internal::PrefetchToLocalCache(&LookupUserResponse_class_data_);
+  ::google::protobuf::internal::PrefetchToLocalCache(LookupUserResponse_class_data_.tc_table);
+  return LookupUserResponse_class_data_.base();
+}
+PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
+const ::_pbi::TcParseTable<3, 5, 0, 67, 2>
+LookupUserResponse::_table_ = {
+  {
+    PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_._has_bits_),
+    0, // no _extensions_
+    5, 56,  // max_field_number, fast_idx_mask
+    offsetof(decltype(_table_), field_lookup_table),
+    4294967264,  // skipmap
+    offsetof(decltype(_table_), field_entries),
+    5,  // num_field_entries
+    0,  // num_aux_entries
+    offsetof(decltype(_table_), field_names),  // no aux_entries
+    LookupUserResponse_class_data_.base(),
+    nullptr,  // post_loop_handler
+    ::_pbi::TcParser::GenericFallback,  // fallback
+    #ifdef PROTOBUF_PREFETCH_PARSE_TABLE
+    ::_pbi::TcParser::GetTable<::signaling::LookupUserResponse>(),  // to_prefetch
+    #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
+  }, {{
+    {::_pbi::TcParser::MiniParse, {}},
+    // string request_id = 1;
+    {::_pbi::TcParser::FastUS1,
+     {10, 0, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.request_id_)}},
+    // bool found = 2;
+    {::_pbi::TcParser::SingularVarintNoZag1<bool, offsetof(LookupUserResponse, _impl_.found_), 4>(),
+     {16, 4, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.found_)}},
+    // string user_id = 3;
+    {::_pbi::TcParser::FastUS1,
+     {26, 1, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.user_id_)}},
+    // string username = 4;
+    {::_pbi::TcParser::FastUS1,
+     {34, 2, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.username_)}},
+    // string email = 5;
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.email_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
+  }}, {{
+    65535, 65535
+  }}, {{
+    // string request_id = 1;
+    {PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.request_id_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // bool found = 2;
+    {PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.found_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kBool)},
+    // string user_id = 3;
+    {PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.user_id_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string username = 4;
+    {PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.username_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string email = 5;
+    {PROTOBUF_FIELD_OFFSET(LookupUserResponse, _impl_.email_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+  }},
+  // no aux_entries
+  {{
+    "\34\12\0\7\10\5\0\0"
+    "signaling.LookupUserResponse"
+    "request_id"
+    "user_id"
+    "username"
+    "email"
+  }},
+};
+PROTOBUF_NOINLINE void LookupUserResponse::Clear() {
+// @@protoc_insertion_point(message_clear_start:signaling.LookupUserResponse)
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  ::uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      _impl_.request_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      _impl_.user_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.username_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.email_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_.found_ = false;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::google::protobuf::UnknownFieldSet>();
+}
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+::uint8_t* PROTOBUF_NONNULL LookupUserResponse::_InternalSerialize(
+    const ::google::protobuf::MessageLite& base, ::uint8_t* PROTOBUF_NONNULL target,
+    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) {
+  const LookupUserResponse& this_ = static_cast<const LookupUserResponse&>(base);
+#else   // PROTOBUF_CUSTOM_VTABLE
+::uint8_t* PROTOBUF_NONNULL LookupUserResponse::_InternalSerialize(
+    ::uint8_t* PROTOBUF_NONNULL target,
+    ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+  const LookupUserResponse& this_ = *this;
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
+    this_.CheckHasBitConsistency();
+  }
+  // @@protoc_insertion_point(serialize_to_array_start:signaling.LookupUserResponse)
+  ::uint32_t cached_has_bits = 0;
+  (void)cached_has_bits;
+
+  cached_has_bits = this_._impl_._has_bits_[0];
+  // string request_id = 1;
+  if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+    if (!this_._internal_request_id().empty()) {
+      const ::std::string& _s = this_._internal_request_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.LookupUserResponse.request_id");
+      target = stream->WriteStringMaybeAliased(1, _s, target);
+    }
+  }
+
+  // bool found = 2;
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (this_._internal_found() != 0) {
+      target = stream->EnsureSpace(target);
+      target = ::_pbi::WireFormatLite::WriteBoolToArray(
+          2, this_._internal_found(), target);
+    }
+  }
+
+  // string user_id = 3;
+  if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+    if (!this_._internal_user_id().empty()) {
+      const ::std::string& _s = this_._internal_user_id();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.LookupUserResponse.user_id");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
+  // string username = 4;
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_username().empty()) {
+      const ::std::string& _s = this_._internal_username();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.LookupUserResponse.username");
+      target = stream->WriteStringMaybeAliased(4, _s, target);
+    }
+  }
+
+  // string email = 5;
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_email().empty()) {
+      const ::std::string& _s = this_._internal_email();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.LookupUserResponse.email");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
+  if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
+    target =
+        ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+            this_._internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:signaling.LookupUserResponse)
+  return target;
+}
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+::size_t LookupUserResponse::ByteSizeLong(const MessageLite& base) {
+  const LookupUserResponse& this_ = static_cast<const LookupUserResponse&>(base);
+#else   // PROTOBUF_CUSTOM_VTABLE
+::size_t LookupUserResponse::ByteSizeLong() const {
+  const LookupUserResponse& this_ = *this;
+#endif  // PROTOBUF_CUSTOM_VTABLE
+  // @@protoc_insertion_point(message_byte_size_start:signaling.LookupUserResponse)
+  ::size_t total_size = 0;
+
+  ::uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void)cached_has_bits;
+
+  ::_pbi::Prefetch5LinesFrom7Lines(&this_);
+  cached_has_bits = this_._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
+    // string request_id = 1;
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!this_._internal_request_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_request_id());
+      }
+    }
+    // string user_id = 3;
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!this_._internal_user_id().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_user_id());
+      }
+    }
+    // string username = 4;
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_username().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_username());
+      }
+    }
+    // string email = 5;
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_email().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_email());
+      }
+    }
+    // bool found = 2;
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (this_._internal_found() != 0) {
+        total_size += 2;
+      }
+    }
+  }
+  return this_.MaybeComputeUnknownFieldsSize(total_size,
+                                             &this_._impl_._cached_size_);
+}
+
+void LookupUserResponse::MergeImpl(::google::protobuf::MessageLite& to_msg,
+                            const ::google::protobuf::MessageLite& from_msg) {
+   auto* const _this =
+      static_cast<LookupUserResponse*>(&to_msg);
+  auto& from = static_cast<const LookupUserResponse&>(from_msg);
+  if constexpr (::_pbi::DebugHardenCheckHasBitConsistency()) {
+    from.CheckHasBitConsistency();
+  }
+  // @@protoc_insertion_point(class_specific_merge_from_start:signaling.LookupUserResponse)
+  ABSL_DCHECK_NE(&from, _this);
+  ::uint32_t cached_has_bits = 0;
+  (void)cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
+    if (CheckHasBit(cached_has_bits, 0x00000001U)) {
+      if (!from._internal_request_id().empty()) {
+        _this->_internal_set_request_id(from._internal_request_id());
+      } else {
+        if (_this->_impl_.request_id_.IsDefault()) {
+          _this->_internal_set_request_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000002U)) {
+      if (!from._internal_user_id().empty()) {
+        _this->_internal_set_user_id(from._internal_user_id());
+      } else {
+        if (_this->_impl_.user_id_.IsDefault()) {
+          _this->_internal_set_user_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_username().empty()) {
+        _this->_internal_set_username(from._internal_username());
+      } else {
+        if (_this->_impl_.username_.IsDefault()) {
+          _this->_internal_set_username("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_email().empty()) {
+        _this->_internal_set_email(from._internal_email());
+      } else {
+        if (_this->_impl_.email_.IsDefault()) {
+          _this->_internal_set_email("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (from._internal_found() != 0) {
+        _this->_impl_.found_ = from._impl_.found_;
+      }
+    }
+  }
+  _this->_impl_._has_bits_[0] |= cached_has_bits;
+  _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
+      from._internal_metadata_);
+}
+
+void LookupUserResponse::CopyFrom(const LookupUserResponse& from) {
+  // @@protoc_insertion_point(class_specific_copy_from_start:signaling.LookupUserResponse)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+
+void LookupUserResponse::InternalSwap(LookupUserResponse* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
+  using ::std::swap;
+  auto* arena = GetArena();
+  ABSL_DCHECK_EQ(arena, other->GetArena());
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.request_id_, &other->_impl_.request_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.user_id_, &other->_impl_.user_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.username_, &other->_impl_.username_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.email_, &other->_impl_.email_, arena);
+  swap(_impl_.found_, other->_impl_.found_);
+}
+
+::google::protobuf::Metadata LookupUserResponse::GetMetadata() const {
   return ::google::protobuf::Message::GetMetadataImpl(GetClassData()->full());
 }
 // ===================================================================

@@ -118,6 +118,14 @@ class LeaveVoice;
 struct LeaveVoiceDefaultTypeInternal;
 extern LeaveVoiceDefaultTypeInternal _LeaveVoice_default_instance_;
 extern const ::google::protobuf::internal::ClassDataFull LeaveVoice_class_data_;
+class LookupUser;
+struct LookupUserDefaultTypeInternal;
+extern LookupUserDefaultTypeInternal _LookupUser_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull LookupUser_class_data_;
+class LookupUserResponse;
+struct LookupUserResponseDefaultTypeInternal;
+extern LookupUserResponseDefaultTypeInternal _LookupUserResponse_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull LookupUserResponse_class_data_;
 class PendingFriendRequest;
 struct PendingFriendRequestDefaultTypeInternal;
 extern PendingFriendRequestDefaultTypeInternal _PendingFriendRequest_default_instance_;
@@ -1671,6 +1679,476 @@ class PendingFriendRequest final : public ::google::protobuf::Message
 };
 
 extern const ::google::protobuf::internal::ClassDataFull PendingFriendRequest_class_data_;
+// -------------------------------------------------------------------
+
+class LookupUserResponse final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.LookupUserResponse) */ {
+ public:
+  inline LookupUserResponse() : LookupUserResponse(nullptr) {}
+  ~LookupUserResponse() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(LookupUserResponse* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(LookupUserResponse));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR LookupUserResponse(::google::protobuf::internal::ConstantInitialized);
+
+  inline LookupUserResponse(const LookupUserResponse& from) : LookupUserResponse(nullptr, from) {}
+  inline LookupUserResponse(LookupUserResponse&& from) noexcept
+      : LookupUserResponse(nullptr, ::std::move(from)) {}
+  inline LookupUserResponse& operator=(const LookupUserResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LookupUserResponse& operator=(LookupUserResponse&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LookupUserResponse& default_instance() {
+    return *reinterpret_cast<const LookupUserResponse*>(
+        &_LookupUserResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 24;
+  friend void swap(LookupUserResponse& a, LookupUserResponse& b) { a.Swap(&b); }
+  inline void Swap(LookupUserResponse* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LookupUserResponse* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LookupUserResponse* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<LookupUserResponse>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const LookupUserResponse& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const LookupUserResponse& from) { LookupUserResponse::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(LookupUserResponse* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.LookupUserResponse"; }
+
+  explicit LookupUserResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  LookupUserResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const LookupUserResponse& from);
+  LookupUserResponse(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, LookupUserResponse&& from) noexcept
+      : LookupUserResponse(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kRequestIdFieldNumber = 1,
+    kUserIdFieldNumber = 3,
+    kUsernameFieldNumber = 4,
+    kEmailFieldNumber = 5,
+    kFoundFieldNumber = 2,
+  };
+  // string request_id = 1;
+  void clear_request_id() ;
+  const ::std::string& request_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_request_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_request_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_request_id();
+  void set_allocated_request_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_request_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_request_id();
+
+  public:
+  // string user_id = 3;
+  void clear_user_id() ;
+  const ::std::string& user_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_user_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_user_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_user_id();
+  void set_allocated_user_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_user_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_user_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_user_id();
+
+  public:
+  // string username = 4;
+  void clear_username() ;
+  const ::std::string& username() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_username(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_username();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_username();
+  void set_allocated_username(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_username() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_username(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_username();
+
+  public:
+  // string email = 5;
+  void clear_email() ;
+  const ::std::string& email() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_email(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_email();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_email();
+  void set_allocated_email(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_email() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_email(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_email();
+
+  public:
+  // bool found = 2;
+  void clear_found() ;
+  bool found() const;
+  void set_found(bool value);
+
+  private:
+  bool _internal_found() const;
+  void _internal_set_found(bool value);
+
+  public:
+  // @@protoc_insertion_point(class_scope:signaling.LookupUserResponse)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<3, 5,
+                                   0, 67,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const LookupUserResponse& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr request_id_;
+    ::google::protobuf::internal::ArenaStringPtr user_id_;
+    ::google::protobuf::internal::ArenaStringPtr username_;
+    ::google::protobuf::internal::ArenaStringPtr email_;
+    bool found_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull LookupUserResponse_class_data_;
+// -------------------------------------------------------------------
+
+class LookupUser final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.LookupUser) */ {
+ public:
+  inline LookupUser() : LookupUser(nullptr) {}
+  ~LookupUser() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(LookupUser* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(LookupUser));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR LookupUser(::google::protobuf::internal::ConstantInitialized);
+
+  inline LookupUser(const LookupUser& from) : LookupUser(nullptr, from) {}
+  inline LookupUser(LookupUser&& from) noexcept
+      : LookupUser(nullptr, ::std::move(from)) {}
+  inline LookupUser& operator=(const LookupUser& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LookupUser& operator=(LookupUser&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LookupUser& default_instance() {
+    return *reinterpret_cast<const LookupUser*>(
+        &_LookupUser_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 23;
+  friend void swap(LookupUser& a, LookupUser& b) { a.Swap(&b); }
+  inline void Swap(LookupUser* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LookupUser* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LookupUser* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<LookupUser>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const LookupUser& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const LookupUser& from) { LookupUser::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(LookupUser* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.LookupUser"; }
+
+  explicit LookupUser(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  LookupUser(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const LookupUser& from);
+  LookupUser(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, LookupUser&& from) noexcept
+      : LookupUser(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kRequestIdFieldNumber = 1,
+    kEmailFieldNumber = 2,
+  };
+  // string request_id = 1;
+  void clear_request_id() ;
+  const ::std::string& request_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_request_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_request_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_request_id();
+  void set_allocated_request_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_request_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_request_id();
+
+  public:
+  // string email = 2;
+  void clear_email() ;
+  const ::std::string& email() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_email(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_email();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_email();
+  void set_allocated_email(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_email() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_email(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_email();
+
+  public:
+  // @@protoc_insertion_point(class_scope:signaling.LookupUser)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<1, 2,
+                                   0, 44,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const LookupUser& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr request_id_;
+    ::google::protobuf::internal::ArenaStringPtr email_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull LookupUser_class_data_;
 // -------------------------------------------------------------------
 
 class LeaveVoice final : public ::google::protobuf::Message
@@ -3779,7 +4257,7 @@ class ErrorEvent final : public ::google::protobuf::Message
     return *reinterpret_cast<const ErrorEvent*>(
         &_ErrorEvent_default_instance_);
   }
-  static constexpr int kIndexInFileMessages = 23;
+  static constexpr int kIndexInFileMessages = 25;
   friend void swap(ErrorEvent& a, ErrorEvent& b) { a.Swap(&b); }
   inline void Swap(ErrorEvent* PROTOBUF_NONNULL other) {
     if (other == this) return;
@@ -5109,6 +5587,7 @@ class Envelope final : public ::google::protobuf::Message
     kAcceptFriendRequest = 21,
     kRejectFriendRequest = 22,
     kFetchFriends = 23,
+    kLookupUser = 24,
     kReady = 30,
     kHeartbeatAck = 31,
     kChatMessageEvent = 32,
@@ -5119,6 +5598,7 @@ class Envelope final : public ::google::protobuf::Message
     kFriendRequestEvent = 42,
     kFriendListResponse = 43,
     kFriendRequestAcceptedEvent = 44,
+    kLookupUserResponse = 45,
     PAYLOAD_NOT_SET = 0,
   };
   static constexpr int kIndexInFileMessages = 0;
@@ -5219,6 +5699,7 @@ class Envelope final : public ::google::protobuf::Message
     kAcceptFriendRequestFieldNumber = 21,
     kRejectFriendRequestFieldNumber = 22,
     kFetchFriendsFieldNumber = 23,
+    kLookupUserFieldNumber = 24,
     kReadyFieldNumber = 30,
     kHeartbeatAckFieldNumber = 31,
     kChatMessageEventFieldNumber = 32,
@@ -5229,6 +5710,7 @@ class Envelope final : public ::google::protobuf::Message
     kFriendRequestEventFieldNumber = 42,
     kFriendListResponseFieldNumber = 43,
     kFriendRequestAcceptedEventFieldNumber = 44,
+    kLookupUserResponseFieldNumber = 45,
   };
   // uint64 seq = 1;
   void clear_seq() ;
@@ -5430,6 +5912,25 @@ class Envelope final : public ::google::protobuf::Message
   ::signaling::FetchFriends* PROTOBUF_NONNULL _internal_mutable_fetch_friends();
 
   public:
+  // .signaling.LookupUser lookup_user = 24;
+  bool has_lookup_user() const;
+  private:
+  bool _internal_has_lookup_user() const;
+
+  public:
+  void clear_lookup_user() ;
+  const ::signaling::LookupUser& lookup_user() const;
+  [[nodiscard]] ::signaling::LookupUser* PROTOBUF_NULLABLE release_lookup_user();
+  ::signaling::LookupUser* PROTOBUF_NONNULL mutable_lookup_user();
+  void set_allocated_lookup_user(::signaling::LookupUser* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_lookup_user(::signaling::LookupUser* PROTOBUF_NULLABLE value);
+  ::signaling::LookupUser* PROTOBUF_NULLABLE unsafe_arena_release_lookup_user();
+
+  private:
+  const ::signaling::LookupUser& _internal_lookup_user() const;
+  ::signaling::LookupUser* PROTOBUF_NONNULL _internal_mutable_lookup_user();
+
+  public:
   // .signaling.Ready ready = 30;
   bool has_ready() const;
   private:
@@ -5620,6 +6121,25 @@ class Envelope final : public ::google::protobuf::Message
   ::signaling::FriendRequestAcceptedEvent* PROTOBUF_NONNULL _internal_mutable_friend_request_accepted_event();
 
   public:
+  // .signaling.LookupUserResponse lookup_user_response = 45;
+  bool has_lookup_user_response() const;
+  private:
+  bool _internal_has_lookup_user_response() const;
+
+  public:
+  void clear_lookup_user_response() ;
+  const ::signaling::LookupUserResponse& lookup_user_response() const;
+  [[nodiscard]] ::signaling::LookupUserResponse* PROTOBUF_NULLABLE release_lookup_user_response();
+  ::signaling::LookupUserResponse* PROTOBUF_NONNULL mutable_lookup_user_response();
+  void set_allocated_lookup_user_response(::signaling::LookupUserResponse* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_lookup_user_response(::signaling::LookupUserResponse* PROTOBUF_NULLABLE value);
+  ::signaling::LookupUserResponse* PROTOBUF_NULLABLE unsafe_arena_release_lookup_user_response();
+
+  private:
+  const ::signaling::LookupUserResponse& _internal_lookup_user_response() const;
+  ::signaling::LookupUserResponse* PROTOBUF_NONNULL _internal_mutable_lookup_user_response();
+
+  public:
   void clear_payload();
   PayloadCase payload_case() const;
   // @@protoc_insertion_point(class_scope:signaling.Envelope)
@@ -5635,6 +6155,7 @@ class Envelope final : public ::google::protobuf::Message
   void set_has_accept_friend_request();
   void set_has_reject_friend_request();
   void set_has_fetch_friends();
+  void set_has_lookup_user();
   void set_has_ready();
   void set_has_heartbeat_ack();
   void set_has_chat_message_event();
@@ -5645,11 +6166,12 @@ class Envelope final : public ::google::protobuf::Message
   void set_has_friend_request_event();
   void set_has_friend_list_response();
   void set_has_friend_request_accepted_event();
+  void set_has_lookup_user_response();
   inline bool has_payload() const;
   inline void clear_has_payload();
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<0, 21,
-                                   20, 0,
+  static const ::google::protobuf::internal::TcParseTable<0, 23,
+                                   22, 0,
                                    7>
       _table_;
 
@@ -5684,6 +6206,7 @@ class Envelope final : public ::google::protobuf::Message
       ::google::protobuf::Message* PROTOBUF_NULLABLE accept_friend_request_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE reject_friend_request_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE fetch_friends_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE lookup_user_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE ready_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE heartbeat_ack_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE chat_message_event_;
@@ -5694,6 +6217,7 @@ class Envelope final : public ::google::protobuf::Message
       ::google::protobuf::Message* PROTOBUF_NULLABLE friend_request_event_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE friend_list_response_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE friend_request_accepted_event_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE lookup_user_response_;
     } payload_;
     ::uint32_t _oneof_case_[1];
     PROTOBUF_TSAN_DECLARE_MEMBER
@@ -6565,6 +7089,88 @@ inline ::signaling::FetchFriends* PROTOBUF_NONNULL Envelope::mutable_fetch_frien
   return _msg;
 }
 
+// .signaling.LookupUser lookup_user = 24;
+inline bool Envelope::has_lookup_user() const {
+  return payload_case() == kLookupUser;
+}
+inline bool Envelope::_internal_has_lookup_user() const {
+  return payload_case() == kLookupUser;
+}
+inline void Envelope::set_has_lookup_user() {
+  _impl_._oneof_case_[0] = kLookupUser;
+}
+inline void Envelope::clear_lookup_user() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kLookupUser) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.lookup_user_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.lookup_user_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::LookupUser* PROTOBUF_NULLABLE Envelope::release_lookup_user() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.lookup_user)
+  if (payload_case() == kLookupUser) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::LookupUser*>(_impl_.payload_.lookup_user_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.lookup_user_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::LookupUser& Envelope::_internal_lookup_user() const {
+  return payload_case() == kLookupUser ? static_cast<const ::signaling::LookupUser&>(*reinterpret_cast<::signaling::LookupUser*>(_impl_.payload_.lookup_user_))
+                     : reinterpret_cast<const ::signaling::LookupUser&>(::signaling::_LookupUser_default_instance_);
+}
+inline const ::signaling::LookupUser& Envelope::lookup_user() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.lookup_user)
+  return _internal_lookup_user();
+}
+inline ::signaling::LookupUser* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_lookup_user() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.lookup_user)
+  if (payload_case() == kLookupUser) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::LookupUser*>(_impl_.payload_.lookup_user_);
+    _impl_.payload_.lookup_user_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_lookup_user(
+    ::signaling::LookupUser* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_lookup_user();
+    _impl_.payload_.lookup_user_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.lookup_user)
+}
+inline ::signaling::LookupUser* PROTOBUF_NONNULL Envelope::_internal_mutable_lookup_user() {
+  if (payload_case() != kLookupUser) {
+    clear_payload();
+    set_has_lookup_user();
+    _impl_.payload_.lookup_user_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::LookupUser>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::LookupUser*>(_impl_.payload_.lookup_user_);
+}
+inline ::signaling::LookupUser* PROTOBUF_NONNULL Envelope::mutable_lookup_user()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::LookupUser* _msg = _internal_mutable_lookup_user();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.lookup_user)
+  return _msg;
+}
+
 // .signaling.Ready ready = 30;
 inline bool Envelope::has_ready() const {
   return payload_case() == kReady;
@@ -7382,6 +7988,88 @@ inline ::signaling::FriendRequestAcceptedEvent* PROTOBUF_NONNULL Envelope::mutab
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   ::signaling::FriendRequestAcceptedEvent* _msg = _internal_mutable_friend_request_accepted_event();
   // @@protoc_insertion_point(field_mutable:signaling.Envelope.friend_request_accepted_event)
+  return _msg;
+}
+
+// .signaling.LookupUserResponse lookup_user_response = 45;
+inline bool Envelope::has_lookup_user_response() const {
+  return payload_case() == kLookupUserResponse;
+}
+inline bool Envelope::_internal_has_lookup_user_response() const {
+  return payload_case() == kLookupUserResponse;
+}
+inline void Envelope::set_has_lookup_user_response() {
+  _impl_._oneof_case_[0] = kLookupUserResponse;
+}
+inline void Envelope::clear_lookup_user_response() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kLookupUserResponse) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.lookup_user_response_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.lookup_user_response_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::LookupUserResponse* PROTOBUF_NULLABLE Envelope::release_lookup_user_response() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.lookup_user_response)
+  if (payload_case() == kLookupUserResponse) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::LookupUserResponse*>(_impl_.payload_.lookup_user_response_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.lookup_user_response_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::LookupUserResponse& Envelope::_internal_lookup_user_response() const {
+  return payload_case() == kLookupUserResponse ? static_cast<const ::signaling::LookupUserResponse&>(*reinterpret_cast<::signaling::LookupUserResponse*>(_impl_.payload_.lookup_user_response_))
+                     : reinterpret_cast<const ::signaling::LookupUserResponse&>(::signaling::_LookupUserResponse_default_instance_);
+}
+inline const ::signaling::LookupUserResponse& Envelope::lookup_user_response() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.lookup_user_response)
+  return _internal_lookup_user_response();
+}
+inline ::signaling::LookupUserResponse* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_lookup_user_response() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.lookup_user_response)
+  if (payload_case() == kLookupUserResponse) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::LookupUserResponse*>(_impl_.payload_.lookup_user_response_);
+    _impl_.payload_.lookup_user_response_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_lookup_user_response(
+    ::signaling::LookupUserResponse* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_lookup_user_response();
+    _impl_.payload_.lookup_user_response_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.lookup_user_response)
+}
+inline ::signaling::LookupUserResponse* PROTOBUF_NONNULL Envelope::_internal_mutable_lookup_user_response() {
+  if (payload_case() != kLookupUserResponse) {
+    clear_payload();
+    set_has_lookup_user_response();
+    _impl_.payload_.lookup_user_response_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::LookupUserResponse>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::LookupUserResponse*>(_impl_.payload_.lookup_user_response_);
+}
+inline ::signaling::LookupUserResponse* PROTOBUF_NONNULL Envelope::mutable_lookup_user_response()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::LookupUserResponse* _msg = _internal_mutable_lookup_user_response();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.lookup_user_response)
   return _msg;
 }
 
@@ -10319,6 +11007,429 @@ inline void FriendRequestAcceptedEvent::set_allocated_dm_channel_id(::std::strin
     _impl_.dm_channel_id_.Set("", GetArena());
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.FriendRequestAcceptedEvent.dm_channel_id)
+}
+
+// -------------------------------------------------------------------
+
+// LookupUser
+
+// string request_id = 1;
+inline void LookupUser::clear_request_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.request_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& LookupUser::request_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.LookupUser.request_id)
+  return _internal_request_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void LookupUser::set_request_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.request_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.LookupUser.request_id)
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUser::mutable_request_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:signaling.LookupUser.request_id)
+  return _s;
+}
+inline const ::std::string& LookupUser::_internal_request_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.request_id_.Get();
+}
+inline void LookupUser::_internal_set_request_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.request_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUser::_internal_mutable_request_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.request_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE LookupUser::release_request_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.LookupUser.request_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.request_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.request_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void LookupUser::set_allocated_request_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.request_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.LookupUser.request_id)
+}
+
+// string email = 2;
+inline void LookupUser::clear_email() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.email_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& LookupUser::email() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.LookupUser.email)
+  return _internal_email();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void LookupUser::set_email(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.email_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.LookupUser.email)
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUser::mutable_email()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_email();
+  // @@protoc_insertion_point(field_mutable:signaling.LookupUser.email)
+  return _s;
+}
+inline const ::std::string& LookupUser::_internal_email() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.email_.Get();
+}
+inline void LookupUser::_internal_set_email(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.email_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUser::_internal_mutable_email() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.email_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE LookupUser::release_email() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.LookupUser.email)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.email_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.email_.Set("", GetArena());
+  }
+  return released;
+}
+inline void LookupUser::set_allocated_email(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.email_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.email_.IsDefault()) {
+    _impl_.email_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.LookupUser.email)
+}
+
+// -------------------------------------------------------------------
+
+// LookupUserResponse
+
+// string request_id = 1;
+inline void LookupUserResponse::clear_request_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.request_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& LookupUserResponse::request_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.LookupUserResponse.request_id)
+  return _internal_request_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void LookupUserResponse::set_request_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.request_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.LookupUserResponse.request_id)
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::mutable_request_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:signaling.LookupUserResponse.request_id)
+  return _s;
+}
+inline const ::std::string& LookupUserResponse::_internal_request_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.request_id_.Get();
+}
+inline void LookupUserResponse::_internal_set_request_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.request_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::_internal_mutable_request_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.request_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE LookupUserResponse::release_request_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.LookupUserResponse.request_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.request_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.request_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void LookupUserResponse::set_allocated_request_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.request_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.LookupUserResponse.request_id)
+}
+
+// bool found = 2;
+inline void LookupUserResponse::clear_found() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.found_ = false;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline bool LookupUserResponse::found() const {
+  // @@protoc_insertion_point(field_get:signaling.LookupUserResponse.found)
+  return _internal_found();
+}
+inline void LookupUserResponse::set_found(bool value) {
+  _internal_set_found(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  // @@protoc_insertion_point(field_set:signaling.LookupUserResponse.found)
+}
+inline bool LookupUserResponse::_internal_found() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.found_;
+}
+inline void LookupUserResponse::_internal_set_found(bool value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.found_ = value;
+}
+
+// string user_id = 3;
+inline void LookupUserResponse::clear_user_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.user_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& LookupUserResponse::user_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.LookupUserResponse.user_id)
+  return _internal_user_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void LookupUserResponse::set_user_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.user_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.LookupUserResponse.user_id)
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::mutable_user_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_user_id();
+  // @@protoc_insertion_point(field_mutable:signaling.LookupUserResponse.user_id)
+  return _s;
+}
+inline const ::std::string& LookupUserResponse::_internal_user_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.user_id_.Get();
+}
+inline void LookupUserResponse::_internal_set_user_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.user_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::_internal_mutable_user_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.user_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE LookupUserResponse::release_user_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.LookupUserResponse.user_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.user_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.user_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void LookupUserResponse::set_allocated_user_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.user_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.user_id_.IsDefault()) {
+    _impl_.user_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.LookupUserResponse.user_id)
+}
+
+// string username = 4;
+inline void LookupUserResponse::clear_username() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.username_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& LookupUserResponse::username() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.LookupUserResponse.username)
+  return _internal_username();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void LookupUserResponse::set_username(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.username_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.LookupUserResponse.username)
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::mutable_username()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_username();
+  // @@protoc_insertion_point(field_mutable:signaling.LookupUserResponse.username)
+  return _s;
+}
+inline const ::std::string& LookupUserResponse::_internal_username() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.username_.Get();
+}
+inline void LookupUserResponse::_internal_set_username(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.username_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::_internal_mutable_username() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.username_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE LookupUserResponse::release_username() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.LookupUserResponse.username)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.username_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.username_.Set("", GetArena());
+  }
+  return released;
+}
+inline void LookupUserResponse::set_allocated_username(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.username_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.username_.IsDefault()) {
+    _impl_.username_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.LookupUserResponse.username)
+}
+
+// string email = 5;
+inline void LookupUserResponse::clear_email() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.email_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& LookupUserResponse::email() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.LookupUserResponse.email)
+  return _internal_email();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void LookupUserResponse::set_email(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.email_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.LookupUserResponse.email)
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::mutable_email()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_email();
+  // @@protoc_insertion_point(field_mutable:signaling.LookupUserResponse.email)
+  return _s;
+}
+inline const ::std::string& LookupUserResponse::_internal_email() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.email_.Get();
+}
+inline void LookupUserResponse::_internal_set_email(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.email_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL LookupUserResponse::_internal_mutable_email() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.email_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE LookupUserResponse::release_email() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.LookupUserResponse.email)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.email_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.email_.Set("", GetArena());
+  }
+  return released;
+}
+inline void LookupUserResponse::set_allocated_email(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.email_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.email_.IsDefault()) {
+    _impl_.email_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.LookupUserResponse.email)
 }
 
 // -------------------------------------------------------------------
