@@ -282,7 +282,13 @@ namespace OpenSocialNet::NativeClient
 
         });
 
-        const int port { srv.bind_to_any_port("127.0.0.1") };
+        // Bind to 0.0.0.0 rather than 127.0.0.1 so WSL2's localhost
+        // forwarding works: ports bound to WSL's own 127.0.0.1 aren't
+        // reachable from Windows-side browsers, but ports on 0.0.0.0
+        // are. The redirect_uri we hand Google is still 127.0.0.1 —
+        // only the bind interface changes. Same behaviour on real
+        // Linux / macOS / Windows where 0.0.0.0 == "accept on all".
+        const int port { srv.bind_to_any_port("0.0.0.0") };
         if (port < 0)
         {
 
