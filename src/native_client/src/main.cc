@@ -198,6 +198,23 @@ namespace
             {
 
                 const auto& evt { env.chat_message_event() };
+
+                // Filter wire-protocol cruft: ICE SDP exchange piggybacks
+                // on the chat channel for SDP blobs, so the network child
+                // republishes "OSN-ICE1|..." every 2s. Those are not user
+                // chat — drop before they hit the history pane.
+                if (evt.content().starts_with("OSN-ICE1|")) break;
+
+                // Drop the gateway's reflection of our own send — we
+                // already pushed a local echo to feel instant. Without
+                // this every send would render twice.
+                {
+
+                    std::scoped_lock<std::mutex> lock { state.mu };
+                    if (evt.sender_id() == state.self_user_id) break;
+
+                }
+
                 ChatLine line { };
                 line.sender_id   = evt.sender_id();
                 {
