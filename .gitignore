@@ -9,3 +9,6 @@ goals.md
 *.pem
 *.wav
 logs/
+.secrets/
+.env
+.env.*

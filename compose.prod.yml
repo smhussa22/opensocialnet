@@ -96,6 +96,11 @@ services:
       # Caller must set this in env / .env; signaling_server rejects every
       # Hello frame if the secret is empty.
       OPENSOCIALNET_AUTH_SECRET: "${OPENSOCIALNET_AUTH_SECRET:?set OPENSOCIALNET_AUTH_SECRET in env / .env}"
+      # Google OAuth client_id — the `aud` claim every incoming ID token
+      # must match. Required for the JWT auth path; if unset, only the
+      # HMAC dev token path works. Sourced from .secrets/google_oauth.env
+      # on the deploy host (gitignored).
+      OSN_GOOGLE_CLIENT_ID: "${OSN_GOOGLE_CLIENT_ID:-}"
       # Relay endpoint stamped into every VoicePeerJoined reply. Must be
       # this host's PUBLIC IP — native clients dial it over the internet,
       # so 127.0.0.1 would have them looping back to themselves.
