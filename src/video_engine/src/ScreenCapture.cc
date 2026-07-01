@@ -3,12 +3,19 @@
 
 // c sys headers
 #include <cstdio>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 
 // cpp stdlib headers
 
-// 3rd party headers
+// project headers
+
+// X11 / MIT-SHM is Linux-only. On macOS/Windows we compile stubs that
+// report "no screen capture" — the caller in network/main.cc treats
+// init() returning false as "disable screenshare" and moves on.
+#ifdef __linux__
+
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
 #include <X11/Xutil.h>
 extern "C"
 {
@@ -16,8 +23,6 @@ extern "C"
 #include <libavutil/pixfmt.h>
 
 }
-
-// project headers
 
 namespace
 {
@@ -335,3 +340,28 @@ namespace OpenSocialNet::Video
     }
 
 }
+
+#else // non-Linux stubs — screenshare unsupported on this platform
+
+namespace OpenSocialNet::Video
+{
+
+    bool ScreenCapture::init(int, int, unsigned long) noexcept
+    {
+
+        std::printf("[scr-cap] screenshare not supported on this platform — screenshare disabled\n");
+        return false;
+
+    }
+
+    void ScreenCapture::shutdown() noexcept { }
+
+    std::size_t ScreenCapture::capture_frame(std::span<std::uint8_t>) noexcept { return 0; }
+
+    bool ScreenCapture::valid()  const noexcept { return false; }
+    int  ScreenCapture::width()  const noexcept { return out_width;  }
+    int  ScreenCapture::height() const noexcept { return out_height; }
+
+}
+
+#endif // __linux__

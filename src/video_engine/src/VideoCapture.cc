@@ -2,18 +2,28 @@
 #include "VideoCapture.hh"
 
 // c sys headers
-#include <cerrno>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+
+// cpp stdlib headers
+#include <span>
+
+// project headers
+
+// V4L2 is a Linux kernel API — the whole camera-capture implementation
+// below is Linux-only. On macOS/Windows we compile a stub that just
+// reports "no camera"; the caller (network/main.cc) already falls back
+// to synthetic video in that case.
+#ifdef __linux__
+
+// c sys headers
+#include <cerrno>
+#include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <cstring>
-
-// cpp stdlib headers
-#include <span>
 
 // 3rd party headers
 #include <linux/videodev2.h>
@@ -25,8 +35,6 @@ extern "C"
 #include <libavutil/frame.h>
 
 }
-
-// project headers
 
 namespace
 {
@@ -351,3 +359,28 @@ namespace OpenSocialNet::Video
     }
 
 }
+
+#else // non-Linux stubs — camera capture unsupported on this platform
+
+namespace OpenSocialNet::Video
+{
+
+    bool VideoCapture::init(const char*, int, int, int) noexcept
+    {
+
+        std::printf("[vid-cap] camera capture not supported on this platform — network will use synthetic video\n");
+        return false;
+
+    }
+
+    void VideoCapture::shutdown() noexcept { }
+
+    std::size_t VideoCapture::capture_frame(std::span<std::uint8_t>) noexcept { return 0; }
+
+    bool VideoCapture::valid()  const noexcept { return false; }
+    int  VideoCapture::width()  const noexcept { return res_width;  }
+    int  VideoCapture::height() const noexcept { return res_height; }
+
+}
+
+#endif // __linux__

@@ -11,8 +11,10 @@
 #include <span>
 
 // 3rd party headers
+#ifdef __linux__
 #include <X11/Xlib.h>
 #include <X11/extensions/XShm.h>
+#endif
 
 // project headers
 #include "ScreenCaptureDeleters.hh"
@@ -63,6 +65,7 @@ namespace OpenSocialNet::Video
         [[nodiscard]] int height() const noexcept;
 
     private:
+#ifdef __linux__
         // Tears down + rebuilds the shm image and scaler for a new grab
         // target (also called on resize). Returns true on success.
         bool setup_grab(::Window window) noexcept;
@@ -84,6 +87,7 @@ namespace OpenSocialNet::Video
         SwsContextPtr sws { }; // BGR0 target-sized -> I420 output scaler
         int src_width { 0 }; // grab target width
         int src_height { 0 }; // grab target height
+#endif // __linux__
         int out_width { 0 }; // output frame width (even)
         int out_height { 0 }; // output frame height (even)
 

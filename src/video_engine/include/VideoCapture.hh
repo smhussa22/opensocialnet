@@ -9,7 +9,6 @@
 #include <cstdint>
 
 // 3rd party headers
-#include <linux/videodev2.h>
 
 // project headers
 #include "VideoDecoderDeleter.hh"

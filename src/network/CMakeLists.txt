@@ -23,8 +23,11 @@ pkg_check_modules(OPUS REQUIRED IMPORTED_TARGET opus)
 pkg_check_modules(X264 REQUIRED IMPORTED_TARGET x264)
 pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET libavcodec libavutil libswscale)
 
-# Screenshare grabs the X11 root window through MIT-SHM (Xext).
-pkg_check_modules(X11 REQUIRED IMPORTED_TARGET x11 xext)
+# Screenshare grabs the X11 root window through MIT-SHM (Xext) — Linux
+# only. macOS/Windows compile stubs in ScreenCapture.cc so no X11 dep.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    pkg_check_modules(X11 REQUIRED IMPORTED_TARGET x11 xext)
+endif()
 
 # ICE (STUN/TURN NAT traversal) for the peer-to-peer media lane. libnice
 # drags in GLib; both come from the same pkg-config module.
@@ -106,12 +109,15 @@ target_link_libraries(network PRIVATE
     PkgConfig::OPUS
     PkgConfig::X264
     PkgConfig::FFMPEG
-    PkgConfig::X11
     PkgConfig::NICE
     PkgConfig::SPEEXDSP
     ${Protobuf_LIBRARIES}
     OpenSSL::Crypto
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(network PRIVATE PkgConfig::X11)
+endif()
 
 # Tiny mic-to-WAV recorder. Same SDL/AudioCapture stack as the network
 # binary; lives here instead of in src/bench/ because the bench is

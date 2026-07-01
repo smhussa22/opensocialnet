@@ -9,7 +9,6 @@
 #include <memory>
 
 // 3rd party headers
-#include <X11/Xlib.h>
 extern "C"
 {
 
@@ -17,10 +16,19 @@ extern "C"
 
 }
 
+// X11 is Linux-only; on macOS/Windows the deleter (and the ScreenCapture
+// class that uses it) stubs out — the whole screenshare feature is
+// unavailable on those platforms.
+#ifdef __linux__
+#include <X11/Xlib.h>
+#endif
+
 // project headers
 
 namespace OpenSocialNet::Video
 {
+
+#ifdef __linux__
 
     struct X11DisplayDeleter
     {
@@ -34,6 +42,10 @@ namespace OpenSocialNet::Video
 
     };
 
+    using X11DisplayPtr = std::unique_ptr<::Display, X11DisplayDeleter>;
+
+#endif // __linux__
+
     struct SwsContextDeleter
     {
 
@@ -46,7 +58,6 @@ namespace OpenSocialNet::Video
 
     };
 
-    using X11DisplayPtr = std::unique_ptr<::Display, X11DisplayDeleter>;
     using SwsContextPtr = std::unique_ptr<::SwsContext, SwsContextDeleter>;
 
 }
