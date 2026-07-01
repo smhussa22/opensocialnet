@@ -3,6 +3,7 @@
 // c sys headers
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -129,14 +130,48 @@ namespace
 
     };
 
+    // Per-peer decoded video frame, shared between the video IPC reader thread
+    // and the render (main) thread. The IPC thread writes packed YUV420P data;
+    // the render thread picks up dirty frames and uploads them to SDL textures.
+    struct VideoFrameStore
+    {
+
+        struct Frame
+        {
+
+            std::vector<std::uint8_t> yuv    { }; // packed YUV420P (Y then U then V, no padding)
+            int                       width  { 0 };
+            int                       height { 0 };
+            bool                      is_screen { false };
+            bool                      dirty  { false }; // new data since last render tick
+
+        };
+
+        std::mutex                                    mu     { };
+        std::unordered_map<std::uint32_t, Frame>      frames { }; // peer_id -> latest frame
+
+    };
+
+    // SDL texture slot for one peer, owned by the render thread only.
+    struct VideoTexEntry
+    {
+
+        SDL_Texture* texture { nullptr }; // SDL_PIXELFORMAT_IYUV, created lazily
+        int          width   { 0 };
+        int          height  { 0 };
+
+    };
+
+
     struct AppState
     {
 
         std::mutex mu { };
 
-        std::string self_user_id     { };
-        std::string self_display     { };
-        std::string active_channel   { "general" };
+        std::string self_user_id         { };
+        std::string self_display         { };
+        std::string active_channel       { "general" };
+        std::string active_voice_channel { }; // which voice room we're in, empty = not in call
         std::vector<std::string>                              channels      { };
         std::vector<FriendEntry>                              friends_       { };
         std::vector<PendingRequest>                           pending        { };
@@ -290,6 +325,32 @@ namespace
 
             }
 
+            case ::signaling::Envelope::kHistoryResponse:
+            {
+
+                // Prepend history messages older than what we already have.
+                // request_id echoes the channel_id we sent, so we know where
+                // to slot the rows without a separate correlation map.
+                const auto& resp { env.history_response() };
+                if (resp.request_id().empty()) break;
+                std::scoped_lock<std::mutex> lock { state.mu };
+                auto& dq { state.chat_history[resp.request_id()] };
+                for (int i { resp.msgs_size() - 1 }; i >= 0; --i)
+                {
+
+                    if (dq.size() >= chat_history_cap) break;
+                    const auto& msg { resp.msgs(i) };
+                    ChatLine line { };
+                    line.sender_id   = msg.sender_id();
+                    line.sender_name = display_for(state, msg.sender_id());
+                    line.content     = msg.content();
+                    dq.push_front(std::move(line));
+
+                }
+                break;
+
+            }
+
             case ::signaling::Envelope::kError:
             {
 
@@ -360,7 +421,7 @@ int main()
 
     }
 
-    // ---- IPC pipe to the network child ----
+    // ---- IPC pipe to the network child (signaling envelopes) ----
     int ipc_fds[2] { -1, -1 };
     if (::socketpair(AF_UNIX, SOCK_STREAM, 0, ipc_fds) < 0)
     {
@@ -371,6 +432,14 @@ int main()
     }
     const int parent_ipc_fd { ipc_fds[0] };
     const int child_ipc_fd  { ipc_fds[1] };
+
+    // ---- Video IPC pipe (raw YUV420P frames from network child to GUI) ----
+    // Non-fatal if it fails — video tiles just won't appear.
+    int video_fds[2] { -1, -1 };
+    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, video_fds) < 0)
+        std::perror("native_client: video socketpair (non-fatal)");
+    const int parent_video_fd { video_fds[0] };
+    const int child_video_fd  { video_fds[1] };
 
     // ---- SDL + ImGui ----
     if (!SDL_Init(SDL_INIT_VIDEO))
@@ -421,6 +490,9 @@ int main()
         setenv("OSN_SCREEN",         "1",                    1);
         setenv("OSN_ICE",            "1",                    1);
         setenv("OSN_IPC_FD",         std::to_string(child_ipc_fd).c_str(), 1);
+        // GUI parent renders video tiles; child runs headless decode+IPC.
+        setenv("OSN_VIDEO_RENDER",   "0",                    1);
+        if (child_video_fd >= 0) setenv("OSN_VIDEO_IPC_FD", std::to_string(child_video_fd).c_str(), 1);
 
         char cwd[1024] { };
         if (!getcwd(cwd, sizeof cwd))
@@ -446,7 +518,8 @@ int main()
         return 1;
 
     }
-    ::close(child_ipc_fd); // parent doesn't need its end of the child's fd
+    ::close(child_ipc_fd);  // parent doesn't need its end of the child's fd
+    if (child_video_fd >= 0) ::close(child_video_fd);
 
     std::printf("native_client: network pid=%d\n", network_pid);
 
@@ -483,6 +556,76 @@ int main()
 
     } };
 
+    // ---- video frame store + IPC reader ----
+    VideoFrameStore video_frames { };
+
+    // Reads packed YUV420P frames from the network child over the video
+    // socketpair. Each frame is 17-byte header + width*height*3/2 bytes.
+    // Writes go into VideoFrameStore under its mutex; the render thread
+    // creates/updates SDL textures from dirty entries each frame.
+    std::thread video_reader_thread { };
+    if (parent_video_fd >= 0)
+    {
+
+        video_reader_thread = std::thread { [parent_video_fd, &video_frames]()
+        {
+
+            constexpr std::uint8_t expected_magic[4] { 'O', 'V', 'F', '\0' };
+            std::vector<std::uint8_t> frame_buf { };
+
+            auto read_exact = [&](void* buf, std::size_t n) -> bool
+            {
+                auto* p { static_cast<std::uint8_t*>(buf) };
+                std::size_t done { 0 };
+                while (done < n)
+                {
+                    const ::ssize_t r { ::read(parent_video_fd, p + done, n - done) };
+                    if (r <= 0) return false;
+                    done += static_cast<std::size_t>(r);
+                }
+                return true;
+            };
+
+            while (true)
+            {
+
+                std::uint8_t hdr[17] { };
+                if (!read_exact(hdr, sizeof hdr)) break;
+                if (std::memcmp(hdr, expected_magic, 4) != 0) break;
+
+                std::uint32_t peer_id { 0 };
+                std::memcpy(&peer_id, hdr + 4, 4);
+                const bool is_screen { (hdr[8] & 1) != 0 };
+                std::uint16_t w { 0 }, h { 0 };
+                std::memcpy(&w, hdr + 9,  2);
+                std::memcpy(&h, hdr + 11, 2);
+                std::uint32_t data_size { 0 };
+                std::memcpy(&data_size, hdr + 13, 4);
+
+                if (data_size == 0 || data_size > 4u * 1024u * 1024u) break;
+
+                frame_buf.resize(data_size);
+                if (!read_exact(frame_buf.data(), data_size)) break;
+
+                std::scoped_lock<std::mutex> lock { video_frames.mu };
+                auto& frame { video_frames.frames[peer_id] };
+                frame.yuv       = frame_buf;
+                frame.width     = static_cast<int>(w);
+                frame.height    = static_cast<int>(h);
+                frame.is_screen = is_screen;
+                frame.dirty     = true;
+
+            }
+
+            std::printf("native_client: video IPC reader exiting\n");
+
+        } };
+
+    }
+
+    // SDL textures for remote peers. Render-thread only — no mutex needed.
+    std::unordered_map<std::uint32_t, VideoTexEntry> video_textures { };
+
     // ---- per-frame UI state ----
     bool audio_enabled       { true };
     bool video_enabled       { true };
@@ -492,6 +635,9 @@ int main()
     char add_friend_input[friend_input_capacity] { };
     bool show_add_friend_modal { false };
     bool show_requests_modal   { false };
+
+    // Track which channel we last fetched history for; request once on switch.
+    std::string last_history_channel { };
 
     auto send_chat_now = [&ipc, &state](const std::string& text)
     {
@@ -602,18 +748,49 @@ int main()
             ImGui::Separator();
             ImGui::TextDisabled("Friends");
 
+            // Capture call/leave requests outside the lock so we can
+            // send IPC envelopes without holding state.mu.
+            std::string call_request  { };
+            std::string leave_request { };
             {
 
                 std::scoped_lock<std::mutex> lock { state.mu };
                 for (const auto& f : state.friends_)
                 {
 
-                    const bool selected { f.dm_channel_id == state.active_channel };
+                    ImGui::PushID(f.user_id.c_str());
+                    const bool sel     { f.dm_channel_id == state.active_channel };
+                    const bool in_call { f.dm_channel_id == state.active_voice_channel };
                     const std::string label { f.username.empty() ? f.user_id : f.username };
-                    if (ImGui::Selectable(label.c_str(), selected)) state.active_channel = f.dm_channel_id;
+                    if (ImGui::Selectable(label.c_str(), sel, 0, ImVec2 { sidebar_width - 75.0f, 0 })) state.active_channel = f.dm_channel_id;
+                    ImGui::SameLine();
+                    if (in_call) { if (ImGui::SmallButton("Leave")) leave_request = f.dm_channel_id; }
+                    else         { if (ImGui::SmallButton("Call"))  call_request  = f.dm_channel_id; }
+                    ImGui::PopID();
 
                 }
                 if (state.friends_.empty()) ImGui::TextDisabled("(none yet)");
+
+            }
+
+            if (!call_request.empty())
+            {
+
+                ::signaling::Envelope env { };
+                env.mutable_join_voice()->set_channel_id(call_request);
+                ipc.send_envelope(env);
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.active_voice_channel = call_request;
+
+            }
+            if (!leave_request.empty())
+            {
+
+                ::signaling::Envelope env { };
+                env.mutable_leave_voice()->set_channel_id(leave_request);
+                ipc.send_envelope(env);
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.active_voice_channel.clear();
 
             }
 
@@ -634,11 +811,59 @@ int main()
 
             }
 
+            // Fetch history once when the user switches to a new channel.
+            if (!active_channel.empty() && active_channel != last_history_channel)
+            {
+
+                last_history_channel = active_channel;
+                ::signaling::Envelope env { };
+                auto* hist { env.mutable_fetch_history() };
+                hist->set_request_id(active_channel);
+                hist->set_channel_id(active_channel);
+                hist->set_limit(50);
+                ipc.send_envelope(env);
+
+            }
+
+            // Upload any dirty video frames to SDL textures (render-thread only).
+            {
+
+                std::vector<std::pair<std::uint32_t, VideoFrameStore::Frame>> dirty { };
+                {
+                    std::scoped_lock<std::mutex> lock { video_frames.mu };
+                    for (auto& [pid, frame] : video_frames.frames)
+                    {
+                        if (frame.dirty) { dirty.emplace_back(pid, frame); frame.dirty = false; }
+                    }
+                }
+                for (auto& [pid, snap] : dirty)
+                {
+                    auto& entry { video_textures[pid] };
+                    if (entry.texture == nullptr || entry.width != snap.width || entry.height != snap.height)
+                    {
+                        if (entry.texture) SDL_DestroyTexture(entry.texture);
+                        entry.texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_IYUV,
+                                                          SDL_TEXTUREACCESS_STREAMING,
+                                                          snap.width, snap.height);
+                        entry.width  = snap.width;
+                        entry.height = snap.height;
+                    }
+                    if (entry.texture && !snap.yuv.empty())
+                    {
+                        const int w { snap.width }, h { snap.height };
+                        const std::uint8_t* y { snap.yuv.data() };
+                        const std::uint8_t* u { y + static_cast<std::size_t>(w) * h };
+                        const std::uint8_t* v { u + static_cast<std::size_t>(w / 2) * (h / 2) };
+                        SDL_UpdateYUVTexture(entry.texture, nullptr, y, w, u, w / 2, v, w / 2);
+                    }
+                }
+
+            }
+
             ImGui::Text("%s", active_label.c_str());
             ImGui::Separator();
 
-            // Media buttons row + camera placeholder strip — kept thin so
-            // the chat history gets most of the real estate.
+            // Media buttons row.
             const float btn_w { (ImGui::GetContentRegionAvail().x - 2 * ImGui::GetStyle().ItemSpacing.x) / 3.0f };
             if (ImGui::Button(audio_enabled ? "Mute" : "Unmute", ImVec2 { btn_w, 30 }))
             {
@@ -659,6 +884,31 @@ int main()
             }
 
             ImGui::Separator();
+
+            // Video tiles — one per remote peer's camera/screen stream.
+            // Textures are keyed by peer_id; new sources appear automatically.
+            if (!video_textures.empty())
+            {
+
+                constexpr float tile_h { 135.0f };
+                if (ImGui::BeginChild("##video_tiles", ImVec2 { 0, tile_h + 8.0f }, false, ImGuiWindowFlags_HorizontalScrollbar))
+                {
+
+                    for (auto& [pid, entry] : video_textures)
+                    {
+
+                        if (entry.texture == nullptr) continue;
+                        const float aspect { entry.height > 0 ? static_cast<float>(entry.width) / static_cast<float>(entry.height) : 1.333f };
+                        ImGui::Image((ImTextureID)(uintptr_t)entry.texture, ImVec2 { tile_h * aspect, tile_h });
+                        ImGui::SameLine();
+
+                    }
+
+                }
+                ImGui::EndChild();
+                ImGui::Separator();
+
+            }
 
             // Chat history — scrollable, auto-snap to bottom on new arrival
             const float input_h { ImGui::GetFrameHeightWithSpacing() };
@@ -877,6 +1127,13 @@ int main()
     if (bootstrap_thread.joinable()) bootstrap_thread.join();
     ipc.stop();
     cleanup_network();
+
+    // Close parent video fd so the reader thread sees EOF and exits.
+    if (parent_video_fd >= 0) ::close(parent_video_fd);
+    if (video_reader_thread.joinable()) video_reader_thread.join();
+
+    // Destroy SDL textures before the renderer is torn down.
+    for (auto& [pid, entry] : video_textures) if (entry.texture) SDL_DestroyTexture(entry.texture);
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();

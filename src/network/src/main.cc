@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <unistd.h>
 
 // cpp stdlib headers
@@ -50,6 +51,7 @@
 #include "VideoEncoder.hh"
 #include "VideoPacketizer.hh"
 #include "VideoPlc.hh"
+#include "AecFilter.hh"
 
 // Pull SIM_* env vars at startup. Empty or unparseable falls back to default
 // so the sim stays bypassed unless the caller asked for it.
@@ -243,11 +245,15 @@ void receive_thread(OpenSocialNet::Network::UdpReceiver& receiver, IncomingQueue
 
 }
 
+// One reference frame (480 floats) per slot; 32 slots = ~320ms headroom.
+using AecRefQueue = OpenSocialNet::Network::SpscQueue<std::array<float, OpenSocialNet::Audio::samples_per_frame>, 32>;
+
 struct PlaybackContext
 {
 
-    IncomingQueue*                  incoming {}; // recv thread -> playback hand-off
-    OpenSocialNet::Network::PeerMixer* mixer {}; // per-peer demux + jitter buffers + PLC + PCM mix
+    IncomingQueue*                  incoming  {}; // recv thread -> playback hand-off
+    OpenSocialNet::Network::PeerMixer* mixer  {}; // per-peer demux + jitter buffers + PLC + PCM mix
+    AecRefQueue*                    ref_queue {}; // AEC far-end reference (null = AEC disabled)
 
 };
 
@@ -381,6 +387,10 @@ static void on_playback(void* userdata, SDL_AudioStream* stream, int additional,
 
         if (context->mixer->mix_one_frame(std::span<float> { mixed_pcm }) == 0) break;
 
+        // Push reference before SDL plays it so the AEC capture call in the
+        // main loop sees the signal that's about to come back from the speaker.
+        if (context->ref_queue != nullptr) context->ref_queue->try_push(mixed_pcm);
+
         SDL_PutAudioStreamData(stream, mixed_pcm.data(), mixed_byte_count);
         fed += mixed_byte_count;
 
@@ -447,7 +457,7 @@ int main()
         // jitter-buffer playout threshold based on observed RFC 3550 jitter.
         // Off by default — flip to 1 to see the threshold drift in
         // [net-stats] as network conditions change.
-        const bool adaptive_jb { env_int("OSN_ADAPTIVE_JB", 0) != 0 };
+        const bool adaptive_jb { env_int("OSN_ADAPTIVE_JB", 1) != 0 };
         if (adaptive_jb) std::printf("[main] adaptive jitter buffers ENABLED (bounds 1..20 frames, recompute every 50 pops)\n");
 
         // Per-peer receive state lives here: one jitter buffer + opus
@@ -459,7 +469,33 @@ int main()
         // session. Receive thread + ICE recv callback both reach into it.
         OpenSocialNet::Network::RttProber rtt_prober { std::chrono::milliseconds { 1000 } };
 
-        PlaybackContext playback_context { &incoming_queue, &mixer };
+        // AEC: OSN_AEC=1 enables echo cancellation. The reference queue is
+        // allocated here (heap, so it's alive for both the playback callback
+        // and the capture loop) and wired into the PlaybackContext. When AEC
+        // is off the pointer stays null and the playback callback skips the
+        // push, keeping the hot path free of any extra work.
+        const bool aec_enabled { env_int("OSN_AEC", 0) != 0 };
+        std::unique_ptr<AecRefQueue>                         aec_ref_queue { };
+        std::unique_ptr<OpenSocialNet::Network::AecFilter>   aec_filter    { };
+        if (aec_enabled)
+        {
+
+            aec_ref_queue = std::make_unique<AecRefQueue>();
+            aec_filter    = std::make_unique<OpenSocialNet::Network::AecFilter>();
+            // frame=480 (10ms at 48kHz), filter=4800 (100ms tail, long enough
+            // for typical speaker-to-mic paths in a laptop or headset)
+            if (!aec_filter->init(OpenSocialNet::Audio::samples_per_frame, OpenSocialNet::Audio::opus_sample_rate, 4800))
+            {
+
+                std::printf("[main] AEC init failed — disabling AEC\n");
+                aec_filter.reset();
+                aec_ref_queue.reset();
+
+            }
+
+        }
+
+        PlaybackContext playback_context { &incoming_queue, &mixer, aec_ref_queue.get() };
         SDL_AudioSpec spec { OpenSocialNet::Audio::create_opus_audio_spec() };
         OpenSocialNet::Audio::AudioStream audio_stream { spec, playback_id, on_playback, &playback_context };
         audio_stream.resume();
@@ -564,6 +600,21 @@ int main()
 
         }
 
+        // Voice room switch state — declared here so the IPC bridge lambda
+        // below can capture it, and the main loop above can consume it.
+        // room_str / room_id are initialised for real after sender init;
+        // initial_room_* can be computed from env directly at this point.
+        const std::string   initial_room_str_early { env_str("OSN_ROOM", "loopback") };
+        const std::uint64_t initial_room_id_early  { fnv1a_64(initial_room_str_early) };
+        struct PendingVoiceSwitch
+        {
+            std::mutex    mu        { };
+            bool          pending   { false };
+            std::uint64_t new_room_id  { 0 };
+            std::string   new_room_str { };
+        };
+        PendingVoiceSwitch voice_switch { };
+
         // ---- IPC bridge to the GUI parent (native_client) ----
         //
         // When native_client forks this binary, it passes a
@@ -593,9 +644,26 @@ int main()
             });
 
             // GUI -> Network: forward whatever the parent pushes down.
-            gui_ipc.start_reader([&signaling](const ::signaling::Envelope& env)
+            // Intercept JoinVoice / LeaveVoice first so the main loop can
+            // restamp outgoing packet room_ids without signaling needing to
+            // know about the local routing table.
+            gui_ipc.start_reader([&signaling, &voice_switch, initial_room_id_early, initial_room_str_early](const ::signaling::Envelope& env)
             {
 
+                if (env.has_join_voice())
+                {
+                    std::scoped_lock<std::mutex> lock { voice_switch.mu };
+                    voice_switch.new_room_str = env.join_voice().channel_id();
+                    voice_switch.new_room_id  = fnv1a_64(voice_switch.new_room_str);
+                    voice_switch.pending      = true;
+                }
+                else if (env.has_leave_voice())
+                {
+                    std::scoped_lock<std::mutex> lock { voice_switch.mu };
+                    voice_switch.new_room_str = initial_room_str_early;
+                    voice_switch.new_room_id  = initial_room_id_early;
+                    voice_switch.pending      = true;
+                }
                 signaling.send_envelope(env);
 
             });
@@ -621,9 +689,11 @@ int main()
         // Derive routing identity from env once at startup. Same string in =
         // same hash out everywhere, so two clients setting OSN_ROOM=general
         // end up stamping the same room_id and the relay groups them together.
-        const std::string  room_str { env_str("OSN_ROOM", "loopback") };
+        // room_id / room_str are mutable: the GUI can switch voice rooms via
+        // a JoinVoice IPC envelope mid-session.
+        std::string   room_str { env_str("OSN_ROOM", "loopback") };
         const std::string  user_str { env_str("OSN_USER", "self") };
-        const std::uint64_t room_id { fnv1a_64(room_str) };
+        std::uint64_t room_id  { fnv1a_64(room_str) };
         const std::uint32_t peer_id { fnv1a_32(user_str) };
         sender.set_room_id(room_id);
         sender.set_peer_id(peer_id);
@@ -824,6 +894,72 @@ int main()
         OpenSocialNet::Network::PeerVideoRouter video_router { video_plc_strategy, render_ok };
         std::printf("[main] video PLC strategy=%s render=%d\n", video_plc_strategy_name(video_plc_strategy), render_ok ? 1 : 0);
 
+        // ---- video IPC output to GUI parent ----
+        //
+        // When OSN_VIDEO_IPC_FD is set (native_client forks us with a
+        // socketpair fd), decoded frames are packed as tight YUV420P and
+        // written to the parent instead of SDL windows. The fd is made
+        // non-blocking so a slow parent drops frames rather than stalling
+        // the decode loop.
+        const int video_ipc_fd { env_int("OSN_VIDEO_IPC_FD", -1) };
+        if (video_ipc_fd >= 0)
+        {
+
+            std::printf("[main] video IPC output active on fd=%d\n", video_ipc_fd);
+            const int flags { ::fcntl(video_ipc_fd, F_GETFL, 0) };
+            if (flags >= 0) ::fcntl(video_ipc_fd, F_SETFL, flags | O_NONBLOCK);
+
+            video_router.set_frame_callback([video_ipc_fd](std::uint32_t pid, bool is_screen, int width, int height, const std::uint8_t* const planes[3], const int strides[3])
+            {
+
+                // Wire format (17-byte header + packed YUV420P):
+                //  [0-3]  magic: 'O','V','F','\0'
+                //  [4-7]  peer_id  uint32 LE
+                //  [8]    flags    bit0=is_screen
+                //  [9-10] width    uint16 LE
+                //  [11-12] height  uint16 LE
+                //  [13-16] data_size uint32 LE
+                //  [17..] Y plane (width*height bytes), U ((w/2)*(h/2)), V
+                const std::uint32_t yuv_size { static_cast<std::uint32_t>(width) * static_cast<std::uint32_t>(height) * 3u / 2u };
+                const std::size_t total_size { 17u + yuv_size };
+
+                thread_local std::vector<std::uint8_t> buf;
+                buf.resize(total_size);
+
+                buf[0] = 'O'; buf[1] = 'V'; buf[2] = 'F'; buf[3] = '\0';
+                std::memcpy(buf.data() + 4, &pid, 4);
+                buf[8] = is_screen ? 1u : 0u;
+                const std::uint16_t w { static_cast<std::uint16_t>(width) };
+                const std::uint16_t h { static_cast<std::uint16_t>(height) };
+                std::memcpy(buf.data() +  9, &w, 2);
+                std::memcpy(buf.data() + 11, &h, 2);
+                std::memcpy(buf.data() + 13, &yuv_size, 4);
+
+                std::uint8_t* dst { buf.data() + 17 };
+                for (int row { 0 }; row < height; ++row)
+                {
+                    std::memcpy(dst, planes[0] + strides[0] * row, static_cast<std::size_t>(width));
+                    dst += width;
+                }
+                for (int row { 0 }; row < height / 2; ++row)
+                {
+                    std::memcpy(dst, planes[1] + strides[1] * row, static_cast<std::size_t>(width / 2));
+                    dst += width / 2;
+                }
+                for (int row { 0 }; row < height / 2; ++row)
+                {
+                    std::memcpy(dst, planes[2] + strides[2] * row, static_cast<std::size_t>(width / 2));
+                    dst += width / 2;
+                }
+
+                // Non-blocking write: EAGAIN means parent is busy — drop frame silently.
+                const ::ssize_t written { ::write(video_ipc_fd, buf.data(), total_size) };
+                (void)written;
+
+            });
+
+        }
+
         OpenSocialNet::Video::VideoCapture video_capture {};
         OpenSocialNet::Video::VideoEncoder video_encoder {};
         OpenSocialNet::Video::VideoPacketizer video_packetizer {};
@@ -1013,6 +1149,20 @@ int main()
         while (running)
         {
 
+            // Apply any pending voice room switch from the GUI before touching
+            // the sender so packets within the same tick all share the same room_id.
+            {
+                std::scoped_lock<std::mutex> lock { voice_switch.mu };
+                if (voice_switch.pending)
+                {
+                    room_id  = voice_switch.new_room_id;
+                    room_str = voice_switch.new_room_str;
+                    sender.set_room_id(room_id);
+                    voice_switch.pending = false;
+                    std::printf("[main] voice room switched to \"%s\" (room_id=%016lx)\n", room_str.c_str(), static_cast<unsigned long>(room_id));
+                }
+            }
+
             while (capture.available() >= OpenSocialNet::Audio::samples_per_frame)
             {
 
@@ -1022,6 +1172,17 @@ int main()
                 // Drain capture buffer even when muted so we don't backlog;
                 // just skip the encode/send.
                 if (audio_muted.load(std::memory_order_relaxed)) continue;
+
+                // AEC: feed the most recent playback reference frame (if any)
+                // then process the mic chunk to suppress echo.
+                if (aec_filter != nullptr)
+                {
+
+                    std::array<float, OpenSocialNet::Audio::samples_per_frame> ref {};
+                    if (aec_ref_queue->try_pop(ref)) aec_filter->notify_playback(ref.data(), static_cast<int>(ref.size()));
+                    aec_filter->process(chunk.data(), chunk.data(), static_cast<int>(got));
+
+                }
 
                 OpenSocialNet::Network::Packet packet {};
                 const int encoded_bytes { encoder.encode_samples(

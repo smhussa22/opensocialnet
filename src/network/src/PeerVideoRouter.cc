@@ -173,6 +173,10 @@ namespace OpenSocialNet::Network
     void PeerVideoRouter::present(Source& source, const std::uint8_t* const planes[3], const int strides[3], int width, int height)
     {
 
+        // IPC callback fires regardless of render_enabled so headless child
+        // processes still pipe frames to the GUI parent.
+        if (m_frame_callback) m_frame_callback(source.peer_id, source.is_screen, width, height, planes, strides);
+
         if (!m_render_enabled || source.renderer_dead) return;
 
         if (!source.renderer_started)

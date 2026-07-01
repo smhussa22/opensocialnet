@@ -30,6 +30,9 @@ pkg_check_modules(X11 REQUIRED IMPORTED_TARGET x11 xext)
 # drags in GLib; both come from the same pkg-config module.
 pkg_check_modules(NICE REQUIRED IMPORTED_TARGET nice)
 
+# Acoustic echo cancellation: SpeexEchoState + SpeexPreprocessState.
+pkg_check_modules(SPEEXDSP REQUIRED IMPORTED_TARGET speexdsp)
+
 # Signaling client (Hello/JoinVoice handshake against signaling_server)
 # needs protobuf for the Envelope wire format and OpenSSL for the SHA1
 # step of the WebSocket upgrade handshake. The generated pb files live
@@ -78,6 +81,7 @@ add_executable(network
     ../plc/src/AudioPlc.cc
     ../plc/src/VideoPlc.cc
     src/PeerVideoRouter.cc
+    src/AecFilter.cc
     ../video_engine/src/VideoCapture.cc
     ../video_engine/src/VideoEncoder.cc
     ../video_engine/src/VideoDecoder.cc
@@ -104,6 +108,7 @@ target_link_libraries(network PRIVATE
     PkgConfig::FFMPEG
     PkgConfig::X11
     PkgConfig::NICE
+    PkgConfig::SPEEXDSP
     ${Protobuf_LIBRARIES}
     OpenSSL::Crypto
 )

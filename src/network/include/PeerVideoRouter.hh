@@ -9,6 +9,7 @@
 // cpp stdlib headers
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -89,6 +90,13 @@ namespace OpenSocialNet::Network
 
         std::size_t source_count() const;
 
+        // Optional callback fired for every decoded (or concealed) frame.
+        // Set by the network main loop to pipe raw YUV420P data to the GUI
+        // parent process over the video IPC fd instead of opening SDL windows.
+        // The callback receives non-contiguous FFmpeg planes; copy row-by-row.
+        using FrameCallback = std::function<void(std::uint32_t peer_id, bool is_screen, int width, int height, const std::uint8_t* const planes[3], const int strides[3])>;
+        void set_frame_callback(FrameCallback cb) noexcept { m_frame_callback = std::move(cb); }
+
 
     private:
 
@@ -138,8 +146,9 @@ namespace OpenSocialNet::Network
         void present(Source& source, const std::uint8_t* const planes[3], const int strides[3], int width, int height);
 
 
-        Plc::VideoPlcStrategy m_plc_strategy  { Plc::VideoPlcStrategy::Hold }; // strategy stamped into every new source's VideoPlc
-        bool                  m_render_enabled { true };                       // false = decode + conceal but never open windows (headless)
+        Plc::VideoPlcStrategy m_plc_strategy    { Plc::VideoPlcStrategy::Hold }; // strategy stamped into every new source's VideoPlc
+        bool                  m_render_enabled  { true };                       // false = decode + conceal but never open windows (headless)
+        FrameCallback         m_frame_callback  { };                            // optional IPC output sink; null = no callback
 
         // (peer_id << 32 | ssrc) -> per-source receive state.
         std::unordered_map<std::uint64_t, std::unique_ptr<Source>> m_sources { };
