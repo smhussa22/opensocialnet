@@ -25,6 +25,8 @@ message Envelope
     RejectFriendRequest  reject_friend_request  = 22; // "delete X's pending request without becoming friends"
     FetchFriends         fetch_friends          = 23; // "list my friends + pending incoming requests"
     LookupUser           lookup_user            = 24; // "find a user by email (so the GUI doesn't make the user paste a Google sub)"
+    JoinChannel          join_channel           = 25; // create-or-join a group channel by name
+    ListChannels         list_channels          = 26; // "list every public group channel" (browse modal)
 
     // ---- server -> client ----
     Ready                       ready                          = 30;
@@ -38,6 +40,11 @@ message Envelope
     FriendListResponse          friend_list_response           = 43; // reply to FetchFriends
     FriendRequestAcceptedEvent  friend_request_accepted_event  = 44; // delivered to original requester on accept
     LookupUserResponse          lookup_user_response           = 45; // reply to LookupUser
+    ChannelJoinedEvent          channel_joined_event           = 46; // reply to JoinChannel — membership confirmed
+    ChannelListResponse         channel_list_response          = 47; // reply to ListChannels
+
+    // ---- local IPC only (never on the WebSocket wire) ----
+    ClientStats                 client_stats                   = 60; // network child -> GUI parent, one per stats tick
 
     // Tags 16-19 and 37-41 are reserved — they used to carry the WebRTC
     // SDP / ICE / screen-share envelopes for the browser+libdatachannel
@@ -243,6 +250,62 @@ message LookupUserResponse
   string user_id     = 3; // empty when found=false
   string username    = 4;
   string email       = 5;
+
+}
+
+// ---- group channels ----
+// A group channel is any non-dm row in `channels`. JoinChannel is
+// create-or-join: the gateway normalizes the requested name into a
+// channel_id (lowercase, [a-z0-9-_]), inserts the channel row if it's
+// new, records membership in both indices, subscribes the socket, and
+// confirms with ChannelJoinedEvent. ListChannels feeds the browse
+// modal with every public channel; DMs are excluded.
+
+message JoinChannel  { string name = 1; }
+message ListChannels { }
+
+message ChannelJoinedEvent { string channel_id = 1; }
+
+message ChannelInfo
+{
+
+  string channel_id = 1;
+  string name       = 2;
+  string kind       = 3; // 'text' or 'voice'
+
+}
+
+message ChannelListResponse { repeated ChannelInfo channels = 1; }
+
+// ---- local IPC stats (network child -> GUI parent) ----
+// One of these per stats tick. Mirrors the [net-stats]/[vid-stats] log
+// lines + CSV row so the GUI can render a live overlay without parsing
+// text. Never serialized onto the WebSocket wire.
+
+message ClientStats
+{
+
+  double elapsed_s             = 1;  // seconds since the network child started
+  uint32 audio_sources         = 2;  // live remote audio SSRCs in the mixer
+  uint64 packets_observed      = 3;  // audio packets seen across all jitter buffers
+  uint64 packets_lost          = 4;  // audio packets presumed lost
+  uint64 packets_ooo           = 5;  // audio packets that arrived out of order
+  double jitter_ms             = 6;  // RFC3550-style interarrival jitter estimate
+  uint64 jb_buffered           = 7;  // packets currently buffered across jitter buffers
+  uint64 jb_threshold          = 8;  // current adaptive playout threshold (packets)
+  uint64 jb_adaptations        = 9;  // times the threshold was re-tuned
+  uint64 drop_overflow         = 10; // mic->net queue overflow drops
+  uint64 packets_sent          = 11; // audio packets sent to the relay
+  uint64 plc_concealments      = 12; // Opus PLC frames synthesized
+  uint32 peers                 = 13; // live voice peers in the room
+  string rtt_summary           = 14; // per-peer RTT fragment, preformatted by the prober
+  uint32 video_sources         = 15; // live remote video SSRCs in the router
+  uint64 vid_packets_lost      = 16; // video packets presumed lost
+  uint64 vid_frames_decoded    = 17; // video frames fully decoded
+  uint64 vid_frames_concealed  = 18; // video frames concealed (missing data)
+  uint64 vid_frames_rendered   = 19; // video frames handed to the GUI
+  uint64 vid_frames_sent       = 20; // camera frames encoded + sent
+  uint64 scr_frames_sent       = 21; // screen-share frames encoded + sent
 
 }
 

@@ -90,6 +90,20 @@ namespace OpenSocialNet::Signaling
         // lands in `general` automatically on first login.
         bool add_user_to_channel(const std::string& channel_id, const std::string& user_id);
 
+        // One row out of the channels table.
+        struct ChannelRow
+        {
+
+            std::string channel_id { };
+            std::string name       { };
+            std::string kind       { }; // 'text' / 'voice' / 'dm'
+
+        };
+
+        // Full scan of the channels table (small, read-mostly). Feeds
+        // the ListChannels browse response; caller filters out DMs.
+        std::vector<ChannelRow> list_channels();
+
 
         // ---- friends / DMs (Part B) ----
 
@@ -157,6 +171,7 @@ namespace OpenSocialNet::Signaling
         CassPreparedPtr m_prep_username_for { }; // SELECT username FROM users WHERE user_id = ?
         CassPreparedPtr m_prep_lookup_user_by_email { }; // SELECT user_id, username FROM users_by_email WHERE email = ?
         CassPreparedPtr m_prep_ensure_channel { }; // INSERT INTO channels (channel_id, name, kind) VALUES (?, ?, ?)
+        CassPreparedPtr m_prep_list_channels { }; // SELECT channel_id, name, kind FROM channels
         CassPreparedPtr m_prep_add_channel_member { }; // INSERT INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, toTimestamp(now()))
         CassPreparedPtr m_prep_add_user_channel { }; // INSERT INTO user_channels (user_id, channel_id, joined_at) VALUES (?, ?, toTimestamp(now()))
         CassPreparedPtr m_prep_insert_friend_request { }; // INSERT INTO friend_requests ...

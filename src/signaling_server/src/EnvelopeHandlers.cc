@@ -856,6 +856,76 @@ namespace OpenSocialNet::Signaling
 
     }
 
+    // ============================================================
+    // Group channels
+    // ============================================================
+
+    void on_join_channel(GatewayState& state, WebSocket* ws, const ::signaling::JoinChannel& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        // Normalize the requested name into a channel_id: lowercase,
+        // spaces collapse to '-', anything outside [a-z0-9-_] dropped.
+        // ':' is not in the set, so nobody can join a "dm:..." channel
+        // through this path.
+        std::string channel_id { };
+        for (const char c : req.name())
+        {
+
+            if (channel_id.size() >= 48) break;
+            if (c >= 'A' and c <= 'Z') channel_id.push_back(static_cast<char>(c - 'A' + 'a'));
+            else if ((c >= 'a' and c <= 'z') or (c >= '0' and c <= '9') or c == '-' or c == '_') channel_id.push_back(c);
+            else if (c == ' ' and !channel_id.empty() and channel_id.back() != '-') channel_id.push_back('-');
+
+        }
+        while (!channel_id.empty() and channel_id.back() == '-') channel_id.pop_back();
+        if (channel_id.empty()) { send_error(ws, 400, "invalid channel name"); return; }
+
+        // Create-or-join: ensure_channel is an idempotent INSERT, so an
+        // existing channel just gets its row refreshed with the same
+        // values while a new name springs into existence.
+        if (!state.scylla->ensure_channel(channel_id, channel_id, "text") or !state.scylla->add_user_to_channel(channel_id, sess->user_id))
+        {
+
+            send_error(ws, 500, "could not join channel");
+            return;
+
+        }
+        ws->subscribe(channel_id);
+
+        std::cerr << "[channel] join user=" << sess->user_id << " channel=" << channel_id << '\n';
+
+        ::signaling::Envelope envelope { };
+        envelope.mutable_channel_joined_event()->set_channel_id(channel_id);
+        send_envelope(ws, envelope);
+
+    }
+
+    void on_list_channels(GatewayState& state, WebSocket* ws, const ::signaling::ListChannels& /*req*/)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+
+        ::signaling::Envelope envelope { };
+        auto* resp { envelope.mutable_channel_list_response() };
+        for (const auto& ch : state.scylla->list_channels())
+        {
+
+            if (ch.kind == "dm") continue; // DMs are private — never listed
+            auto* info { resp->add_channels() };
+            info->set_channel_id(ch.channel_id);
+            info->set_name(ch.name);
+            info->set_kind(ch.kind);
+
+        }
+        send_envelope(ws, envelope);
+
+    }
+
+
     void on_message(GatewayState& state, WebSocket* ws, std::string_view data, ::uWS::OpCode op)
     {
 
@@ -915,6 +985,14 @@ namespace OpenSocialNet::Signaling
 
             case ::signaling::Envelope::kLookupUser:
                 on_lookup_user(state, ws, envelope.lookup_user());
+                break;
+
+            case ::signaling::Envelope::kJoinChannel:
+                on_join_channel(state, ws, envelope.join_channel());
+                break;
+
+            case ::signaling::Envelope::kListChannels:
+                on_list_channels(state, ws, envelope.list_channels());
                 break;
 
             default:

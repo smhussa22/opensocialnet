@@ -13,6 +13,8 @@
 #include <atomic>
 #include <chrono>
 #include <deque>
+#include <fstream>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -41,8 +43,8 @@ namespace
 
     constexpr float sidebar_width { 240.0f };
 
-    constexpr Uint8 bg_r { 26 };
-    constexpr Uint8 bg_g { 28 };
+    constexpr Uint8 bg_r { 30 }; // matches the theme's window bg (#1e1f22)
+    constexpr Uint8 bg_g { 31 };
     constexpr Uint8 bg_b { 34 };
 
     constexpr std::size_t chat_input_capacity      { 512 };
@@ -54,6 +56,73 @@ namespace
     {
         const char* val { std::getenv(key) };
         return val ? std::string { val } : default_val;
+    }
+
+    // Discord-flavoured dark theme: near-black window, slightly lighter
+    // panels, blurple accent. Called once after CreateContext; the login
+    // screen and main UI both inherit it.
+    void apply_theme()
+    {
+
+        ImGui::StyleColorsDark();
+        ImGuiStyle& style { ImGui::GetStyle() };
+
+        constexpr ImVec4 col_window  { 0.118f, 0.122f, 0.133f, 1.00f }; // #1e1f22 outermost background
+        constexpr ImVec4 col_panel   { 0.169f, 0.176f, 0.192f, 1.00f }; // #2b2d31 sidebar / child panes
+        constexpr ImVec4 col_field   { 0.192f, 0.200f, 0.220f, 1.00f }; // #313338 inputs / chat surface
+        constexpr ImVec4 col_hover   { 0.239f, 0.251f, 0.275f, 1.00f }; // #3d4046 hovered rows
+        constexpr ImVec4 col_accent  { 0.345f, 0.396f, 0.949f, 1.00f }; // #5865f2 blurple
+        constexpr ImVec4 col_accent2 { 0.278f, 0.325f, 0.882f, 1.00f }; // #4753e1 pressed blurple
+        constexpr ImVec4 col_text    { 0.949f, 0.953f, 0.961f, 1.00f }; // #f2f3f5 primary text
+        constexpr ImVec4 col_muted   { 0.580f, 0.608f, 0.643f, 1.00f }; // #949ba4 secondary text
+
+        ImVec4* c { style.Colors };
+        c[ImGuiCol_Text] = col_text;
+        c[ImGuiCol_TextDisabled] = col_muted;
+        c[ImGuiCol_WindowBg] = col_window;
+        c[ImGuiCol_ChildBg] = col_panel;
+        c[ImGuiCol_PopupBg] = col_panel;
+        c[ImGuiCol_Border] = ImVec4 { 0.0f, 0.0f, 0.0f, 0.35f };
+        c[ImGuiCol_FrameBg] = col_field;
+        c[ImGuiCol_FrameBgHovered] = col_hover;
+        c[ImGuiCol_FrameBgActive] = col_hover;
+        c[ImGuiCol_TitleBg] = col_window;
+        c[ImGuiCol_TitleBgActive] = col_window;
+        c[ImGuiCol_ScrollbarBg] = ImVec4 { 0.0f, 0.0f, 0.0f, 0.0f };
+        c[ImGuiCol_ScrollbarGrab] = ImVec4 { 0.10f, 0.10f, 0.11f, 1.0f };
+        c[ImGuiCol_ScrollbarGrabHovered] = col_hover;
+        c[ImGuiCol_ScrollbarGrabActive] = col_hover;
+        c[ImGuiCol_CheckMark] = col_accent;
+        c[ImGuiCol_SliderGrab] = col_accent;
+        c[ImGuiCol_SliderGrabActive] = col_accent2;
+        c[ImGuiCol_Button] = col_accent;
+        c[ImGuiCol_ButtonHovered] = ImVec4 { 0.408f, 0.455f, 0.957f, 1.0f };
+        c[ImGuiCol_ButtonActive] = col_accent2;
+        c[ImGuiCol_Header] = col_hover;
+        c[ImGuiCol_HeaderHovered] = col_hover;
+        c[ImGuiCol_HeaderActive] = col_accent2;
+        c[ImGuiCol_Separator] = ImVec4 { 0.0f, 0.0f, 0.0f, 0.45f };
+        c[ImGuiCol_ResizeGrip] = col_hover;
+        c[ImGuiCol_ResizeGripHovered] = col_accent;
+        c[ImGuiCol_ResizeGripActive] = col_accent2;
+        c[ImGuiCol_TextSelectedBg] = ImVec4 { 0.345f, 0.396f, 0.949f, 0.35f };
+        c[ImGuiCol_NavHighlight] = col_accent;
+        c[ImGuiCol_ModalWindowDimBg] = ImVec4 { 0.0f, 0.0f, 0.0f, 0.60f };
+
+        style.WindowRounding = 8.0f;
+        style.ChildRounding = 8.0f;
+        style.PopupRounding = 8.0f;
+        style.FrameRounding = 4.0f;
+        style.GrabRounding = 4.0f;
+        style.ScrollbarRounding = 9.0f;
+        style.WindowPadding = ImVec2 { 10.0f, 10.0f };
+        style.FramePadding = ImVec2 { 8.0f, 5.0f };
+        style.ItemSpacing = ImVec2 { 8.0f, 6.0f };
+        style.ScrollbarSize = 12.0f;
+        style.WindowBorderSize = 0.0f;
+        style.ChildBorderSize = 0.0f;
+        style.PopupBorderSize = 1.0f;
+
     }
 
     // HMAC-SHA256 token computation used only when OSN_GOOGLE_CLIENT_ID
@@ -81,6 +150,212 @@ namespace
             waitpid(network_pid, nullptr, 0);
             network_pid = -1;
         }
+    }
+
+
+    // ----- login screen -----
+
+    struct LoginOutcome
+    {
+
+        bool        ok           { false }; // false = user closed the window before signing in
+        std::string user_name    { };       // gateway identity (google sub or dev username)
+        std::string auth_token   { };       // JWT or HMAC token shipped in the Hello envelope
+        std::string display_name { };       // what the UI shows for "you"
+
+    };
+
+    // Result slot shared with the detached Google sign-in thread. The
+    // browser flow can outlive the login screen (user quits mid-flow),
+    // so the slot lives in a shared_ptr the worker thread co-owns.
+    struct GoogleLoginJob
+    {
+
+        std::mutex        mu        { };       // guards result
+        std::atomic<bool> in_flight { false }; // browser flow currently running
+        std::atomic<bool> done      { false }; // result below is valid
+        OpenSocialNet::NativeClient::OAuthResult result { }; // filled by the worker thread
+
+    };
+
+    // Parses simple KEY=VALUE lines (comments/blanks skipped, optional
+    // `export ` prefix and surrounding quotes stripped) and setenv()s
+    // them WITHOUT overriding values already in the environment — a bare
+    // launch picks up the OAuth ids, sourcing the file first still wins.
+    void load_env_file(const char* path)
+    {
+
+        std::ifstream file { path };
+        if (!file.is_open()) return;
+
+        std::string line { };
+        while (std::getline(file, line))
+        {
+
+            const auto first { line.find_first_not_of(" \t") };
+            if (first == std::string::npos or line[first] == '#') continue;
+            if (line.compare(first, 7, "export ") == 0) line.erase(first, 7);
+
+            const auto eq { line.find('=', first) };
+            if (eq == std::string::npos) continue;
+
+            std::string key { line.substr(first, eq - first) };
+            std::string val { line.substr(eq + 1) };
+            while (!key.empty() and (key.back() == ' ' or key.back() == '\t')) key.pop_back();
+            while (!val.empty() and (val.back() == ' ' or val.back() == '\t' or val.back() == '\r')) val.pop_back();
+            if (val.size() >= 2 and (val.front() == '"' or val.front() == '\'') and val.back() == val.front()) val = val.substr(1, val.size() - 2);
+            if (!key.empty()) setenv(key.c_str(), val.c_str(), 0);
+
+        }
+
+    }
+
+    // Modal pre-app phase: draws a centered sign-in card and blocks until
+    // the user authenticates or closes the window (ok=false). Google is
+    // the primary path; an HMAC dev sign-in sits under a collapsing
+    // header, expanded automatically when no OAuth client id is set.
+    LoginOutcome run_login_screen(SDL_Window* window, SDL_Renderer* renderer, const std::string& google_client_id, const std::string& google_client_secret)
+    {
+
+        auto job { std::make_shared<GoogleLoginJob>() };
+
+        char dev_user[64] { };
+        std::snprintf(dev_user, sizeof dev_user, "%s", env_str("OSN_USER", "").c_str());
+        std::string google_error { };
+        std::string dev_error    { };
+
+        while (true)
+        {
+
+            SDL_Event event { };
+            while (SDL_PollEvent(&event))
+            {
+
+                ImGui_ImplSDL3_ProcessEvent(&event);
+                if (event.type == SDL_EVENT_QUIT) return { };
+                if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED and event.window.windowID == SDL_GetWindowID(window)) return { };
+
+            }
+
+            // harvest a finished Google flow before starting the frame —
+            // returning here is safe (no ImGui frame in progress)
+            if (job->done.exchange(false, std::memory_order_acq_rel))
+            {
+
+                std::scoped_lock<std::mutex> lock { job->mu };
+                if (job->result.ok)
+                {
+
+                    LoginOutcome out { };
+                    out.ok           = true;
+                    out.user_name    = job->result.sub;
+                    out.auth_token   = job->result.id_token;
+                    out.display_name = job->result.name.empty() ? (job->result.email.empty() ? job->result.sub : job->result.email) : job->result.name;
+                    return out;
+
+                }
+                google_error = job->result.error;
+
+            }
+
+            ImGui_ImplSDLRenderer3_NewFrame();
+            ImGui_ImplSDL3_NewFrame();
+            ImGui::NewFrame();
+
+            LoginOutcome outcome { };
+
+            const ImGuiViewport* viewport { ImGui::GetMainViewport() };
+            ImGui::SetNextWindowPos(ImVec2 { viewport->WorkPos.x + viewport->WorkSize.x * 0.5f, viewport->WorkPos.y + viewport->WorkSize.y * 0.42f }, ImGuiCond_Always, ImVec2 { 0.5f, 0.5f });
+            ImGui::SetNextWindowSize(ImVec2 { 420.0f, 0.0f });
+            if (ImGui::Begin("##login", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse))
+            {
+
+                ImGui::SetWindowFontScale(1.5f);
+                ImGui::TextUnformatted("OpenSocialNet");
+                ImGui::SetWindowFontScale(1.0f);
+                ImGui::TextDisabled("Sign in to continue");
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                if (google_client_id.empty())
+                {
+
+                    ImGui::TextWrapped("Google sign-in unavailable: OSN_GOOGLE_CLIENT_ID is not set and .secrets/google_oauth.env was not found.");
+
+                }
+                else if (job->in_flight.load(std::memory_order_acquire))
+                {
+
+                    ImGui::TextDisabled("Waiting for the browser sign-in to finish...");
+
+                }
+                else if (ImGui::Button("Sign in with Google", ImVec2 { -1.0f, 36.0f }))
+                {
+
+                    google_error.clear();
+                    job->in_flight.store(true, std::memory_order_release);
+                    std::thread { [job, google_client_id, google_client_secret]()
+                    {
+
+                        auto res { OpenSocialNet::NativeClient::google_login(google_client_id, google_client_secret) };
+                        {
+
+                            std::scoped_lock<std::mutex> lock { job->mu };
+                            job->result = std::move(res);
+
+                        }
+                        job->in_flight.store(false, std::memory_order_release);
+                        job->done.store(true, std::memory_order_release);
+
+                    } }.detach();
+
+                }
+                if (!google_error.empty()) ImGui::TextColored(ImVec4 { 1.0f, 0.5f, 0.3f, 1.0f }, "Sign-in failed: %s", google_error.c_str());
+
+                ImGui::Spacing();
+
+                if (ImGui::CollapsingHeader("Developer sign-in (HMAC)", google_client_id.empty() ? ImGuiTreeNodeFlags_DefaultOpen : 0))
+                {
+
+                    ImGui::TextDisabled("Local testing only — token = HMAC(username, shared secret).");
+                    ImGui::SetNextItemWidth(-1.0f);
+                    const bool enter_pressed { ImGui::InputTextWithHint("##dev_user", "username", dev_user, sizeof dev_user, ImGuiInputTextFlags_EnterReturnsTrue) };
+                    if ((ImGui::Button("Sign in as dev user", ImVec2 { -1.0f, 0.0f }) or enter_pressed) and dev_user[0] != '\0')
+                    {
+
+                        const std::string token { compute_auth_token(dev_user, env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123")) };
+                        if (token.empty()) dev_error = "failed to compute HMAC token (is openssl installed?)";
+                        else
+                        {
+
+                            outcome.ok           = true;
+                            outcome.user_name    = dev_user;
+                            outcome.auth_token   = token;
+                            outcome.display_name = dev_user;
+
+                        }
+
+                    }
+                    if (!dev_error.empty()) ImGui::TextColored(ImVec4 { 1.0f, 0.5f, 0.3f, 1.0f }, "%s", dev_error.c_str());
+
+                }
+
+            }
+            ImGui::End();
+
+            ImGui::Render();
+            SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, 255);
+            SDL_RenderClear(renderer);
+            ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+            SDL_RenderPresent(renderer);
+
+            // dev sign-in resolves inside the frame — return only after
+            // the frame is fully ended so the main loop starts clean
+            if (outcome.ok) return outcome;
+
+        }
+
     }
 
 
@@ -113,6 +388,17 @@ namespace
 
         std::string from_user_id   { };
         std::string from_username  { };
+
+    };
+
+    // One public channel row from ChannelListResponse, shown in the
+    // Join Channel modal's browse list.
+    struct ChannelInfo
+    {
+
+        std::string channel_id { };
+        std::string name       { };
+        std::string kind       { };
 
     };
 
@@ -163,6 +449,17 @@ namespace
     };
 
 
+    // Latest ClientStats tick from the network child, copied under the
+    // AppState mutex for the overlay window to render.
+    struct StatsSnapshot
+    {
+
+        bool                     valid { false }; // false until the first tick arrives
+        ::signaling::ClientStats data  { };       // raw envelope payload from the last tick
+
+    };
+
+
     struct AppState
     {
 
@@ -173,10 +470,12 @@ namespace
         std::string active_channel       { "general" };
         std::string active_voice_channel { }; // which voice room we're in, empty = not in call
         std::vector<std::string>                              channels      { };
+        std::vector<ChannelInfo>                              browse_channels { }; // last ChannelListResponse for the join modal
         std::vector<FriendEntry>                              friends_       { };
         std::vector<PendingRequest>                           pending        { };
         std::unordered_map<std::string, std::deque<ChatLine>> chat_history  { };
         LookupResult                                          last_lookup   { };
+        StatsSnapshot                                         stats         { }; // latest network-child stats tick
 
         // UI signal flags — toggled by the reader thread, consumed by the
         // UI thread when it next renders. Cheap booleans guard whether
@@ -311,6 +610,45 @@ namespace
 
             }
 
+            case ::signaling::Envelope::kChannelJoinedEvent:
+            {
+
+                const auto& evt { env.channel_joined_event() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                bool known { false };
+                for (const auto& ch : state.channels) if (ch == evt.channel_id()) { known = true; break; }
+                if (!known) state.channels.push_back(evt.channel_id());
+                state.active_channel = evt.channel_id();
+                break;
+
+            }
+
+            case ::signaling::Envelope::kChannelListResponse:
+            {
+
+                const auto& resp { env.channel_list_response() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.browse_channels.clear();
+                for (const auto& ch : resp.channels())
+                {
+
+                    state.browse_channels.push_back({ ch.channel_id(), ch.name(), ch.kind() });
+
+                }
+                break;
+
+            }
+
+            case ::signaling::Envelope::kClientStats:
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.stats.valid = true;
+                state.stats.data  = env.client_stats();
+                break;
+
+            }
+
             case ::signaling::Envelope::kLookupUserResponse:
             {
 
@@ -375,51 +713,84 @@ int main()
 
     std::setvbuf(stdout, nullptr, _IONBF, 0);
 
-    // ---- auth ----
+    // ---- config ----
+    // Pull the OAuth client id/secret out of .secrets/google_oauth.env so
+    // a bare `./native_client` launch from the repo root gets Google
+    // sign-in without the user remembering to source the file first.
+    load_env_file(".secrets/google_oauth.env");
+
     const std::string google_client_id     { env_str("OSN_GOOGLE_CLIENT_ID",     "") };
     const std::string google_client_secret { env_str("OSN_GOOGLE_CLIENT_SECRET", "") };
     const std::string signaling_host       { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
     const std::string room_name            { env_str("OSN_ROOM", "general") };
 
-    std::string user_name  { };
-    std::string auth_token { };
-    std::string display_name { };
+    // ---- SDL + ImGui ----
+    if (!SDL_Init(SDL_INIT_VIDEO))
+    {
+        std::printf("native_client: SDL_Init failed: %s\n", SDL_GetError());
+        return 1;
+    }
 
-    if (!google_client_id.empty())
+    SDL_Window* window { nullptr };
+    SDL_Renderer* renderer { nullptr };
+    if (!SDL_CreateWindowAndRenderer("OpenSocialNet", initial_window_width, initial_window_height,
+                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer))
+    {
+        std::printf("native_client: CreateWindowAndRenderer failed: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+    SDL_SetRenderVSync(renderer, 1);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io { ImGui::GetIO() };
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    apply_theme();
+    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer3_Init(renderer);
+
+    // ---- auth ----
+    // OSN_DEV_AUTH=1 skips the login screen entirely (scripted/dev runs);
+    // otherwise the login screen blocks until sign-in or window close.
+    LoginOutcome login { };
+    if (env_str("OSN_DEV_AUTH", "0") == "1")
     {
 
-        std::printf("native_client: starting Google sign-in (client_id=%s...)\n", google_client_id.substr(0, 12).c_str());
-        const auto oauth { OpenSocialNet::NativeClient::google_login(google_client_id, google_client_secret) };
-        if (!oauth.ok)
-        {
-
-            std::printf("native_client: Google sign-in failed: %s\n", oauth.error.c_str());
-            return 1;
-
-        }
-        user_name    = oauth.sub;
-        auth_token   = oauth.id_token;
-        display_name = oauth.name.empty() ? (oauth.email.empty() ? oauth.sub : oauth.email) : oauth.name;
-        std::printf("native_client: signed in as %s (sub=%s)\n", display_name.c_str(), oauth.sub.c_str());
+        login.user_name    = env_str("OSN_USER", "alice");
+        login.auth_token   = compute_auth_token(login.user_name, env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123"));
+        login.display_name = login.user_name;
+        login.ok           = !login.auth_token.empty();
+        if (login.ok) std::printf("native_client: HMAC dev auth as user=%s\n", login.user_name.c_str());
+        else std::printf("native_client: failed to compute HMAC auth token\n");
 
     }
     else
     {
 
-        user_name = env_str("OSN_USER", "alice");
-        const std::string auth_secret { env_str("OPENSOCIALNET_AUTH_SECRET", "devsecret123") };
-        auth_token = compute_auth_token(user_name, auth_secret);
-        if (auth_token.empty())
-        {
-
-            std::printf("native_client: failed to compute HMAC auth token\n");
-            return 1;
-
-        }
-        display_name = user_name;
-        std::printf("native_client: HMAC dev auth as user=%s\n", user_name.c_str());
+        login = run_login_screen(window, renderer, google_client_id, google_client_secret);
 
     }
+
+    if (!login.ok)
+    {
+
+        ImGui_ImplSDLRenderer3_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
+        ImGui::DestroyContext();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 0;
+
+    }
+
+    const std::string user_name    { login.user_name };
+    const std::string auth_token   { login.auth_token };
+    const std::string display_name { login.display_name };
+    SDL_SetWindowTitle(window, ("OpenSocialNet — " + display_name).c_str());
+    std::printf("native_client: signed in as %s (user_id=%s)\n", display_name.c_str(), user_name.c_str());
 
     // ---- IPC pipe to the network child (signaling envelopes) ----
     int ipc_fds[2] { -1, -1 };
@@ -440,34 +811,6 @@ int main()
         std::perror("native_client: video socketpair (non-fatal)");
     const int parent_video_fd { video_fds[0] };
     const int child_video_fd  { video_fds[1] };
-
-    // ---- SDL + ImGui ----
-    if (!SDL_Init(SDL_INIT_VIDEO))
-    {
-        std::printf("native_client: SDL_Init failed: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    SDL_Window* window { nullptr };
-    SDL_Renderer* renderer { nullptr };
-    const std::string window_title { "OpenSocialNet — " + display_name };
-    if (!SDL_CreateWindowAndRenderer(window_title.c_str(), initial_window_width, initial_window_height,
-                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY, &window, &renderer))
-    {
-        std::printf("native_client: CreateWindowAndRenderer failed: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-    SDL_SetRenderVSync(renderer, 1);
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io { ImGui::GetIO() };
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    ImGui::StyleColorsDark();
-    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer3_Init(renderer);
 
     // ---- spawn network child ----
     std::printf("native_client: spawning network client (user=%s, signaling=%s)\n", user_name.c_str(), signaling_host.c_str());
@@ -633,8 +976,11 @@ int main()
 
     char chat_draft[chat_input_capacity]      { };
     char add_friend_input[friend_input_capacity] { };
-    bool show_add_friend_modal { false };
-    bool show_requests_modal   { false };
+    char join_channel_input[friend_input_capacity] { };
+    bool show_add_friend_modal   { false };
+    bool show_requests_modal     { false };
+    bool show_join_channel_modal { false };
+    bool show_stats_overlay      { false };
 
     // Track which channel we last fetched history for; request once on switch.
     std::string last_history_channel { };
@@ -738,12 +1084,14 @@ int main()
                 for (const auto& ch : state.channels)
                 {
 
+                    if (ch.starts_with("dm:")) continue; // DMs render in the Friends list below
                     const bool selected { ch == state.active_channel };
-                    if (ImGui::Selectable(ch.c_str(), selected)) state.active_channel = ch;
+                    if (ImGui::Selectable(("# " + ch).c_str(), selected)) state.active_channel = ch;
 
                 }
 
             }
+            if (ImGui::Button("+ Join Channel", ImVec2 { -1, 0 })) show_join_channel_modal = true;
 
             ImGui::Separator();
             ImGui::TextDisabled("Friends");
@@ -793,6 +1141,9 @@ int main()
                 state.active_voice_channel.clear();
 
             }
+
+            ImGui::Separator();
+            ImGui::Checkbox("Stats overlay", &show_stats_overlay);
 
             ImGui::EndChild();
 
@@ -1057,6 +1408,79 @@ int main()
 
         }
 
+        if (show_join_channel_modal)
+        {
+
+            ImGui::OpenPopup("Join Channel");
+            join_channel_input[0] = '\0';
+            // refresh the browse list every time the modal opens
+            ::signaling::Envelope env { };
+            env.mutable_list_channels();
+            ipc.send_envelope(env);
+            show_join_channel_modal = false;
+
+        }
+        if (ImGui::BeginPopupModal("Join Channel", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+
+            ImGui::TextDisabled("Type a name to join it — new names create the channel.");
+            ImGui::SetNextItemWidth(360);
+            const bool enter_pressed { ImGui::InputTextWithHint("##channel_name", "channel name", join_channel_input, sizeof join_channel_input, ImGuiInputTextFlags_EnterReturnsTrue) };
+
+            const bool join_clicked { ImGui::Button("Join", ImVec2 { 100, 0 }) };
+            ImGui::SameLine();
+            if (ImGui::Button("Close", ImVec2 { 100, 0 })) ImGui::CloseCurrentPopup();
+
+            if ((join_clicked or enter_pressed) and join_channel_input[0] != '\0')
+            {
+
+                ::signaling::Envelope env { };
+                env.mutable_join_channel()->set_name(join_channel_input);
+                ipc.send_envelope(env);
+                join_channel_input[0] = '\0';
+                ImGui::CloseCurrentPopup();
+
+            }
+
+            ImGui::Separator();
+            ImGui::TextDisabled("Public channels");
+
+            // Snapshot under the lock, render outside it.
+            std::vector<ChannelInfo> browse { };
+            std::vector<std::string> mine { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                browse = state.browse_channels;
+                mine = state.channels;
+
+            }
+            if (browse.empty()) ImGui::TextDisabled("(none yet)");
+            for (const auto& ch : browse)
+            {
+
+                ImGui::PushID(ch.channel_id.c_str());
+                ImGui::TextUnformatted(("# " + ch.name).c_str());
+                ImGui::SameLine(260.0f);
+                bool member { false };
+                for (const auto& m : mine) if (m == ch.channel_id) { member = true; break; }
+                if (member) ImGui::TextDisabled("joined");
+                else if (ImGui::SmallButton("Join"))
+                {
+
+                    ::signaling::Envelope env { };
+                    env.mutable_join_channel()->set_name(ch.channel_id);
+                    ipc.send_envelope(env);
+                    ImGui::CloseCurrentPopup();
+
+                }
+                ImGui::PopID();
+
+            }
+            ImGui::EndPopup();
+
+        }
+
         if (show_requests_modal)
         {
 
@@ -1090,6 +1514,14 @@ int main()
                         ::signaling::Envelope env { };
                         env.mutable_accept_friend_request()->set_from_user_id(it->from_user_id);
                         ipc.send_envelope(env);
+
+                        // The server only pushes an accepted-event to the
+                        // requester, so refetch our own friends list to pick
+                        // up the new row + DM channel.
+                        ::signaling::Envelope refresh { };
+                        refresh.mutable_fetch_friends();
+                        ipc.send_envelope(refresh);
+
                         std::scoped_lock<std::mutex> lock { state.mu };
                         std::erase_if(state.pending, [&](const PendingRequest& p) { return p.from_user_id == it->from_user_id; });
 
@@ -1112,6 +1544,70 @@ int main()
             }
             if (ImGui::Button("Close", ImVec2 { 100, 0 })) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
+
+        }
+
+        // ---- STATS OVERLAY ----
+        // Floating semi-transparent window fed by the network child's
+        // ClientStats IPC ticks. The same numbers land in logs/*.csv for
+        // offline benchmark analysis; this is the live view.
+        if (show_stats_overlay)
+        {
+
+            StatsSnapshot snap { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                snap = state.stats;
+
+            }
+
+            ImGui::SetNextWindowPos(ImVec2 { viewport->WorkPos.x + viewport->WorkSize.x - 10.0f, viewport->WorkPos.y + 10.0f }, ImGuiCond_Always, ImVec2 { 1.0f, 0.0f });
+            ImGui::SetNextWindowBgAlpha(0.75f);
+            constexpr ImGuiWindowFlags overlay_flags
+            {
+                ImGuiWindowFlags_NoDecoration
+              | ImGuiWindowFlags_AlwaysAutoResize
+              | ImGuiWindowFlags_NoSavedSettings
+              | ImGuiWindowFlags_NoFocusOnAppearing
+              | ImGuiWindowFlags_NoNav
+              | ImGuiWindowFlags_NoMove
+            };
+            if (ImGui::Begin("##stats_overlay", nullptr, overlay_flags))
+            {
+
+                if (!snap.valid)
+                {
+
+                    ImGui::TextDisabled("waiting for first stats tick...");
+
+                }
+                else
+                {
+
+                    const auto& s { snap.data };
+                    const double loss_pct { s.packets_observed() > 0 ? 100.0 * static_cast<double>(s.packets_lost()) / static_cast<double>(s.packets_observed()) : 0.0 };
+                    ImGui::Text("session  t=%.0fs  peers=%u", s.elapsed_s(), s.peers());
+                    ImGui::Separator();
+                    ImGui::Text("audio    src=%u  sent=%llu", s.audio_sources(), static_cast<unsigned long long>(s.packets_sent()));
+                    ImGui::Text("recv     obs=%llu  lost=%llu (%.2f%%)  ooo=%llu", static_cast<unsigned long long>(s.packets_observed()), static_cast<unsigned long long>(s.packets_lost()), loss_pct, static_cast<unsigned long long>(s.packets_ooo()));
+                    ImGui::Text("jitter   %.2f ms  jb=%llu/%llu  adapts=%llu", s.jitter_ms(), static_cast<unsigned long long>(s.jb_buffered()), static_cast<unsigned long long>(s.jb_threshold()), static_cast<unsigned long long>(s.jb_adaptations()));
+                    ImGui::Text("plc      %llu  drop_ovf=%llu", static_cast<unsigned long long>(s.plc_concealments()), static_cast<unsigned long long>(s.drop_overflow()));
+                    if (!s.rtt_summary().empty()) ImGui::Text("rtt      %s", s.rtt_summary().c_str());
+                    if (s.video_sources() > 0 or s.vid_frames_sent() > 0 or s.scr_frames_sent() > 0)
+                    {
+
+                        ImGui::Separator();
+                        ImGui::Text("video    src=%u  lost=%llu", s.video_sources(), static_cast<unsigned long long>(s.vid_packets_lost()));
+                        ImGui::Text("frames   dec=%llu  plc=%llu  drawn=%llu", static_cast<unsigned long long>(s.vid_frames_decoded()), static_cast<unsigned long long>(s.vid_frames_concealed()), static_cast<unsigned long long>(s.vid_frames_rendered()));
+                        ImGui::Text("sent     cam=%llu  screen=%llu", static_cast<unsigned long long>(s.vid_frames_sent()), static_cast<unsigned long long>(s.scr_frames_sent()));
+
+                    }
+
+                }
+
+            }
+            ImGui::End();
 
         }
 

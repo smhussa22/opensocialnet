@@ -58,10 +58,26 @@ class AcceptFriendRequest;
 struct AcceptFriendRequestDefaultTypeInternal;
 extern AcceptFriendRequestDefaultTypeInternal _AcceptFriendRequest_default_instance_;
 extern const ::google::protobuf::internal::ClassDataFull AcceptFriendRequest_class_data_;
+class ChannelInfo;
+struct ChannelInfoDefaultTypeInternal;
+extern ChannelInfoDefaultTypeInternal _ChannelInfo_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull ChannelInfo_class_data_;
+class ChannelJoinedEvent;
+struct ChannelJoinedEventDefaultTypeInternal;
+extern ChannelJoinedEventDefaultTypeInternal _ChannelJoinedEvent_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull ChannelJoinedEvent_class_data_;
+class ChannelListResponse;
+struct ChannelListResponseDefaultTypeInternal;
+extern ChannelListResponseDefaultTypeInternal _ChannelListResponse_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull ChannelListResponse_class_data_;
 class ChatMessageEvent;
 struct ChatMessageEventDefaultTypeInternal;
 extern ChatMessageEventDefaultTypeInternal _ChatMessageEvent_default_instance_;
 extern const ::google::protobuf::internal::ClassDataFull ChatMessageEvent_class_data_;
+class ClientStats;
+struct ClientStatsDefaultTypeInternal;
+extern ClientStatsDefaultTypeInternal _ClientStats_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull ClientStats_class_data_;
 class Envelope;
 struct EnvelopeDefaultTypeInternal;
 extern EnvelopeDefaultTypeInternal _Envelope_default_instance_;
@@ -110,6 +126,10 @@ class HistoryResponse;
 struct HistoryResponseDefaultTypeInternal;
 extern HistoryResponseDefaultTypeInternal _HistoryResponse_default_instance_;
 extern const ::google::protobuf::internal::ClassDataFull HistoryResponse_class_data_;
+class JoinChannel;
+struct JoinChannelDefaultTypeInternal;
+extern JoinChannelDefaultTypeInternal _JoinChannel_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull JoinChannel_class_data_;
 class JoinVoice;
 struct JoinVoiceDefaultTypeInternal;
 extern JoinVoiceDefaultTypeInternal _JoinVoice_default_instance_;
@@ -118,6 +138,10 @@ class LeaveVoice;
 struct LeaveVoiceDefaultTypeInternal;
 extern LeaveVoiceDefaultTypeInternal _LeaveVoice_default_instance_;
 extern const ::google::protobuf::internal::ClassDataFull LeaveVoice_class_data_;
+class ListChannels;
+struct ListChannelsDefaultTypeInternal;
+extern ListChannelsDefaultTypeInternal _ListChannels_default_instance_;
+extern const ::google::protobuf::internal::ClassDataFull ListChannels_class_data_;
 class LookupUser;
 struct LookupUserDefaultTypeInternal;
 extern LookupUserDefaultTypeInternal _LookupUser_default_instance_;
@@ -2151,6 +2175,140 @@ class LookupUser final : public ::google::protobuf::Message
 extern const ::google::protobuf::internal::ClassDataFull LookupUser_class_data_;
 // -------------------------------------------------------------------
 
+class ListChannels final : public ::google::protobuf::internal::ZeroFieldsBase
+/* @@protoc_insertion_point(class_definition:signaling.ListChannels) */ {
+ public:
+  inline ListChannels() : ListChannels(nullptr) {}
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(ListChannels* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(ListChannels));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR ListChannels(::google::protobuf::internal::ConstantInitialized);
+
+  inline ListChannels(const ListChannels& from) : ListChannels(nullptr, from) {}
+  inline ListChannels(ListChannels&& from) noexcept
+      : ListChannels(nullptr, ::std::move(from)) {}
+  inline ListChannels& operator=(const ListChannels& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ListChannels& operator=(ListChannels&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ListChannels& default_instance() {
+    return *reinterpret_cast<const ListChannels*>(
+        &_ListChannels_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 26;
+  friend void swap(ListChannels& a, ListChannels& b) { a.Swap(&b); }
+  inline void Swap(ListChannels* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ListChannels* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ListChannels* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::internal::ZeroFieldsBase::DefaultConstruct<ListChannels>(arena);
+  }
+  using ::google::protobuf::internal::ZeroFieldsBase::CopyFrom;
+  inline void CopyFrom(const ListChannels& from) {
+    ::google::protobuf::internal::ZeroFieldsBase::CopyImpl(*this, from);
+  }
+  using ::google::protobuf::internal::ZeroFieldsBase::MergeFrom;
+  void MergeFrom(const ListChannels& from) {
+    ::google::protobuf::internal::ZeroFieldsBase::MergeImpl(*this, from);
+  }
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.ListChannels"; }
+
+  explicit ListChannels(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  ListChannels(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const ListChannels& from);
+  ListChannels(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, ListChannels&& from) noexcept
+      : ListChannels(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  // @@protoc_insertion_point(class_scope:signaling.ListChannels)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<0, 0,
+                                   0, 0,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull ListChannels_class_data_;
+// -------------------------------------------------------------------
+
 class LeaveVoice final : public ::google::protobuf::Message
 /* @@protoc_insertion_point(class_definition:signaling.LeaveVoice) */ {
  public:
@@ -2539,6 +2697,201 @@ class JoinVoice final : public ::google::protobuf::Message
 };
 
 extern const ::google::protobuf::internal::ClassDataFull JoinVoice_class_data_;
+// -------------------------------------------------------------------
+
+class JoinChannel final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.JoinChannel) */ {
+ public:
+  inline JoinChannel() : JoinChannel(nullptr) {}
+  ~JoinChannel() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(JoinChannel* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(JoinChannel));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR JoinChannel(::google::protobuf::internal::ConstantInitialized);
+
+  inline JoinChannel(const JoinChannel& from) : JoinChannel(nullptr, from) {}
+  inline JoinChannel(JoinChannel&& from) noexcept
+      : JoinChannel(nullptr, ::std::move(from)) {}
+  inline JoinChannel& operator=(const JoinChannel& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline JoinChannel& operator=(JoinChannel&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const JoinChannel& default_instance() {
+    return *reinterpret_cast<const JoinChannel*>(
+        &_JoinChannel_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 25;
+  friend void swap(JoinChannel& a, JoinChannel& b) { a.Swap(&b); }
+  inline void Swap(JoinChannel* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(JoinChannel* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  JoinChannel* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<JoinChannel>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const JoinChannel& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const JoinChannel& from) { JoinChannel::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(JoinChannel* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.JoinChannel"; }
+
+  explicit JoinChannel(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  JoinChannel(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const JoinChannel& from);
+  JoinChannel(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, JoinChannel&& from) noexcept
+      : JoinChannel(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kNameFieldNumber = 1,
+  };
+  // string name = 1;
+  void clear_name() ;
+  const ::std::string& name() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_name(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_name();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_name();
+  void set_allocated_name(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_name() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_name(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_name();
+
+  public:
+  // @@protoc_insertion_point(class_scope:signaling.JoinChannel)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<0, 1,
+                                   0, 34,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const JoinChannel& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr name_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull JoinChannel_class_data_;
 // -------------------------------------------------------------------
 
 class Hello final : public ::google::protobuf::Message
@@ -4257,7 +4610,7 @@ class ErrorEvent final : public ::google::protobuf::Message
     return *reinterpret_cast<const ErrorEvent*>(
         &_ErrorEvent_default_instance_);
   }
-  static constexpr int kIndexInFileMessages = 25;
+  static constexpr int kIndexInFileMessages = 31;
   friend void swap(ErrorEvent& a, ErrorEvent& b) { a.Swap(&b); }
   inline void Swap(ErrorEvent* PROTOBUF_NONNULL other) {
     if (other == this) return;
@@ -4407,6 +4760,441 @@ class ErrorEvent final : public ::google::protobuf::Message
 };
 
 extern const ::google::protobuf::internal::ClassDataFull ErrorEvent_class_data_;
+// -------------------------------------------------------------------
+
+class ClientStats final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.ClientStats) */ {
+ public:
+  inline ClientStats() : ClientStats(nullptr) {}
+  ~ClientStats() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(ClientStats* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(ClientStats));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR ClientStats(::google::protobuf::internal::ConstantInitialized);
+
+  inline ClientStats(const ClientStats& from) : ClientStats(nullptr, from) {}
+  inline ClientStats(ClientStats&& from) noexcept
+      : ClientStats(nullptr, ::std::move(from)) {}
+  inline ClientStats& operator=(const ClientStats& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ClientStats& operator=(ClientStats&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ClientStats& default_instance() {
+    return *reinterpret_cast<const ClientStats*>(
+        &_ClientStats_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 30;
+  friend void swap(ClientStats& a, ClientStats& b) { a.Swap(&b); }
+  inline void Swap(ClientStats* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ClientStats* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ClientStats* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<ClientStats>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const ClientStats& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const ClientStats& from) { ClientStats::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(ClientStats* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.ClientStats"; }
+
+  explicit ClientStats(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  ClientStats(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const ClientStats& from);
+  ClientStats(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, ClientStats&& from) noexcept
+      : ClientStats(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kRttSummaryFieldNumber = 14,
+    kElapsedSFieldNumber = 1,
+    kPacketsObservedFieldNumber = 3,
+    kPacketsLostFieldNumber = 4,
+    kPacketsOooFieldNumber = 5,
+    kJitterMsFieldNumber = 6,
+    kJbBufferedFieldNumber = 7,
+    kAudioSourcesFieldNumber = 2,
+    kPeersFieldNumber = 13,
+    kJbThresholdFieldNumber = 8,
+    kJbAdaptationsFieldNumber = 9,
+    kDropOverflowFieldNumber = 10,
+    kPacketsSentFieldNumber = 11,
+    kPlcConcealmentsFieldNumber = 12,
+    kVidPacketsLostFieldNumber = 16,
+    kVidFramesDecodedFieldNumber = 17,
+    kVidFramesConcealedFieldNumber = 18,
+    kVidFramesRenderedFieldNumber = 19,
+    kVidFramesSentFieldNumber = 20,
+    kScrFramesSentFieldNumber = 21,
+    kVideoSourcesFieldNumber = 15,
+  };
+  // string rtt_summary = 14;
+  void clear_rtt_summary() ;
+  const ::std::string& rtt_summary() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_rtt_summary(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_rtt_summary();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_rtt_summary();
+  void set_allocated_rtt_summary(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_rtt_summary() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_rtt_summary(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_rtt_summary();
+
+  public:
+  // double elapsed_s = 1;
+  void clear_elapsed_s() ;
+  double elapsed_s() const;
+  void set_elapsed_s(double value);
+
+  private:
+  double _internal_elapsed_s() const;
+  void _internal_set_elapsed_s(double value);
+
+  public:
+  // uint64 packets_observed = 3;
+  void clear_packets_observed() ;
+  ::uint64_t packets_observed() const;
+  void set_packets_observed(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_packets_observed() const;
+  void _internal_set_packets_observed(::uint64_t value);
+
+  public:
+  // uint64 packets_lost = 4;
+  void clear_packets_lost() ;
+  ::uint64_t packets_lost() const;
+  void set_packets_lost(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_packets_lost() const;
+  void _internal_set_packets_lost(::uint64_t value);
+
+  public:
+  // uint64 packets_ooo = 5;
+  void clear_packets_ooo() ;
+  ::uint64_t packets_ooo() const;
+  void set_packets_ooo(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_packets_ooo() const;
+  void _internal_set_packets_ooo(::uint64_t value);
+
+  public:
+  // double jitter_ms = 6;
+  void clear_jitter_ms() ;
+  double jitter_ms() const;
+  void set_jitter_ms(double value);
+
+  private:
+  double _internal_jitter_ms() const;
+  void _internal_set_jitter_ms(double value);
+
+  public:
+  // uint64 jb_buffered = 7;
+  void clear_jb_buffered() ;
+  ::uint64_t jb_buffered() const;
+  void set_jb_buffered(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_jb_buffered() const;
+  void _internal_set_jb_buffered(::uint64_t value);
+
+  public:
+  // uint32 audio_sources = 2;
+  void clear_audio_sources() ;
+  ::uint32_t audio_sources() const;
+  void set_audio_sources(::uint32_t value);
+
+  private:
+  ::uint32_t _internal_audio_sources() const;
+  void _internal_set_audio_sources(::uint32_t value);
+
+  public:
+  // uint32 peers = 13;
+  void clear_peers() ;
+  ::uint32_t peers() const;
+  void set_peers(::uint32_t value);
+
+  private:
+  ::uint32_t _internal_peers() const;
+  void _internal_set_peers(::uint32_t value);
+
+  public:
+  // uint64 jb_threshold = 8;
+  void clear_jb_threshold() ;
+  ::uint64_t jb_threshold() const;
+  void set_jb_threshold(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_jb_threshold() const;
+  void _internal_set_jb_threshold(::uint64_t value);
+
+  public:
+  // uint64 jb_adaptations = 9;
+  void clear_jb_adaptations() ;
+  ::uint64_t jb_adaptations() const;
+  void set_jb_adaptations(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_jb_adaptations() const;
+  void _internal_set_jb_adaptations(::uint64_t value);
+
+  public:
+  // uint64 drop_overflow = 10;
+  void clear_drop_overflow() ;
+  ::uint64_t drop_overflow() const;
+  void set_drop_overflow(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_drop_overflow() const;
+  void _internal_set_drop_overflow(::uint64_t value);
+
+  public:
+  // uint64 packets_sent = 11;
+  void clear_packets_sent() ;
+  ::uint64_t packets_sent() const;
+  void set_packets_sent(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_packets_sent() const;
+  void _internal_set_packets_sent(::uint64_t value);
+
+  public:
+  // uint64 plc_concealments = 12;
+  void clear_plc_concealments() ;
+  ::uint64_t plc_concealments() const;
+  void set_plc_concealments(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_plc_concealments() const;
+  void _internal_set_plc_concealments(::uint64_t value);
+
+  public:
+  // uint64 vid_packets_lost = 16;
+  void clear_vid_packets_lost() ;
+  ::uint64_t vid_packets_lost() const;
+  void set_vid_packets_lost(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_vid_packets_lost() const;
+  void _internal_set_vid_packets_lost(::uint64_t value);
+
+  public:
+  // uint64 vid_frames_decoded = 17;
+  void clear_vid_frames_decoded() ;
+  ::uint64_t vid_frames_decoded() const;
+  void set_vid_frames_decoded(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_vid_frames_decoded() const;
+  void _internal_set_vid_frames_decoded(::uint64_t value);
+
+  public:
+  // uint64 vid_frames_concealed = 18;
+  void clear_vid_frames_concealed() ;
+  ::uint64_t vid_frames_concealed() const;
+  void set_vid_frames_concealed(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_vid_frames_concealed() const;
+  void _internal_set_vid_frames_concealed(::uint64_t value);
+
+  public:
+  // uint64 vid_frames_rendered = 19;
+  void clear_vid_frames_rendered() ;
+  ::uint64_t vid_frames_rendered() const;
+  void set_vid_frames_rendered(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_vid_frames_rendered() const;
+  void _internal_set_vid_frames_rendered(::uint64_t value);
+
+  public:
+  // uint64 vid_frames_sent = 20;
+  void clear_vid_frames_sent() ;
+  ::uint64_t vid_frames_sent() const;
+  void set_vid_frames_sent(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_vid_frames_sent() const;
+  void _internal_set_vid_frames_sent(::uint64_t value);
+
+  public:
+  // uint64 scr_frames_sent = 21;
+  void clear_scr_frames_sent() ;
+  ::uint64_t scr_frames_sent() const;
+  void set_scr_frames_sent(::uint64_t value);
+
+  private:
+  ::uint64_t _internal_scr_frames_sent() const;
+  void _internal_set_scr_frames_sent(::uint64_t value);
+
+  public:
+  // uint32 video_sources = 15;
+  void clear_video_sources() ;
+  ::uint32_t video_sources() const;
+  void set_video_sources(::uint32_t value);
+
+  private:
+  ::uint32_t _internal_video_sources() const;
+  void _internal_set_video_sources(::uint32_t value);
+
+  public:
+  // @@protoc_insertion_point(class_scope:signaling.ClientStats)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<5, 21,
+                                   0, 57,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const ClientStats& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr rtt_summary_;
+    double elapsed_s_;
+    ::uint64_t packets_observed_;
+    ::uint64_t packets_lost_;
+    ::uint64_t packets_ooo_;
+    double jitter_ms_;
+    ::uint64_t jb_buffered_;
+    ::uint32_t audio_sources_;
+    ::uint32_t peers_;
+    ::uint64_t jb_threshold_;
+    ::uint64_t jb_adaptations_;
+    ::uint64_t drop_overflow_;
+    ::uint64_t packets_sent_;
+    ::uint64_t plc_concealments_;
+    ::uint64_t vid_packets_lost_;
+    ::uint64_t vid_frames_decoded_;
+    ::uint64_t vid_frames_concealed_;
+    ::uint64_t vid_frames_rendered_;
+    ::uint64_t vid_frames_sent_;
+    ::uint64_t scr_frames_sent_;
+    ::uint32_t video_sources_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull ClientStats_class_data_;
 // -------------------------------------------------------------------
 
 class ChatMessageEvent final : public ::google::protobuf::Message
@@ -4682,6 +5470,430 @@ class ChatMessageEvent final : public ::google::protobuf::Message
 };
 
 extern const ::google::protobuf::internal::ClassDataFull ChatMessageEvent_class_data_;
+// -------------------------------------------------------------------
+
+class ChannelJoinedEvent final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.ChannelJoinedEvent) */ {
+ public:
+  inline ChannelJoinedEvent() : ChannelJoinedEvent(nullptr) {}
+  ~ChannelJoinedEvent() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(ChannelJoinedEvent* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(ChannelJoinedEvent));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR ChannelJoinedEvent(::google::protobuf::internal::ConstantInitialized);
+
+  inline ChannelJoinedEvent(const ChannelJoinedEvent& from) : ChannelJoinedEvent(nullptr, from) {}
+  inline ChannelJoinedEvent(ChannelJoinedEvent&& from) noexcept
+      : ChannelJoinedEvent(nullptr, ::std::move(from)) {}
+  inline ChannelJoinedEvent& operator=(const ChannelJoinedEvent& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ChannelJoinedEvent& operator=(ChannelJoinedEvent&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ChannelJoinedEvent& default_instance() {
+    return *reinterpret_cast<const ChannelJoinedEvent*>(
+        &_ChannelJoinedEvent_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 27;
+  friend void swap(ChannelJoinedEvent& a, ChannelJoinedEvent& b) { a.Swap(&b); }
+  inline void Swap(ChannelJoinedEvent* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ChannelJoinedEvent* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ChannelJoinedEvent* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<ChannelJoinedEvent>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const ChannelJoinedEvent& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const ChannelJoinedEvent& from) { ChannelJoinedEvent::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(ChannelJoinedEvent* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.ChannelJoinedEvent"; }
+
+  explicit ChannelJoinedEvent(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  ChannelJoinedEvent(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const ChannelJoinedEvent& from);
+  ChannelJoinedEvent(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, ChannelJoinedEvent&& from) noexcept
+      : ChannelJoinedEvent(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kChannelIdFieldNumber = 1,
+  };
+  // string channel_id = 1;
+  void clear_channel_id() ;
+  const ::std::string& channel_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_channel_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_channel_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_channel_id();
+  void set_allocated_channel_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_channel_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_channel_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_channel_id();
+
+  public:
+  // @@protoc_insertion_point(class_scope:signaling.ChannelJoinedEvent)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<0, 1,
+                                   0, 47,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const ChannelJoinedEvent& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr channel_id_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull ChannelJoinedEvent_class_data_;
+// -------------------------------------------------------------------
+
+class ChannelInfo final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.ChannelInfo) */ {
+ public:
+  inline ChannelInfo() : ChannelInfo(nullptr) {}
+  ~ChannelInfo() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(ChannelInfo* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(ChannelInfo));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR ChannelInfo(::google::protobuf::internal::ConstantInitialized);
+
+  inline ChannelInfo(const ChannelInfo& from) : ChannelInfo(nullptr, from) {}
+  inline ChannelInfo(ChannelInfo&& from) noexcept
+      : ChannelInfo(nullptr, ::std::move(from)) {}
+  inline ChannelInfo& operator=(const ChannelInfo& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ChannelInfo& operator=(ChannelInfo&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ChannelInfo& default_instance() {
+    return *reinterpret_cast<const ChannelInfo*>(
+        &_ChannelInfo_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 28;
+  friend void swap(ChannelInfo& a, ChannelInfo& b) { a.Swap(&b); }
+  inline void Swap(ChannelInfo* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ChannelInfo* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ChannelInfo* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<ChannelInfo>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const ChannelInfo& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const ChannelInfo& from) { ChannelInfo::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(ChannelInfo* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.ChannelInfo"; }
+
+  explicit ChannelInfo(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  ChannelInfo(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const ChannelInfo& from);
+  ChannelInfo(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, ChannelInfo&& from) noexcept
+      : ChannelInfo(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kChannelIdFieldNumber = 1,
+    kNameFieldNumber = 2,
+    kKindFieldNumber = 3,
+  };
+  // string channel_id = 1;
+  void clear_channel_id() ;
+  const ::std::string& channel_id() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_channel_id(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_channel_id();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_channel_id();
+  void set_allocated_channel_id(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_channel_id() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_channel_id(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_channel_id();
+
+  public:
+  // string name = 2;
+  void clear_name() ;
+  const ::std::string& name() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_name(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_name();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_name();
+  void set_allocated_name(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_name() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_name(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_name();
+
+  public:
+  // string kind = 3;
+  void clear_kind() ;
+  const ::std::string& kind() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_kind(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_kind();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_kind();
+  void set_allocated_kind(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_kind() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_kind(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_kind();
+
+  public:
+  // @@protoc_insertion_point(class_scope:signaling.ChannelInfo)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<2, 3,
+                                   0, 48,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const ChannelInfo& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::internal::ArenaStringPtr channel_id_;
+    ::google::protobuf::internal::ArenaStringPtr name_;
+    ::google::protobuf::internal::ArenaStringPtr kind_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull ChannelInfo_class_data_;
 // -------------------------------------------------------------------
 
 class AcceptFriendRequest final : public ::google::protobuf::Message
@@ -5521,6 +6733,203 @@ class FriendListResponse final : public ::google::protobuf::Message
 extern const ::google::protobuf::internal::ClassDataFull FriendListResponse_class_data_;
 // -------------------------------------------------------------------
 
+class ChannelListResponse final : public ::google::protobuf::Message
+/* @@protoc_insertion_point(class_definition:signaling.ChannelListResponse) */ {
+ public:
+  inline ChannelListResponse() : ChannelListResponse(nullptr) {}
+  ~ChannelListResponse() PROTOBUF_FINAL;
+
+#if defined(PROTOBUF_CUSTOM_VTABLE)
+  void operator delete(ChannelListResponse* PROTOBUF_NONNULL msg, ::std::destroying_delete_t) {
+    SharedDtor(*msg);
+    ::google::protobuf::internal::SizedDelete(msg, sizeof(ChannelListResponse));
+  }
+#endif
+
+  template <typename = void>
+  explicit PROTOBUF_CONSTEXPR ChannelListResponse(::google::protobuf::internal::ConstantInitialized);
+
+  inline ChannelListResponse(const ChannelListResponse& from) : ChannelListResponse(nullptr, from) {}
+  inline ChannelListResponse(ChannelListResponse&& from) noexcept
+      : ChannelListResponse(nullptr, ::std::move(from)) {}
+  inline ChannelListResponse& operator=(const ChannelListResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline ChannelListResponse& operator=(ChannelListResponse&& from) noexcept {
+    if (this == &from) return *this;
+    if (::google::protobuf::internal::CanMoveWithInternalSwap(GetArena(), from.GetArena())) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.unknown_fields<::google::protobuf::UnknownFieldSet>(::google::protobuf::UnknownFieldSet::default_instance);
+  }
+  inline ::google::protobuf::UnknownFieldSet* PROTOBUF_NONNULL mutable_unknown_fields()
+      ABSL_ATTRIBUTE_LIFETIME_BOUND {
+    return _internal_metadata_.mutable_unknown_fields<::google::protobuf::UnknownFieldSet>();
+  }
+
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL descriptor() {
+    return GetDescriptor();
+  }
+  static const ::google::protobuf::Descriptor* PROTOBUF_NONNULL GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::google::protobuf::Reflection* PROTOBUF_NONNULL GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const ChannelListResponse& default_instance() {
+    return *reinterpret_cast<const ChannelListResponse*>(
+        &_ChannelListResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages = 29;
+  friend void swap(ChannelListResponse& a, ChannelListResponse& b) { a.Swap(&b); }
+  inline void Swap(ChannelListResponse* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    if (::google::protobuf::internal::CanUseInternalSwap(GetArena(), other->GetArena())) {
+      InternalSwap(other);
+    } else {
+      ::google::protobuf::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(ChannelListResponse* PROTOBUF_NONNULL other) {
+    if (other == this) return;
+    ABSL_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  ChannelListResponse* PROTOBUF_NONNULL New(::google::protobuf::Arena* PROTOBUF_NULLABLE arena = nullptr) const {
+    return ::google::protobuf::Message::DefaultConstruct<ChannelListResponse>(arena);
+  }
+  using ::google::protobuf::Message::CopyFrom;
+  void CopyFrom(const ChannelListResponse& from);
+  using ::google::protobuf::Message::MergeFrom;
+  void MergeFrom(const ChannelListResponse& from) { ChannelListResponse::MergeImpl(*this, from); }
+
+  private:
+  static void MergeImpl(::google::protobuf::MessageLite& to_msg,
+                        const ::google::protobuf::MessageLite& from_msg);
+
+  public:
+  bool IsInitialized() const {
+    return true;
+  }
+  ABSL_ATTRIBUTE_REINITIALIZES void Clear() PROTOBUF_FINAL;
+  #if defined(PROTOBUF_CUSTOM_VTABLE)
+  private:
+  static ::size_t ByteSizeLong(const ::google::protobuf::MessageLite& msg);
+  static ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      const ::google::protobuf::MessageLite& msg, ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream);
+
+  public:
+  ::size_t ByteSizeLong() const { return ByteSizeLong(*this); }
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const {
+    return _InternalSerialize(*this, target, stream);
+  }
+  #else   // PROTOBUF_CUSTOM_VTABLE
+  ::size_t ByteSizeLong() const final;
+  ::uint8_t* PROTOBUF_NONNULL _InternalSerialize(
+      ::uint8_t* PROTOBUF_NONNULL target,
+      ::google::protobuf::io::EpsCopyOutputStream* PROTOBUF_NONNULL stream) const final;
+  #endif  // PROTOBUF_CUSTOM_VTABLE
+  int GetCachedSize() const { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static void SharedDtor(MessageLite& self);
+  void InternalSwap(ChannelListResponse* PROTOBUF_NONNULL other);
+ private:
+  template <typename T>
+  friend ::absl::string_view(::google::protobuf::internal::GetAnyMessageName)();
+  static ::absl::string_view FullMessageName() { return "signaling.ChannelListResponse"; }
+
+  explicit ChannelListResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  ChannelListResponse(::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const ChannelListResponse& from);
+  ChannelListResponse(
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, ChannelListResponse&& from) noexcept
+      : ChannelListResponse(arena) {
+    *this = ::std::move(from);
+  }
+  const ::google::protobuf::internal::ClassData* PROTOBUF_NONNULL GetClassData() const PROTOBUF_FINAL;
+  static void* PROTOBUF_NONNULL PlacementNew_(
+      const void* PROTOBUF_NONNULL, void* PROTOBUF_NONNULL mem,
+      ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+  static constexpr auto InternalNewImpl_();
+
+ public:
+  static constexpr auto InternalGenerateClassData_();
+
+  ::google::protobuf::Metadata GetMetadata() const;
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+  enum : int {
+    kChannelsFieldNumber = 1,
+  };
+  // repeated .signaling.ChannelInfo channels = 1;
+  int channels_size() const;
+  private:
+  int _internal_channels_size() const;
+
+  public:
+  void clear_channels() ;
+  ::signaling::ChannelInfo* PROTOBUF_NONNULL mutable_channels(int index);
+  ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>* PROTOBUF_NONNULL mutable_channels();
+
+  private:
+  const ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>& _internal_channels() const;
+  ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>* PROTOBUF_NONNULL _internal_mutable_channels();
+  public:
+  const ::signaling::ChannelInfo& channels(int index) const;
+  ::signaling::ChannelInfo* PROTOBUF_NONNULL add_channels();
+  const ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>& channels() const;
+  // @@protoc_insertion_point(class_scope:signaling.ChannelListResponse)
+ private:
+  class _Internal;
+  friend class ::google::protobuf::internal::TcParser;
+  static const ::google::protobuf::internal::TcParseTable<0, 1,
+                                   1, 0,
+                                   2>
+      _table_;
+
+  friend class ::google::protobuf::MessageLite;
+  friend class ::google::protobuf::Arena;
+  template <typename T>
+  friend class ::google::protobuf::Arena::InternalHelper;
+  using InternalArenaConstructable_ = void;
+  using DestructorSkippable_ = void;
+  struct Impl_ {
+    inline explicit constexpr Impl_(::google::protobuf::internal::ConstantInitialized) noexcept;
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena);
+    inline explicit Impl_(
+        ::google::protobuf::internal::InternalVisibility visibility,
+        ::google::protobuf::Arena* PROTOBUF_NULLABLE arena, const Impl_& from,
+        const ChannelListResponse& from_msg);
+    ::google::protobuf::internal::HasBits<1> _has_bits_;
+    ::google::protobuf::internal::CachedSize _cached_size_;
+    ::google::protobuf::RepeatedPtrField< ::signaling::ChannelInfo > channels_;
+    PROTOBUF_TSAN_DECLARE_MEMBER
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_signaling_2eproto;
+};
+
+extern const ::google::protobuf::internal::ClassDataFull ChannelListResponse_class_data_;
+// -------------------------------------------------------------------
+
 class Envelope final : public ::google::protobuf::Message
 /* @@protoc_insertion_point(class_definition:signaling.Envelope) */ {
  public:
@@ -5588,6 +6997,8 @@ class Envelope final : public ::google::protobuf::Message
     kRejectFriendRequest = 22,
     kFetchFriends = 23,
     kLookupUser = 24,
+    kJoinChannel = 25,
+    kListChannels = 26,
     kReady = 30,
     kHeartbeatAck = 31,
     kChatMessageEvent = 32,
@@ -5599,6 +7010,9 @@ class Envelope final : public ::google::protobuf::Message
     kFriendListResponse = 43,
     kFriendRequestAcceptedEvent = 44,
     kLookupUserResponse = 45,
+    kChannelJoinedEvent = 46,
+    kChannelListResponse = 47,
+    kClientStats = 60,
     PAYLOAD_NOT_SET = 0,
   };
   static constexpr int kIndexInFileMessages = 0;
@@ -5700,6 +7114,8 @@ class Envelope final : public ::google::protobuf::Message
     kRejectFriendRequestFieldNumber = 22,
     kFetchFriendsFieldNumber = 23,
     kLookupUserFieldNumber = 24,
+    kJoinChannelFieldNumber = 25,
+    kListChannelsFieldNumber = 26,
     kReadyFieldNumber = 30,
     kHeartbeatAckFieldNumber = 31,
     kChatMessageEventFieldNumber = 32,
@@ -5711,6 +7127,9 @@ class Envelope final : public ::google::protobuf::Message
     kFriendListResponseFieldNumber = 43,
     kFriendRequestAcceptedEventFieldNumber = 44,
     kLookupUserResponseFieldNumber = 45,
+    kChannelJoinedEventFieldNumber = 46,
+    kChannelListResponseFieldNumber = 47,
+    kClientStatsFieldNumber = 60,
   };
   // uint64 seq = 1;
   void clear_seq() ;
@@ -5931,6 +7350,44 @@ class Envelope final : public ::google::protobuf::Message
   ::signaling::LookupUser* PROTOBUF_NONNULL _internal_mutable_lookup_user();
 
   public:
+  // .signaling.JoinChannel join_channel = 25;
+  bool has_join_channel() const;
+  private:
+  bool _internal_has_join_channel() const;
+
+  public:
+  void clear_join_channel() ;
+  const ::signaling::JoinChannel& join_channel() const;
+  [[nodiscard]] ::signaling::JoinChannel* PROTOBUF_NULLABLE release_join_channel();
+  ::signaling::JoinChannel* PROTOBUF_NONNULL mutable_join_channel();
+  void set_allocated_join_channel(::signaling::JoinChannel* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_join_channel(::signaling::JoinChannel* PROTOBUF_NULLABLE value);
+  ::signaling::JoinChannel* PROTOBUF_NULLABLE unsafe_arena_release_join_channel();
+
+  private:
+  const ::signaling::JoinChannel& _internal_join_channel() const;
+  ::signaling::JoinChannel* PROTOBUF_NONNULL _internal_mutable_join_channel();
+
+  public:
+  // .signaling.ListChannels list_channels = 26;
+  bool has_list_channels() const;
+  private:
+  bool _internal_has_list_channels() const;
+
+  public:
+  void clear_list_channels() ;
+  const ::signaling::ListChannels& list_channels() const;
+  [[nodiscard]] ::signaling::ListChannels* PROTOBUF_NULLABLE release_list_channels();
+  ::signaling::ListChannels* PROTOBUF_NONNULL mutable_list_channels();
+  void set_allocated_list_channels(::signaling::ListChannels* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_list_channels(::signaling::ListChannels* PROTOBUF_NULLABLE value);
+  ::signaling::ListChannels* PROTOBUF_NULLABLE unsafe_arena_release_list_channels();
+
+  private:
+  const ::signaling::ListChannels& _internal_list_channels() const;
+  ::signaling::ListChannels* PROTOBUF_NONNULL _internal_mutable_list_channels();
+
+  public:
   // .signaling.Ready ready = 30;
   bool has_ready() const;
   private:
@@ -6140,6 +7597,63 @@ class Envelope final : public ::google::protobuf::Message
   ::signaling::LookupUserResponse* PROTOBUF_NONNULL _internal_mutable_lookup_user_response();
 
   public:
+  // .signaling.ChannelJoinedEvent channel_joined_event = 46;
+  bool has_channel_joined_event() const;
+  private:
+  bool _internal_has_channel_joined_event() const;
+
+  public:
+  void clear_channel_joined_event() ;
+  const ::signaling::ChannelJoinedEvent& channel_joined_event() const;
+  [[nodiscard]] ::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE release_channel_joined_event();
+  ::signaling::ChannelJoinedEvent* PROTOBUF_NONNULL mutable_channel_joined_event();
+  void set_allocated_channel_joined_event(::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_channel_joined_event(::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE value);
+  ::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE unsafe_arena_release_channel_joined_event();
+
+  private:
+  const ::signaling::ChannelJoinedEvent& _internal_channel_joined_event() const;
+  ::signaling::ChannelJoinedEvent* PROTOBUF_NONNULL _internal_mutable_channel_joined_event();
+
+  public:
+  // .signaling.ChannelListResponse channel_list_response = 47;
+  bool has_channel_list_response() const;
+  private:
+  bool _internal_has_channel_list_response() const;
+
+  public:
+  void clear_channel_list_response() ;
+  const ::signaling::ChannelListResponse& channel_list_response() const;
+  [[nodiscard]] ::signaling::ChannelListResponse* PROTOBUF_NULLABLE release_channel_list_response();
+  ::signaling::ChannelListResponse* PROTOBUF_NONNULL mutable_channel_list_response();
+  void set_allocated_channel_list_response(::signaling::ChannelListResponse* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_channel_list_response(::signaling::ChannelListResponse* PROTOBUF_NULLABLE value);
+  ::signaling::ChannelListResponse* PROTOBUF_NULLABLE unsafe_arena_release_channel_list_response();
+
+  private:
+  const ::signaling::ChannelListResponse& _internal_channel_list_response() const;
+  ::signaling::ChannelListResponse* PROTOBUF_NONNULL _internal_mutable_channel_list_response();
+
+  public:
+  // .signaling.ClientStats client_stats = 60;
+  bool has_client_stats() const;
+  private:
+  bool _internal_has_client_stats() const;
+
+  public:
+  void clear_client_stats() ;
+  const ::signaling::ClientStats& client_stats() const;
+  [[nodiscard]] ::signaling::ClientStats* PROTOBUF_NULLABLE release_client_stats();
+  ::signaling::ClientStats* PROTOBUF_NONNULL mutable_client_stats();
+  void set_allocated_client_stats(::signaling::ClientStats* PROTOBUF_NULLABLE value);
+  void unsafe_arena_set_allocated_client_stats(::signaling::ClientStats* PROTOBUF_NULLABLE value);
+  ::signaling::ClientStats* PROTOBUF_NULLABLE unsafe_arena_release_client_stats();
+
+  private:
+  const ::signaling::ClientStats& _internal_client_stats() const;
+  ::signaling::ClientStats* PROTOBUF_NONNULL _internal_mutable_client_stats();
+
+  public:
   void clear_payload();
   PayloadCase payload_case() const;
   // @@protoc_insertion_point(class_scope:signaling.Envelope)
@@ -6156,6 +7670,8 @@ class Envelope final : public ::google::protobuf::Message
   void set_has_reject_friend_request();
   void set_has_fetch_friends();
   void set_has_lookup_user();
+  void set_has_join_channel();
+  void set_has_list_channels();
   void set_has_ready();
   void set_has_heartbeat_ack();
   void set_has_chat_message_event();
@@ -6167,12 +7683,15 @@ class Envelope final : public ::google::protobuf::Message
   void set_has_friend_list_response();
   void set_has_friend_request_accepted_event();
   void set_has_lookup_user_response();
+  void set_has_channel_joined_event();
+  void set_has_channel_list_response();
+  void set_has_client_stats();
   inline bool has_payload() const;
   inline void clear_has_payload();
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<0, 23,
-                                   22, 0,
-                                   7>
+  static const ::google::protobuf::internal::TcParseTable<0, 28,
+                                   27, 0,
+                                   9>
       _table_;
 
   friend class ::google::protobuf::MessageLite;
@@ -6207,6 +7726,8 @@ class Envelope final : public ::google::protobuf::Message
       ::google::protobuf::Message* PROTOBUF_NULLABLE reject_friend_request_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE fetch_friends_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE lookup_user_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE join_channel_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE list_channels_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE ready_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE heartbeat_ack_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE chat_message_event_;
@@ -6218,6 +7739,9 @@ class Envelope final : public ::google::protobuf::Message
       ::google::protobuf::Message* PROTOBUF_NULLABLE friend_list_response_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE friend_request_accepted_event_;
       ::google::protobuf::Message* PROTOBUF_NULLABLE lookup_user_response_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE channel_joined_event_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE channel_list_response_;
+      ::google::protobuf::Message* PROTOBUF_NULLABLE client_stats_;
     } payload_;
     ::uint32_t _oneof_case_[1];
     PROTOBUF_TSAN_DECLARE_MEMBER
@@ -7171,6 +8695,170 @@ inline ::signaling::LookupUser* PROTOBUF_NONNULL Envelope::mutable_lookup_user()
   return _msg;
 }
 
+// .signaling.JoinChannel join_channel = 25;
+inline bool Envelope::has_join_channel() const {
+  return payload_case() == kJoinChannel;
+}
+inline bool Envelope::_internal_has_join_channel() const {
+  return payload_case() == kJoinChannel;
+}
+inline void Envelope::set_has_join_channel() {
+  _impl_._oneof_case_[0] = kJoinChannel;
+}
+inline void Envelope::clear_join_channel() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kJoinChannel) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.join_channel_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.join_channel_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::JoinChannel* PROTOBUF_NULLABLE Envelope::release_join_channel() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.join_channel)
+  if (payload_case() == kJoinChannel) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::JoinChannel*>(_impl_.payload_.join_channel_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.join_channel_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::JoinChannel& Envelope::_internal_join_channel() const {
+  return payload_case() == kJoinChannel ? static_cast<const ::signaling::JoinChannel&>(*reinterpret_cast<::signaling::JoinChannel*>(_impl_.payload_.join_channel_))
+                     : reinterpret_cast<const ::signaling::JoinChannel&>(::signaling::_JoinChannel_default_instance_);
+}
+inline const ::signaling::JoinChannel& Envelope::join_channel() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.join_channel)
+  return _internal_join_channel();
+}
+inline ::signaling::JoinChannel* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_join_channel() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.join_channel)
+  if (payload_case() == kJoinChannel) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::JoinChannel*>(_impl_.payload_.join_channel_);
+    _impl_.payload_.join_channel_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_join_channel(
+    ::signaling::JoinChannel* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_join_channel();
+    _impl_.payload_.join_channel_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.join_channel)
+}
+inline ::signaling::JoinChannel* PROTOBUF_NONNULL Envelope::_internal_mutable_join_channel() {
+  if (payload_case() != kJoinChannel) {
+    clear_payload();
+    set_has_join_channel();
+    _impl_.payload_.join_channel_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::JoinChannel>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::JoinChannel*>(_impl_.payload_.join_channel_);
+}
+inline ::signaling::JoinChannel* PROTOBUF_NONNULL Envelope::mutable_join_channel()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::JoinChannel* _msg = _internal_mutable_join_channel();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.join_channel)
+  return _msg;
+}
+
+// .signaling.ListChannels list_channels = 26;
+inline bool Envelope::has_list_channels() const {
+  return payload_case() == kListChannels;
+}
+inline bool Envelope::_internal_has_list_channels() const {
+  return payload_case() == kListChannels;
+}
+inline void Envelope::set_has_list_channels() {
+  _impl_._oneof_case_[0] = kListChannels;
+}
+inline void Envelope::clear_list_channels() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kListChannels) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.list_channels_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.list_channels_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::ListChannels* PROTOBUF_NULLABLE Envelope::release_list_channels() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.list_channels)
+  if (payload_case() == kListChannels) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ListChannels*>(_impl_.payload_.list_channels_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.list_channels_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::ListChannels& Envelope::_internal_list_channels() const {
+  return payload_case() == kListChannels ? static_cast<const ::signaling::ListChannels&>(*reinterpret_cast<::signaling::ListChannels*>(_impl_.payload_.list_channels_))
+                     : reinterpret_cast<const ::signaling::ListChannels&>(::signaling::_ListChannels_default_instance_);
+}
+inline const ::signaling::ListChannels& Envelope::list_channels() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.list_channels)
+  return _internal_list_channels();
+}
+inline ::signaling::ListChannels* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_list_channels() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.list_channels)
+  if (payload_case() == kListChannels) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ListChannels*>(_impl_.payload_.list_channels_);
+    _impl_.payload_.list_channels_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_list_channels(
+    ::signaling::ListChannels* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_list_channels();
+    _impl_.payload_.list_channels_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.list_channels)
+}
+inline ::signaling::ListChannels* PROTOBUF_NONNULL Envelope::_internal_mutable_list_channels() {
+  if (payload_case() != kListChannels) {
+    clear_payload();
+    set_has_list_channels();
+    _impl_.payload_.list_channels_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::ListChannels>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::ListChannels*>(_impl_.payload_.list_channels_);
+}
+inline ::signaling::ListChannels* PROTOBUF_NONNULL Envelope::mutable_list_channels()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::ListChannels* _msg = _internal_mutable_list_channels();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.list_channels)
+  return _msg;
+}
+
 // .signaling.Ready ready = 30;
 inline bool Envelope::has_ready() const {
   return payload_case() == kReady;
@@ -8070,6 +9758,252 @@ inline ::signaling::LookupUserResponse* PROTOBUF_NONNULL Envelope::mutable_looku
     ABSL_ATTRIBUTE_LIFETIME_BOUND {
   ::signaling::LookupUserResponse* _msg = _internal_mutable_lookup_user_response();
   // @@protoc_insertion_point(field_mutable:signaling.Envelope.lookup_user_response)
+  return _msg;
+}
+
+// .signaling.ChannelJoinedEvent channel_joined_event = 46;
+inline bool Envelope::has_channel_joined_event() const {
+  return payload_case() == kChannelJoinedEvent;
+}
+inline bool Envelope::_internal_has_channel_joined_event() const {
+  return payload_case() == kChannelJoinedEvent;
+}
+inline void Envelope::set_has_channel_joined_event() {
+  _impl_._oneof_case_[0] = kChannelJoinedEvent;
+}
+inline void Envelope::clear_channel_joined_event() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kChannelJoinedEvent) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.channel_joined_event_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.channel_joined_event_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE Envelope::release_channel_joined_event() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.channel_joined_event)
+  if (payload_case() == kChannelJoinedEvent) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ChannelJoinedEvent*>(_impl_.payload_.channel_joined_event_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.channel_joined_event_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::ChannelJoinedEvent& Envelope::_internal_channel_joined_event() const {
+  return payload_case() == kChannelJoinedEvent ? static_cast<const ::signaling::ChannelJoinedEvent&>(*reinterpret_cast<::signaling::ChannelJoinedEvent*>(_impl_.payload_.channel_joined_event_))
+                     : reinterpret_cast<const ::signaling::ChannelJoinedEvent&>(::signaling::_ChannelJoinedEvent_default_instance_);
+}
+inline const ::signaling::ChannelJoinedEvent& Envelope::channel_joined_event() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.channel_joined_event)
+  return _internal_channel_joined_event();
+}
+inline ::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_channel_joined_event() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.channel_joined_event)
+  if (payload_case() == kChannelJoinedEvent) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ChannelJoinedEvent*>(_impl_.payload_.channel_joined_event_);
+    _impl_.payload_.channel_joined_event_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_channel_joined_event(
+    ::signaling::ChannelJoinedEvent* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_channel_joined_event();
+    _impl_.payload_.channel_joined_event_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.channel_joined_event)
+}
+inline ::signaling::ChannelJoinedEvent* PROTOBUF_NONNULL Envelope::_internal_mutable_channel_joined_event() {
+  if (payload_case() != kChannelJoinedEvent) {
+    clear_payload();
+    set_has_channel_joined_event();
+    _impl_.payload_.channel_joined_event_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::ChannelJoinedEvent>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::ChannelJoinedEvent*>(_impl_.payload_.channel_joined_event_);
+}
+inline ::signaling::ChannelJoinedEvent* PROTOBUF_NONNULL Envelope::mutable_channel_joined_event()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::ChannelJoinedEvent* _msg = _internal_mutable_channel_joined_event();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.channel_joined_event)
+  return _msg;
+}
+
+// .signaling.ChannelListResponse channel_list_response = 47;
+inline bool Envelope::has_channel_list_response() const {
+  return payload_case() == kChannelListResponse;
+}
+inline bool Envelope::_internal_has_channel_list_response() const {
+  return payload_case() == kChannelListResponse;
+}
+inline void Envelope::set_has_channel_list_response() {
+  _impl_._oneof_case_[0] = kChannelListResponse;
+}
+inline void Envelope::clear_channel_list_response() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kChannelListResponse) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.channel_list_response_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.channel_list_response_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::ChannelListResponse* PROTOBUF_NULLABLE Envelope::release_channel_list_response() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.channel_list_response)
+  if (payload_case() == kChannelListResponse) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ChannelListResponse*>(_impl_.payload_.channel_list_response_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.channel_list_response_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::ChannelListResponse& Envelope::_internal_channel_list_response() const {
+  return payload_case() == kChannelListResponse ? static_cast<const ::signaling::ChannelListResponse&>(*reinterpret_cast<::signaling::ChannelListResponse*>(_impl_.payload_.channel_list_response_))
+                     : reinterpret_cast<const ::signaling::ChannelListResponse&>(::signaling::_ChannelListResponse_default_instance_);
+}
+inline const ::signaling::ChannelListResponse& Envelope::channel_list_response() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.channel_list_response)
+  return _internal_channel_list_response();
+}
+inline ::signaling::ChannelListResponse* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_channel_list_response() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.channel_list_response)
+  if (payload_case() == kChannelListResponse) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ChannelListResponse*>(_impl_.payload_.channel_list_response_);
+    _impl_.payload_.channel_list_response_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_channel_list_response(
+    ::signaling::ChannelListResponse* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_channel_list_response();
+    _impl_.payload_.channel_list_response_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.channel_list_response)
+}
+inline ::signaling::ChannelListResponse* PROTOBUF_NONNULL Envelope::_internal_mutable_channel_list_response() {
+  if (payload_case() != kChannelListResponse) {
+    clear_payload();
+    set_has_channel_list_response();
+    _impl_.payload_.channel_list_response_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::ChannelListResponse>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::ChannelListResponse*>(_impl_.payload_.channel_list_response_);
+}
+inline ::signaling::ChannelListResponse* PROTOBUF_NONNULL Envelope::mutable_channel_list_response()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::ChannelListResponse* _msg = _internal_mutable_channel_list_response();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.channel_list_response)
+  return _msg;
+}
+
+// .signaling.ClientStats client_stats = 60;
+inline bool Envelope::has_client_stats() const {
+  return payload_case() == kClientStats;
+}
+inline bool Envelope::_internal_has_client_stats() const {
+  return payload_case() == kClientStats;
+}
+inline void Envelope::set_has_client_stats() {
+  _impl_._oneof_case_[0] = kClientStats;
+}
+inline void Envelope::clear_client_stats() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (payload_case() == kClientStats) {
+    if (GetArena() == nullptr) {
+      delete _impl_.payload_.client_stats_;
+    } else if (::google::protobuf::internal::DebugHardenClearOneofMessageOnArena()) {
+      ::google::protobuf::internal::MaybePoisonAfterClear(_impl_.payload_.client_stats_);
+    }
+    clear_has_payload();
+  }
+}
+inline ::signaling::ClientStats* PROTOBUF_NULLABLE Envelope::release_client_stats() {
+  // @@protoc_insertion_point(field_release:signaling.Envelope.client_stats)
+  if (payload_case() == kClientStats) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ClientStats*>(_impl_.payload_.client_stats_);
+    if (GetArena() != nullptr) {
+      temp = ::google::protobuf::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.payload_.client_stats_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::signaling::ClientStats& Envelope::_internal_client_stats() const {
+  return payload_case() == kClientStats ? static_cast<const ::signaling::ClientStats&>(*reinterpret_cast<::signaling::ClientStats*>(_impl_.payload_.client_stats_))
+                     : reinterpret_cast<const ::signaling::ClientStats&>(::signaling::_ClientStats_default_instance_);
+}
+inline const ::signaling::ClientStats& Envelope::client_stats() const ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Envelope.client_stats)
+  return _internal_client_stats();
+}
+inline ::signaling::ClientStats* PROTOBUF_NULLABLE Envelope::unsafe_arena_release_client_stats() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:signaling.Envelope.client_stats)
+  if (payload_case() == kClientStats) {
+    clear_has_payload();
+    auto* temp = reinterpret_cast<::signaling::ClientStats*>(_impl_.payload_.client_stats_);
+    _impl_.payload_.client_stats_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void Envelope::unsafe_arena_set_allocated_client_stats(
+    ::signaling::ClientStats* PROTOBUF_NULLABLE value) {
+  // We rely on the oneof clear method to free the earlier contents
+  // of this oneof. We can directly use the pointer we're given to
+  // set the new value.
+  clear_payload();
+  if (value) {
+    set_has_client_stats();
+    _impl_.payload_.client_stats_ = reinterpret_cast<::google::protobuf::Message*>(value);
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:signaling.Envelope.client_stats)
+}
+inline ::signaling::ClientStats* PROTOBUF_NONNULL Envelope::_internal_mutable_client_stats() {
+  if (payload_case() != kClientStats) {
+    clear_payload();
+    set_has_client_stats();
+    _impl_.payload_.client_stats_ = reinterpret_cast<::google::protobuf::Message*>(
+        ::google::protobuf::Message::DefaultConstruct<::signaling::ClientStats>(GetArena()));
+  }
+  return reinterpret_cast<::signaling::ClientStats*>(_impl_.payload_.client_stats_);
+}
+inline ::signaling::ClientStats* PROTOBUF_NONNULL Envelope::mutable_client_stats()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::signaling::ClientStats* _msg = _internal_mutable_client_stats();
+  // @@protoc_insertion_point(field_mutable:signaling.Envelope.client_stats)
   return _msg;
 }
 
@@ -11430,6 +13364,976 @@ inline void LookupUserResponse::set_allocated_email(::std::string* PROTOBUF_NULL
     _impl_.email_.Set("", GetArena());
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.LookupUserResponse.email)
+}
+
+// -------------------------------------------------------------------
+
+// JoinChannel
+
+// string name = 1;
+inline void JoinChannel::clear_name() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.name_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& JoinChannel::name() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.JoinChannel.name)
+  return _internal_name();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void JoinChannel::set_name(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.name_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.JoinChannel.name)
+}
+inline ::std::string* PROTOBUF_NONNULL JoinChannel::mutable_name()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_name();
+  // @@protoc_insertion_point(field_mutable:signaling.JoinChannel.name)
+  return _s;
+}
+inline const ::std::string& JoinChannel::_internal_name() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.name_.Get();
+}
+inline void JoinChannel::_internal_set_name(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.name_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL JoinChannel::_internal_mutable_name() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.name_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE JoinChannel::release_name() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.JoinChannel.name)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.name_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.name_.Set("", GetArena());
+  }
+  return released;
+}
+inline void JoinChannel::set_allocated_name(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.name_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.JoinChannel.name)
+}
+
+// -------------------------------------------------------------------
+
+// ListChannels
+
+// -------------------------------------------------------------------
+
+// ChannelJoinedEvent
+
+// string channel_id = 1;
+inline void ChannelJoinedEvent::clear_channel_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.channel_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& ChannelJoinedEvent::channel_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.ChannelJoinedEvent.channel_id)
+  return _internal_channel_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void ChannelJoinedEvent::set_channel_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.channel_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.ChannelJoinedEvent.channel_id)
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelJoinedEvent::mutable_channel_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_channel_id();
+  // @@protoc_insertion_point(field_mutable:signaling.ChannelJoinedEvent.channel_id)
+  return _s;
+}
+inline const ::std::string& ChannelJoinedEvent::_internal_channel_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.channel_id_.Get();
+}
+inline void ChannelJoinedEvent::_internal_set_channel_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.channel_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelJoinedEvent::_internal_mutable_channel_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.channel_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE ChannelJoinedEvent::release_channel_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.ChannelJoinedEvent.channel_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.channel_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.channel_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void ChannelJoinedEvent::set_allocated_channel_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.channel_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.channel_id_.IsDefault()) {
+    _impl_.channel_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.ChannelJoinedEvent.channel_id)
+}
+
+// -------------------------------------------------------------------
+
+// ChannelInfo
+
+// string channel_id = 1;
+inline void ChannelInfo::clear_channel_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.channel_id_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& ChannelInfo::channel_id() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.ChannelInfo.channel_id)
+  return _internal_channel_id();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void ChannelInfo::set_channel_id(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.channel_id_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.ChannelInfo.channel_id)
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelInfo::mutable_channel_id()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_channel_id();
+  // @@protoc_insertion_point(field_mutable:signaling.ChannelInfo.channel_id)
+  return _s;
+}
+inline const ::std::string& ChannelInfo::_internal_channel_id() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.channel_id_.Get();
+}
+inline void ChannelInfo::_internal_set_channel_id(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.channel_id_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelInfo::_internal_mutable_channel_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.channel_id_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE ChannelInfo::release_channel_id() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.ChannelInfo.channel_id)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.channel_id_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.channel_id_.Set("", GetArena());
+  }
+  return released;
+}
+inline void ChannelInfo::set_allocated_channel_id(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.channel_id_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.channel_id_.IsDefault()) {
+    _impl_.channel_id_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.ChannelInfo.channel_id)
+}
+
+// string name = 2;
+inline void ChannelInfo::clear_name() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.name_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline const ::std::string& ChannelInfo::name() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.ChannelInfo.name)
+  return _internal_name();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void ChannelInfo::set_name(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  _impl_.name_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.ChannelInfo.name)
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelInfo::mutable_name()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  ::std::string* _s = _internal_mutable_name();
+  // @@protoc_insertion_point(field_mutable:signaling.ChannelInfo.name)
+  return _s;
+}
+inline const ::std::string& ChannelInfo::_internal_name() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.name_.Get();
+}
+inline void ChannelInfo::_internal_set_name(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.name_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelInfo::_internal_mutable_name() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.name_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE ChannelInfo::release_name() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.ChannelInfo.name)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000002U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  auto* released = _impl_.name_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.name_.Set("", GetArena());
+  }
+  return released;
+}
+inline void ChannelInfo::set_allocated_name(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000002U);
+  }
+  _impl_.name_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.name_.IsDefault()) {
+    _impl_.name_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.ChannelInfo.name)
+}
+
+// string kind = 3;
+inline void ChannelInfo::clear_kind() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.kind_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& ChannelInfo::kind() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.ChannelInfo.kind)
+  return _internal_kind();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void ChannelInfo::set_kind(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.kind_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.ChannelInfo.kind)
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelInfo::mutable_kind()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_kind();
+  // @@protoc_insertion_point(field_mutable:signaling.ChannelInfo.kind)
+  return _s;
+}
+inline const ::std::string& ChannelInfo::_internal_kind() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.kind_.Get();
+}
+inline void ChannelInfo::_internal_set_kind(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.kind_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL ChannelInfo::_internal_mutable_kind() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.kind_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE ChannelInfo::release_kind() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.ChannelInfo.kind)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.kind_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.kind_.Set("", GetArena());
+  }
+  return released;
+}
+inline void ChannelInfo::set_allocated_kind(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.kind_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.kind_.IsDefault()) {
+    _impl_.kind_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.ChannelInfo.kind)
+}
+
+// -------------------------------------------------------------------
+
+// ChannelListResponse
+
+// repeated .signaling.ChannelInfo channels = 1;
+inline int ChannelListResponse::_internal_channels_size() const {
+  return _internal_channels().size();
+}
+inline int ChannelListResponse::channels_size() const {
+  return _internal_channels_size();
+}
+inline void ChannelListResponse::clear_channels() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.channels_.Clear();
+  ClearHasBitForRepeated(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline ::signaling::ChannelInfo* PROTOBUF_NONNULL ChannelListResponse::mutable_channels(int index)
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_mutable:signaling.ChannelListResponse.channels)
+  return _internal_mutable_channels()->Mutable(index);
+}
+inline ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>* PROTOBUF_NONNULL ChannelListResponse::mutable_channels()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBitForRepeated(_impl_._has_bits_[0], 0x00000001U);
+  // @@protoc_insertion_point(field_mutable_list:signaling.ChannelListResponse.channels)
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _internal_mutable_channels();
+}
+inline const ::signaling::ChannelInfo& ChannelListResponse::channels(int index) const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.ChannelListResponse.channels)
+  return _internal_channels().Get(index);
+}
+inline ::signaling::ChannelInfo* PROTOBUF_NONNULL ChannelListResponse::add_channels()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  ::signaling::ChannelInfo* _add =
+      _internal_mutable_channels()->InternalAddWithArena(
+          ::google::protobuf::MessageLite::internal_visibility(), GetArena());
+  SetHasBitForRepeated(_impl_._has_bits_[0], 0x00000001U);
+  // @@protoc_insertion_point(field_add:signaling.ChannelListResponse.channels)
+  return _add;
+}
+inline const ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>& ChannelListResponse::channels() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_list:signaling.ChannelListResponse.channels)
+  return _internal_channels();
+}
+inline const ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>&
+ChannelListResponse::_internal_channels() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.channels_;
+}
+inline ::google::protobuf::RepeatedPtrField<::signaling::ChannelInfo>* PROTOBUF_NONNULL
+ChannelListResponse::_internal_mutable_channels() {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return &_impl_.channels_;
+}
+
+// -------------------------------------------------------------------
+
+// ClientStats
+
+// double elapsed_s = 1;
+inline void ClientStats::clear_elapsed_s() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.elapsed_s_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000002U);
+}
+inline double ClientStats::elapsed_s() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.elapsed_s)
+  return _internal_elapsed_s();
+}
+inline void ClientStats::set_elapsed_s(double value) {
+  _internal_set_elapsed_s(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000002U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.elapsed_s)
+}
+inline double ClientStats::_internal_elapsed_s() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.elapsed_s_;
+}
+inline void ClientStats::_internal_set_elapsed_s(double value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.elapsed_s_ = value;
+}
+
+// uint32 audio_sources = 2;
+inline void ClientStats::clear_audio_sources() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.audio_sources_ = 0u;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000080U);
+}
+inline ::uint32_t ClientStats::audio_sources() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.audio_sources)
+  return _internal_audio_sources();
+}
+inline void ClientStats::set_audio_sources(::uint32_t value) {
+  _internal_set_audio_sources(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000080U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.audio_sources)
+}
+inline ::uint32_t ClientStats::_internal_audio_sources() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.audio_sources_;
+}
+inline void ClientStats::_internal_set_audio_sources(::uint32_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.audio_sources_ = value;
+}
+
+// uint64 packets_observed = 3;
+inline void ClientStats::clear_packets_observed() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_observed_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline ::uint64_t ClientStats::packets_observed() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.packets_observed)
+  return _internal_packets_observed();
+}
+inline void ClientStats::set_packets_observed(::uint64_t value) {
+  _internal_set_packets_observed(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.packets_observed)
+}
+inline ::uint64_t ClientStats::_internal_packets_observed() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.packets_observed_;
+}
+inline void ClientStats::_internal_set_packets_observed(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_observed_ = value;
+}
+
+// uint64 packets_lost = 4;
+inline void ClientStats::clear_packets_lost() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_lost_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline ::uint64_t ClientStats::packets_lost() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.packets_lost)
+  return _internal_packets_lost();
+}
+inline void ClientStats::set_packets_lost(::uint64_t value) {
+  _internal_set_packets_lost(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.packets_lost)
+}
+inline ::uint64_t ClientStats::_internal_packets_lost() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.packets_lost_;
+}
+inline void ClientStats::_internal_set_packets_lost(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_lost_ = value;
+}
+
+// uint64 packets_ooo = 5;
+inline void ClientStats::clear_packets_ooo() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_ooo_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline ::uint64_t ClientStats::packets_ooo() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.packets_ooo)
+  return _internal_packets_ooo();
+}
+inline void ClientStats::set_packets_ooo(::uint64_t value) {
+  _internal_set_packets_ooo(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.packets_ooo)
+}
+inline ::uint64_t ClientStats::_internal_packets_ooo() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.packets_ooo_;
+}
+inline void ClientStats::_internal_set_packets_ooo(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_ooo_ = value;
+}
+
+// double jitter_ms = 6;
+inline void ClientStats::clear_jitter_ms() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jitter_ms_ = 0;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000020U);
+}
+inline double ClientStats::jitter_ms() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.jitter_ms)
+  return _internal_jitter_ms();
+}
+inline void ClientStats::set_jitter_ms(double value) {
+  _internal_set_jitter_ms(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000020U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.jitter_ms)
+}
+inline double ClientStats::_internal_jitter_ms() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.jitter_ms_;
+}
+inline void ClientStats::_internal_set_jitter_ms(double value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jitter_ms_ = value;
+}
+
+// uint64 jb_buffered = 7;
+inline void ClientStats::clear_jb_buffered() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jb_buffered_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000040U);
+}
+inline ::uint64_t ClientStats::jb_buffered() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.jb_buffered)
+  return _internal_jb_buffered();
+}
+inline void ClientStats::set_jb_buffered(::uint64_t value) {
+  _internal_set_jb_buffered(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000040U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.jb_buffered)
+}
+inline ::uint64_t ClientStats::_internal_jb_buffered() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.jb_buffered_;
+}
+inline void ClientStats::_internal_set_jb_buffered(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jb_buffered_ = value;
+}
+
+// uint64 jb_threshold = 8;
+inline void ClientStats::clear_jb_threshold() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jb_threshold_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000200U);
+}
+inline ::uint64_t ClientStats::jb_threshold() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.jb_threshold)
+  return _internal_jb_threshold();
+}
+inline void ClientStats::set_jb_threshold(::uint64_t value) {
+  _internal_set_jb_threshold(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000200U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.jb_threshold)
+}
+inline ::uint64_t ClientStats::_internal_jb_threshold() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.jb_threshold_;
+}
+inline void ClientStats::_internal_set_jb_threshold(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jb_threshold_ = value;
+}
+
+// uint64 jb_adaptations = 9;
+inline void ClientStats::clear_jb_adaptations() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jb_adaptations_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000400U);
+}
+inline ::uint64_t ClientStats::jb_adaptations() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.jb_adaptations)
+  return _internal_jb_adaptations();
+}
+inline void ClientStats::set_jb_adaptations(::uint64_t value) {
+  _internal_set_jb_adaptations(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000400U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.jb_adaptations)
+}
+inline ::uint64_t ClientStats::_internal_jb_adaptations() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.jb_adaptations_;
+}
+inline void ClientStats::_internal_set_jb_adaptations(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.jb_adaptations_ = value;
+}
+
+// uint64 drop_overflow = 10;
+inline void ClientStats::clear_drop_overflow() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.drop_overflow_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000800U);
+}
+inline ::uint64_t ClientStats::drop_overflow() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.drop_overflow)
+  return _internal_drop_overflow();
+}
+inline void ClientStats::set_drop_overflow(::uint64_t value) {
+  _internal_set_drop_overflow(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000800U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.drop_overflow)
+}
+inline ::uint64_t ClientStats::_internal_drop_overflow() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.drop_overflow_;
+}
+inline void ClientStats::_internal_set_drop_overflow(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.drop_overflow_ = value;
+}
+
+// uint64 packets_sent = 11;
+inline void ClientStats::clear_packets_sent() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_sent_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00001000U);
+}
+inline ::uint64_t ClientStats::packets_sent() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.packets_sent)
+  return _internal_packets_sent();
+}
+inline void ClientStats::set_packets_sent(::uint64_t value) {
+  _internal_set_packets_sent(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00001000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.packets_sent)
+}
+inline ::uint64_t ClientStats::_internal_packets_sent() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.packets_sent_;
+}
+inline void ClientStats::_internal_set_packets_sent(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.packets_sent_ = value;
+}
+
+// uint64 plc_concealments = 12;
+inline void ClientStats::clear_plc_concealments() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.plc_concealments_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00002000U);
+}
+inline ::uint64_t ClientStats::plc_concealments() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.plc_concealments)
+  return _internal_plc_concealments();
+}
+inline void ClientStats::set_plc_concealments(::uint64_t value) {
+  _internal_set_plc_concealments(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00002000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.plc_concealments)
+}
+inline ::uint64_t ClientStats::_internal_plc_concealments() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.plc_concealments_;
+}
+inline void ClientStats::_internal_set_plc_concealments(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.plc_concealments_ = value;
+}
+
+// uint32 peers = 13;
+inline void ClientStats::clear_peers() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.peers_ = 0u;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000100U);
+}
+inline ::uint32_t ClientStats::peers() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.peers)
+  return _internal_peers();
+}
+inline void ClientStats::set_peers(::uint32_t value) {
+  _internal_set_peers(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00000100U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.peers)
+}
+inline ::uint32_t ClientStats::_internal_peers() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.peers_;
+}
+inline void ClientStats::_internal_set_peers(::uint32_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.peers_ = value;
+}
+
+// string rtt_summary = 14;
+inline void ClientStats::clear_rtt_summary() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.rtt_summary_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000001U);
+}
+inline const ::std::string& ClientStats::rtt_summary() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.rtt_summary)
+  return _internal_rtt_summary();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void ClientStats::set_rtt_summary(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  _impl_.rtt_summary_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.rtt_summary)
+}
+inline ::std::string* PROTOBUF_NONNULL ClientStats::mutable_rtt_summary()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  ::std::string* _s = _internal_mutable_rtt_summary();
+  // @@protoc_insertion_point(field_mutable:signaling.ClientStats.rtt_summary)
+  return _s;
+}
+inline const ::std::string& ClientStats::_internal_rtt_summary() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.rtt_summary_.Get();
+}
+inline void ClientStats::_internal_set_rtt_summary(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.rtt_summary_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL ClientStats::_internal_mutable_rtt_summary() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.rtt_summary_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE ClientStats::release_rtt_summary() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.ClientStats.rtt_summary)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000001U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  auto* released = _impl_.rtt_summary_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.rtt_summary_.Set("", GetArena());
+  }
+  return released;
+}
+inline void ClientStats::set_allocated_rtt_summary(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000001U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000001U);
+  }
+  _impl_.rtt_summary_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.rtt_summary_.IsDefault()) {
+    _impl_.rtt_summary_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.ClientStats.rtt_summary)
+}
+
+// uint32 video_sources = 15;
+inline void ClientStats::clear_video_sources() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.video_sources_ = 0u;
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00100000U);
+}
+inline ::uint32_t ClientStats::video_sources() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.video_sources)
+  return _internal_video_sources();
+}
+inline void ClientStats::set_video_sources(::uint32_t value) {
+  _internal_set_video_sources(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00100000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.video_sources)
+}
+inline ::uint32_t ClientStats::_internal_video_sources() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.video_sources_;
+}
+inline void ClientStats::_internal_set_video_sources(::uint32_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.video_sources_ = value;
+}
+
+// uint64 vid_packets_lost = 16;
+inline void ClientStats::clear_vid_packets_lost() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_packets_lost_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00004000U);
+}
+inline ::uint64_t ClientStats::vid_packets_lost() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.vid_packets_lost)
+  return _internal_vid_packets_lost();
+}
+inline void ClientStats::set_vid_packets_lost(::uint64_t value) {
+  _internal_set_vid_packets_lost(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00004000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.vid_packets_lost)
+}
+inline ::uint64_t ClientStats::_internal_vid_packets_lost() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.vid_packets_lost_;
+}
+inline void ClientStats::_internal_set_vid_packets_lost(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_packets_lost_ = value;
+}
+
+// uint64 vid_frames_decoded = 17;
+inline void ClientStats::clear_vid_frames_decoded() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_decoded_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00008000U);
+}
+inline ::uint64_t ClientStats::vid_frames_decoded() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.vid_frames_decoded)
+  return _internal_vid_frames_decoded();
+}
+inline void ClientStats::set_vid_frames_decoded(::uint64_t value) {
+  _internal_set_vid_frames_decoded(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00008000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.vid_frames_decoded)
+}
+inline ::uint64_t ClientStats::_internal_vid_frames_decoded() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.vid_frames_decoded_;
+}
+inline void ClientStats::_internal_set_vid_frames_decoded(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_decoded_ = value;
+}
+
+// uint64 vid_frames_concealed = 18;
+inline void ClientStats::clear_vid_frames_concealed() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_concealed_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00010000U);
+}
+inline ::uint64_t ClientStats::vid_frames_concealed() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.vid_frames_concealed)
+  return _internal_vid_frames_concealed();
+}
+inline void ClientStats::set_vid_frames_concealed(::uint64_t value) {
+  _internal_set_vid_frames_concealed(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00010000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.vid_frames_concealed)
+}
+inline ::uint64_t ClientStats::_internal_vid_frames_concealed() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.vid_frames_concealed_;
+}
+inline void ClientStats::_internal_set_vid_frames_concealed(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_concealed_ = value;
+}
+
+// uint64 vid_frames_rendered = 19;
+inline void ClientStats::clear_vid_frames_rendered() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_rendered_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00020000U);
+}
+inline ::uint64_t ClientStats::vid_frames_rendered() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.vid_frames_rendered)
+  return _internal_vid_frames_rendered();
+}
+inline void ClientStats::set_vid_frames_rendered(::uint64_t value) {
+  _internal_set_vid_frames_rendered(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00020000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.vid_frames_rendered)
+}
+inline ::uint64_t ClientStats::_internal_vid_frames_rendered() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.vid_frames_rendered_;
+}
+inline void ClientStats::_internal_set_vid_frames_rendered(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_rendered_ = value;
+}
+
+// uint64 vid_frames_sent = 20;
+inline void ClientStats::clear_vid_frames_sent() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_sent_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00040000U);
+}
+inline ::uint64_t ClientStats::vid_frames_sent() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.vid_frames_sent)
+  return _internal_vid_frames_sent();
+}
+inline void ClientStats::set_vid_frames_sent(::uint64_t value) {
+  _internal_set_vid_frames_sent(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00040000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.vid_frames_sent)
+}
+inline ::uint64_t ClientStats::_internal_vid_frames_sent() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.vid_frames_sent_;
+}
+inline void ClientStats::_internal_set_vid_frames_sent(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.vid_frames_sent_ = value;
+}
+
+// uint64 scr_frames_sent = 21;
+inline void ClientStats::clear_scr_frames_sent() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.scr_frames_sent_ = ::uint64_t{0u};
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00080000U);
+}
+inline ::uint64_t ClientStats::scr_frames_sent() const {
+  // @@protoc_insertion_point(field_get:signaling.ClientStats.scr_frames_sent)
+  return _internal_scr_frames_sent();
+}
+inline void ClientStats::set_scr_frames_sent(::uint64_t value) {
+  _internal_set_scr_frames_sent(value);
+  SetHasBit(_impl_._has_bits_[0], 0x00080000U);
+  // @@protoc_insertion_point(field_set:signaling.ClientStats.scr_frames_sent)
+}
+inline ::uint64_t ClientStats::_internal_scr_frames_sent() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.scr_frames_sent_;
+}
+inline void ClientStats::_internal_set_scr_frames_sent(::uint64_t value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.scr_frames_sent_ = value;
 }
 
 // -------------------------------------------------------------------

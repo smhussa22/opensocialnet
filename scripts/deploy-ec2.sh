@@ -85,6 +85,10 @@ echo "waiting 25s for scylla + kafka to settle..."
 echo
 echo "=== 6/6  apply schema + restart signaling_server so it picks it up ==="
 "${SSH[@]}" 'docker exec -i $(docker ps --filter name=scylla -q | head -1) cqlsh < ~/schema.cql 2>&1 | tail -3 || true'
+# CREATE TABLE IF NOT EXISTS never adds new columns to a table that already
+# exists from an older deploy, so column drift is applied as individual
+# ALTERs — each errors harmlessly once the column exists.
+"${SSH[@]}" 'docker exec -i $(docker ps --filter name=scylla -q | head -1) cqlsh -e "ALTER TABLE opensocialnet.users ADD email text" >/dev/null 2>&1 || true'
 "${SSH[@]}" "$COMPOSE_ENV docker compose -f ~/compose.prod.yml restart signaling_server"
 sleep 6
 "${SSH[@]}" "$COMPOSE_ENV bash -c 'docker compose -f ~/compose.prod.yml ps && echo === signaling_server logs === && docker compose -f ~/compose.prod.yml logs signaling_server --tail 20 && echo === relay logs === && docker compose -f ~/compose.prod.yml logs relay --tail 10'"

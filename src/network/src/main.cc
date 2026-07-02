@@ -1463,6 +1463,40 @@ int main()
 
                 }
 
+                // Ship the same numbers to the GUI parent as a ClientStats
+                // envelope so it can render a live overlay without parsing
+                // the log files. send_envelope is mutex-protected, so this
+                // is safe alongside the signaling handler thread.
+                if (ipc_fd >= 0)
+                {
+
+                    ::signaling::Envelope stats_env { };
+                    auto* cs { stats_env.mutable_client_stats() };
+                    cs->set_elapsed_s(elapsed_s);
+                    cs->set_audio_sources(static_cast<std::uint32_t>(agg.sources));
+                    cs->set_packets_observed(agg.packets_observed);
+                    cs->set_packets_lost(agg.packets_lost);
+                    cs->set_packets_ooo(agg.packets_out_of_order);
+                    cs->set_jitter_ms(agg.max_jitter_ms);
+                    cs->set_jb_buffered(agg.buffered_packets);
+                    cs->set_jb_threshold(agg.max_playout_threshold);
+                    cs->set_jb_adaptations(agg.adaptations);
+                    cs->set_drop_overflow(packets_dropped_overflow.load(std::memory_order_relaxed));
+                    cs->set_packets_sent(static_cast<std::uint64_t>(packets_sent));
+                    cs->set_plc_concealments(agg.concealments);
+                    cs->set_peers(static_cast<std::uint32_t>(live_peers));
+                    cs->set_rtt_summary(rtt_fragment);
+                    cs->set_video_sources(static_cast<std::uint32_t>(vagg.sources));
+                    cs->set_vid_packets_lost(vagg.packets_lost);
+                    cs->set_vid_frames_decoded(vagg.frames_decoded);
+                    cs->set_vid_frames_concealed(vagg.frames_concealed);
+                    cs->set_vid_frames_rendered(vagg.frames_rendered);
+                    cs->set_vid_frames_sent(video_frames_sent);
+                    cs->set_scr_frames_sent(screen_frames_sent);
+                    gui_ipc.send_envelope(stats_env);
+
+                }
+
                 ticks_since_stats = 0;
 
             }

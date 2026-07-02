@@ -64,6 +64,7 @@ namespace OpenSocialNet::Signaling
         m_prep_lookup_user_by_email = prepare("SELECT user_id, username FROM users_by_email WHERE email = ?");
 
         m_prep_ensure_channel     = prepare("INSERT INTO channels (channel_id, name, kind) VALUES (?, ?, ?)");
+        m_prep_list_channels      = prepare("SELECT channel_id, name, kind FROM channels");
         m_prep_add_channel_member = prepare("INSERT INTO channel_members (channel_id, user_id, joined_at) VALUES (?, ?, toTimestamp(now()))");
         m_prep_add_user_channel   = prepare("INSERT INTO user_channels (user_id, channel_id, joined_at) VALUES (?, ?, toTimestamp(now()))");
 
@@ -365,6 +366,42 @@ namespace OpenSocialNet::Signaling
         const bool ok_a { write(user_a, user_b, dm_channel_id) };
         const bool ok_b { write(user_b, user_a, dm_channel_id) };
         return ok_a and ok_b;
+
+    }
+
+
+    std::vector<ScyllaClient::ChannelRow> ScyllaClient::list_channels()
+    {
+
+        std::vector<ChannelRow> out { };
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_list_channels.get()) };
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK) return out;
+
+        CassResultPtr result { ::cass_future_get_result(fut.get()) };
+        CassIteratorPtr it { ::cass_iterator_from_result(result.get()) };
+        while (::cass_iterator_next(it.get()))
+        {
+
+            const auto* row { ::cass_iterator_get_row(it.get()) };
+
+            const char* s { nullptr };
+            std::size_t len { 0 };
+            ::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len);
+            std::string channel_id { s, len };
+
+            ::cass_value_get_string(::cass_row_get_column(row, 1), &s, &len);
+            std::string name { s, len };
+
+            ::cass_value_get_string(::cass_row_get_column(row, 2), &s, &len);
+            std::string kind { s, len };
+
+            out.push_back(ChannelRow { std::move(channel_id), std::move(name), std::move(kind) });
+
+        }
+        return out;
 
     }
 
