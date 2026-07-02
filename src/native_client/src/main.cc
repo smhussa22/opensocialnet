@@ -831,7 +831,11 @@ int main()
         setenv("OSN_LOCAL_PORT",     local_port.c_str(),     1);
         setenv("OSN_VIDEO",          "1",                    1);
         setenv("OSN_SCREEN",         "1",                    1);
-        setenv("OSN_ICE",            "1",                    1);
+        // Relay path by default: the startup ICE dance would block the
+        // capture loop (and stats ticks) up to 60s waiting for peer SDP
+        // in the initial room, but GUI voice rooms are joined dynamically
+        // later anyway. OSN_ICE=1 in the parent env still opts in.
+        setenv("OSN_ICE",            "0",                    0);
         setenv("OSN_IPC_FD",         std::to_string(child_ipc_fd).c_str(), 1);
         // GUI parent renders video tiles; child runs headless decode+IPC.
         setenv("OSN_VIDEO_RENDER",   "0",                    1);
