@@ -148,7 +148,10 @@ namespace OpenSocialNet::Ipc
             if (!env.SerializeToString(&buf)) return false;
             if (buf.size() > max_envelope_bytes) return false;
 
-            const std::uint32_t len_n { ::htonl(static_cast<std::uint32_t>(buf.size())) };
+            // Note: htonl/ntohl are function-like macros on macOS (<sys/_endian.h>),
+            // so they must be called unqualified — a `::` prefix expands to invalid
+            // syntax. Unqualified lookup resolves to the glibc function on Linux.
+            const std::uint32_t len_n { htonl(static_cast<std::uint32_t>(buf.size())) };
 
             std::scoped_lock<std::mutex> lock { m_write_mu };
             if (!write_full(m_fd, &len_n, sizeof(len_n))) return false;
@@ -203,7 +206,7 @@ namespace OpenSocialNet::Ipc
                 std::uint32_t len_n { 0 };
                 if (!read_full(m_fd, &len_n, sizeof(len_n))) break;
 
-                const std::uint32_t len { ::ntohl(len_n) };
+                const std::uint32_t len { ntohl(len_n) };
                 if (len == 0 or len > max_envelope_bytes) break;
 
                 std::vector<std::uint8_t> payload(len);

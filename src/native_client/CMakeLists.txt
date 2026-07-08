@@ -18,6 +18,13 @@ include(FetchContent)
 # binaries cleanly decoupled).
 find_package(Protobuf REQUIRED)
 
+# Recent Protobuf is built on Abseil, and the generated .pb.cc pulls Abseil's
+# CHECK/LOG machinery inline (absl::log_internal::*). The FindProtobuf module's
+# protobuf::libprotobuf target under-declares those deps on some platforms
+# (Homebrew's arm64 build), so link the public absl::log / absl::check targets
+# explicitly — they transitively provide the log_internal symbols.
+find_package(absl CONFIG REQUIRED)
+
 set(SIGNALING_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../signaling_server/proto/signaling.proto)
 set(NATIVE_PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto_gen)
 file(MAKE_DIRECTORY ${NATIVE_PROTO_GEN_DIR}/proto)
@@ -37,6 +44,24 @@ add_custom_command(
 # OpenSSL: PKCE verifier hashing (SHA256) + httplib HTTPS for the token
 # exchange. cpp-httplib pulls in the same dep transitively when its
 # OPENSSL_SUPPORT define is on.
+#
+# On macOS, Homebrew's openssl@3 is keg-only, so it's off CMake's default
+# search path. Point OPENSSL_ROOT_DIR at the brew prefix so FindOpenSSL
+# resolves the real Cellar path fresh each configure — without this, a
+# cached path can go stale across `brew upgrade openssl@3` (the versioned
+# Cellar dir moves), leaving OPENSSL_FOUND true but the OpenSSL::SSL /
+# OpenSSL::Crypto imported targets uncreated because the .dylib no longer
+# EXISTS at the cached location.
+if(APPLE AND NOT DEFINED OPENSSL_ROOT_DIR)
+    find_program(BREW_EXECUTABLE brew)
+    if(BREW_EXECUTABLE)
+        execute_process(
+            COMMAND ${BREW_EXECUTABLE} --prefix openssl@3
+            OUTPUT_VARIABLE OPENSSL_ROOT_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    endif()
+endif()
 find_package(OpenSSL REQUIRED)
 FetchContent_Declare(
     cpp-httplib
@@ -105,7 +130,14 @@ target_link_libraries(native_client PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
     httplib::httplib
-    ${Protobuf_LIBRARIES}
+    # Link the imported target rather than ${Protobuf_LIBRARIES}: recent
+    # Protobuf (Homebrew's) is built on Abseil, and only the target carries
+    # the transitive absl deps (log/check, etc.) through its interface. The
+    # bare variable drops them, yielding undefined absl::log_internal symbols
+    # at link time.
+    protobuf::libprotobuf
+    absl::log
+    absl::check
 )
 
 # cpp-httplib's HTTPS code only compiles when this is defined — gated as

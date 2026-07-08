@@ -58,6 +58,21 @@ namespace
         return val ? std::string { val } : default_val;
     }
 
+    // On a HIGH_PIXEL_DENSITY (Retina) window the backbuffer is larger than the
+    // logical window by the display scale, but the ImGui SDL_Renderer backend
+    // emits geometry in logical coords while scaling clip rects by
+    // io.DisplayFramebufferScale. Unless we set a matching render scale, the two
+    // live in different coordinate spaces — widgets draw at 1x but are scissored
+    // to a 2x rect and get clipped away, leaving only stray slivers on screen.
+    // Sync the renderer scale to the framebuffer scale each frame (also renders
+    // crisply at native resolution). Must run after ImGui_ImplSDL3_NewFrame,
+    // which refreshes DisplayFramebufferScale, and before RenderDrawData.
+    void sync_render_scale(SDL_Renderer* renderer)
+    {
+        const ImVec2 s { ImGui::GetIO().DisplayFramebufferScale };
+        SDL_SetRenderScale(renderer, s.x, s.y);
+    }
+
     // Discord-flavoured dark theme: near-black window, slightly lighter
     // panels, blurple accent. Called once after CreateContext; the login
     // screen and main UI both inherit it.
@@ -345,6 +360,7 @@ namespace
             ImGui::End();
 
             ImGui::Render();
+            sync_render_scale(renderer);
             SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, 255);
             SDL_RenderClear(renderer);
             ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
@@ -1617,6 +1633,7 @@ int main()
 
         ImGui::Render();
 
+        sync_render_scale(renderer);
         SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, 255);
         SDL_RenderClear(renderer);
         ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
