@@ -22,8 +22,14 @@ find_package(Protobuf REQUIRED)
 # CHECK/LOG machinery inline (absl::log_internal::*). The FindProtobuf module's
 # protobuf::libprotobuf target under-declares those deps on some platforms
 # (Homebrew's arm64 build), so link the public absl::log / absl::check targets
-# explicitly — they transitively provide the log_internal symbols.
-find_package(absl CONFIG REQUIRED)
+# explicitly — they transitively provide the log_internal symbols. QUIET +
+# target check: Ubuntu's protobuf predates the Abseil rewrite and ships no
+# absl CMake config at all (and needs none).
+find_package(absl CONFIG QUIET)
+set(PROTOBUF_ABSL_LIBS "")
+if(TARGET absl::log AND TARGET absl::check)
+    list(APPEND PROTOBUF_ABSL_LIBS absl::log absl::check)
+endif()
 
 set(SIGNALING_PROTO_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../signaling_server/proto/signaling.proto)
 set(NATIVE_PROTO_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto_gen)
@@ -136,8 +142,7 @@ target_link_libraries(native_client PRIVATE
     # bare variable drops them, yielding undefined absl::log_internal symbols
     # at link time.
     protobuf::libprotobuf
-    absl::log
-    absl::check
+    ${PROTOBUF_ABSL_LIBS}
 )
 
 # cpp-httplib's HTTPS code only compiles when this is defined — gated as

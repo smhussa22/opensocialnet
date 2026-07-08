@@ -2,6 +2,7 @@
 #include "ScyllaClient.hh"
 
 // c sys headers
+#include <cctype>
 #include <cstdlib>
 
 // cpp stdlib headers
@@ -33,6 +34,20 @@ namespace OpenSocialNet::Signaling
             ::cass_future_error_message(f, &msg, &msg_len);
             std::cerr << what << " failed: " << std::string_view { msg, msg_len } << '\n';
             std::exit(1);
+
+        }
+
+        // Emails are the partition key of users_by_email — normalize case on
+        // both write and read so "Foo@Gmail.com" typed into the search box
+        // still hits the row Google reported as "foo@gmail.com".
+        std::string lower_email(const std::string& email)
+        {
+
+            std::string out { email };
+            while (!out.empty() and (out.front() == ' ' or out.front() == '\t')) out.erase(out.begin());
+            while (!out.empty() and (out.back() == ' ' or out.back() == '\t')) out.pop_back();
+            for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            return out;
 
         }
 
@@ -174,8 +189,9 @@ namespace OpenSocialNet::Signaling
         if (!email.empty())
         {
 
+            const std::string email_key { lower_email(email) };
             CassStatementPtr e_stmt { ::cass_prepared_bind(m_prep_upsert_user_email.get()) };
-            ::cass_statement_bind_string(e_stmt.get(), 0, email.c_str());
+            ::cass_statement_bind_string(e_stmt.get(), 0, email_key.c_str());
             ::cass_statement_bind_string(e_stmt.get(), 1, user_id.c_str());
             ::cass_statement_bind_string(e_stmt.get(), 2, username.c_str());
             CassFuturePtr e_fut { ::cass_session_execute(m_session.get(), e_stmt.get()) };
@@ -200,8 +216,9 @@ namespace OpenSocialNet::Signaling
         UserByEmail out { };
         if (email.empty()) return out;
 
+        const std::string email_key { lower_email(email) };
         CassStatementPtr stmt { ::cass_prepared_bind(m_prep_lookup_user_by_email.get()) };
-        ::cass_statement_bind_string(stmt.get(), 0, email.c_str());
+        ::cass_statement_bind_string(stmt.get(), 0, email_key.c_str());
         CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
         ::cass_future_wait(fut.get());
         if (::cass_future_error_code(fut.get()) != CASS_OK) return out;

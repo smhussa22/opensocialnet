@@ -492,6 +492,7 @@ namespace
         std::unordered_map<std::string, std::deque<ChatLine>> chat_history  { };
         LookupResult                                          last_lookup   { };
         StatsSnapshot                                         stats         { }; // latest network-child stats tick
+        bool                                                  gateway_ready { false }; // true once the gateway's Ready envelope arrives via IPC
 
         // UI signal flags — toggled by the reader thread, consumed by the
         // UI thread when it next renders. Cheap booleans guard whether
@@ -538,6 +539,7 @@ namespace
             {
 
                 std::scoped_lock<std::mutex> lock { state.mu };
+                state.gateway_ready = true;
                 state.channels.clear();
                 for (const auto& c : env.ready().channel_ids()) state.channels.push_back(c);
                 break;
@@ -764,6 +766,28 @@ int main()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     apply_theme();
+
+    // ---- font ----
+    // Noto Sans (OFL) is the closest free match to Discord's gg sans.
+    // Rasterize at display-scale-multiplied size and shrink back via
+    // FontGlobalScale so glyphs stay crisp on HiDPI/Retina where the
+    // render scale is synced to the framebuffer scale each frame.
+    {
+
+        const float display_scale { SDL_GetWindowDisplayScale(window) };
+        const float scale { display_scale > 0.0f ? display_scale : 1.0f };
+        const char* font_path { "src/native_client/assets/fonts/NotoSans-Regular.ttf" };
+        if (std::ifstream { font_path, std::ios::binary })
+        {
+
+            io.Fonts->AddFontFromFileTTF(font_path, 16.0f * scale);
+            io.FontGlobalScale = 1.0f / scale;
+
+        }
+        else std::printf("native_client: %s not found (run from the repo root) — using ImGui default font\n", font_path);
+
+    }
+
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
@@ -1037,6 +1061,7 @@ int main()
 
 
     bool running { true };
+    bool network_child_alive { true };
     while (running)
     {
 
@@ -1047,6 +1072,18 @@ int main()
             ImGui_ImplSDL3_ProcessEvent(&event);
             if (event.type == SDL_EVENT_QUIT) running = false;
             if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED and event.window.windowID == SDL_GetWindowID(window)) running = false;
+
+        }
+
+        // A dead network child means no gateway, no voice, no video — the
+        // failure mode is otherwise silent (exec failure prints only to the
+        // launching terminal), so poll and surface it in the sidebar.
+        if (network_child_alive and network_pid > 0 and waitpid(network_pid, nullptr, WNOHANG) == network_pid)
+        {
+
+            network_child_alive = false;
+            network_pid = -1;
+            std::printf("native_client: network child exited — gateway offline\n");
 
         }
 
@@ -1076,6 +1113,23 @@ int main()
 
             ImGui::TextDisabled("Signed in as");
             ImGui::TextWrapped("%s", state.self_display.c_str());
+
+            // Gateway status: green once Ready arrives, yellow while the
+            // child is still handshaking, red if the child died.
+            {
+
+                bool ready { };
+                {
+
+                    std::scoped_lock<std::mutex> lock { state.mu };
+                    ready = state.gateway_ready;
+
+                }
+                if (!network_child_alive) ImGui::TextColored(ImVec4 { 0.95f, 0.35f, 0.35f, 1.0f }, "* Offline — network process died");
+                else if (ready) ImGui::TextColored(ImVec4 { 0.35f, 0.85f, 0.45f, 1.0f }, "* Connected");
+                else ImGui::TextColored(ImVec4 { 0.95f, 0.75f, 0.30f, 1.0f }, "* Connecting to gateway...");
+
+            }
             ImGui::Separator();
 
             // Friend requests inbox button. Pending count shown inline.
@@ -1356,6 +1410,19 @@ int main()
         {
 
             ImGui::TextDisabled("Look up a friend by their Google account email.");
+
+            // A search with no gateway session would just hang on "(no
+            // result yet)" forever — say why instead.
+            bool gateway_up { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                gateway_up = state.gateway_ready;
+
+            }
+            if (!network_child_alive) ImGui::TextColored(ImVec4 { 0.95f, 0.35f, 0.35f, 1.0f }, "Offline: the network process died — search is unavailable.");
+            else if (!gateway_up) ImGui::TextColored(ImVec4 { 0.95f, 0.75f, 0.30f, 1.0f }, "Still connecting to the gateway — search will work once connected.");
+
             ImGui::SetNextItemWidth(360);
             const bool enter_pressed { ImGui::InputText("##friend_email", add_friend_input, sizeof add_friend_input, ImGuiInputTextFlags_EnterReturnsTrue) };
 

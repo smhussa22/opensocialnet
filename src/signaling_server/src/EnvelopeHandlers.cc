@@ -340,6 +340,11 @@ namespace OpenSocialNet::Signaling
 
             sess->user_id = hello.user_id();
 
+            // Dev users get a users row too (username = user_id, no email)
+            // so username_for() resolves for friend requests; they are
+            // deliberately absent from the email index.
+            state.scylla->upsert_user(sess->user_id, sess->user_id, "");
+
         }
 
         sess->session_id = make_session_id();
