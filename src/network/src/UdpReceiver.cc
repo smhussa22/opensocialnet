@@ -5,7 +5,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-#include <endian.h>
 #include <cstdint>
 
 // cpp stdlib headers
@@ -13,6 +12,7 @@
 // 3rd party headers
 
 // project headers
+#include "Endian.hh"       // portable <endian.h> shim
 
 namespace OpenSocialNet::Network
 {

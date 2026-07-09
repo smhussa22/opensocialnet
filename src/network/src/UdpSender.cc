@@ -3,7 +3,6 @@
 
 // c sys headers
 #include <netinet/in.h>
-#include <endian.h>
 #include <cstdint>
 
 // cpp stdlib headers
@@ -13,6 +12,7 @@
 // 3rd party headers
 
 // project headers
+#include "Endian.hh"       // portable <endian.h> shim
 #include "UdpSocket.hh"
 #include "Packet.hh"
 #include "NetworkConstants.hh"
@@ -42,8 +42,8 @@ namespace OpenSocialNet::Network
 
             sockaddr_in local { };
             local.sin_family      = AF_INET;
-            local.sin_port        = ::htons(local_port);
-            local.sin_addr.s_addr = ::htonl(INADDR_ANY);
+            local.sin_port        = htons(local_port);
+            local.sin_addr.s_addr = htonl(INADDR_ANY);
             if (::bind(socket.get_socket_fd(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) < 0)
             {
 
@@ -55,7 +55,7 @@ namespace OpenSocialNet::Network
         }
 
         receiver_address.sin_family = AF_INET;
-        receiver_address.sin_port   = ::htons(port);
+        receiver_address.sin_port   = htons(port);
         if (::inet_pton(AF_INET, host.data(), &receiver_address.sin_addr) <= 0)
         {
 

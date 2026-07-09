@@ -5,8 +5,10 @@
 
 // c sys headers
 #include <netinet/in.h>
-#include <endian.h>
 #include <cstdint>
+
+// project headers (portable endian shim — replaces <endian.h>)
+#include "Endian.hh"
 
 // cpp stdlib headers
 #include <cstddef>

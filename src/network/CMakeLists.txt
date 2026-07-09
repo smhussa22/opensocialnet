@@ -33,6 +33,32 @@ endif()
 # drags in GLib; both come from the same pkg-config module.
 pkg_check_modules(NICE REQUIRED IMPORTED_TARGET nice)
 
+# Homebrew ships a macOS "system libffi" shim (.pc) whose include dir points at
+# $SDKROOT/usr/include/ffi — a path the CommandLineTools SDK doesn't actually
+# ship. It rides in transitively via glib -> libffi and lands in
+# PkgConfig::NICE's INTERFACE_INCLUDE_DIRECTORIES, and CMake hard-errors on an
+# imported target that references a non-existent include dir. libnice consumers
+# don't need ffi.h, so drop any include dir that doesn't exist on disk. No-op
+# everywhere the paths are real (e.g. Linux CI).
+function(osn_strip_missing_includes tgt)
+    if(NOT TARGET ${tgt})
+        return()
+    endif()
+    get_target_property(_dirs ${tgt} INTERFACE_INCLUDE_DIRECTORIES)
+    if(NOT _dirs)
+        return()
+    endif()
+    set(_kept "")
+    foreach(_d IN LISTS _dirs)
+        if(EXISTS "${_d}")
+            list(APPEND _kept "${_d}")
+        endif()
+    endforeach()
+    set_target_properties(${tgt} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_kept}")
+endfunction()
+
+osn_strip_missing_includes(PkgConfig::NICE)
+
 # Acoustic echo cancellation: SpeexEchoState + SpeexPreprocessState.
 pkg_check_modules(SPEEXDSP REQUIRED IMPORTED_TARGET speexdsp)
 
@@ -43,6 +69,19 @@ pkg_check_modules(SPEEXDSP REQUIRED IMPORTED_TARGET speexdsp)
 # to regenerate them here — the server's CMake owns regeneration.
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
+
+# Recent Protobuf is built on Abseil, and the generated .pb.cc pulls Abseil's
+# CHECK/LOG machinery inline (absl::log_internal::*). The FindProtobuf module's
+# protobuf::libprotobuf target under-declares those deps on some platforms
+# (Homebrew's arm64 build), so link the public absl::log / absl::check targets
+# explicitly — they transitively provide the log_internal symbols. QUIET +
+# target check: Ubuntu's protobuf predates the Abseil rewrite and ships no
+# absl CMake config at all (and needs none).
+find_package(absl CONFIG QUIET)
+set(PROTOBUF_ABSL_LIBS "")
+if(TARGET absl::log AND TARGET absl::check)
+    list(APPEND PROTOBUF_ABSL_LIBS absl::log absl::check)
+endif()
 
 # Regenerate signaling.pb.{cc,h} into our build tree against the protobuf
 # headers we're actually linking against. The checked-in copy in
@@ -111,7 +150,11 @@ target_link_libraries(network PRIVATE
     PkgConfig::FFMPEG
     PkgConfig::NICE
     PkgConfig::SPEEXDSP
-    ${Protobuf_LIBRARIES}
+    # Link the imported target rather than ${Protobuf_LIBRARIES} so the
+    # transitive Abseil deps come through (see the absl note above); the bare
+    # variable drops them, yielding undefined absl::log_internal symbols.
+    protobuf::libprotobuf
+    ${PROTOBUF_ABSL_LIBS}
     OpenSSL::Crypto
 )
 
