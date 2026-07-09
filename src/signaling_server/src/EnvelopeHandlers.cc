@@ -359,12 +359,6 @@ namespace OpenSocialNet::Signaling
 
         std::cerr << "[hello] user=" << sess->user_id << " session=" << sess->session_id << '\n';
 
-        // Auto-join the default `general` channel so a brand-new sign-in
-        // has somewhere to chat without an explicit signup ceremony. Both
-        // writes are idempotent — repeat sign-ins are cheap no-ops on the
-        // partition keys.
-        state.scylla->add_user_to_channel("general", sess->user_id);
-
         ::signaling::Envelope envelope { };
         auto* ready = envelope.mutable_ready();
         ready->set_session_id(sess->session_id);

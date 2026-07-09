@@ -1,6 +1,7 @@
 // related headers
 
 // c sys headers
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -486,7 +487,7 @@ namespace
 
         std::string self_user_id         { };
         std::string self_display         { };
-        std::string active_channel       { "general" };
+        std::string active_channel       { };
         std::string active_voice_channel { }; // which voice room we're in, empty = not in call
         std::vector<std::string>                              channels      { };
         std::vector<ChannelInfo>                              browse_channels { }; // last ChannelListResponse for the join modal
@@ -816,6 +817,18 @@ namespace
 }
 
 
+// Font Awesome 6 Solid — UTF-8 encoded codepoints used for call control icons.
+// Generated via: https://fontawesome.com/icons (solid free set)
+constexpr const char* FA_MIC          { "\xef\x84\xb0" }; // U+F130 fa-microphone
+constexpr const char* FA_MIC_SLASH    { "\xef\x84\xb1" }; // U+F131 fa-microphone-slash
+constexpr const char* FA_HEADPHONES   { "\xef\x80\xa5" }; // U+F025 fa-headphones (deafen off)
+constexpr const char* FA_VOLUME_XMRK  { "\xef\x9a\xa9" }; // U+F6A9 fa-volume-xmark (deafened)
+constexpr const char* FA_VIDEO        { "\xef\x80\xbd" }; // U+F03D fa-video
+constexpr const char* FA_VIDEO_SLASH  { "\xef\x93\xa2" }; // U+F4E2 fa-video-slash
+constexpr const char* FA_DESKTOP      { "\xef\x84\x88" }; // U+F108 fa-desktop (screenshare)
+constexpr const char* FA_PHONE_SLASH  { "\xef\x8f\x9d" }; // U+F3DD fa-phone-slash (hang up)
+
+
 int main()
 {
 
@@ -875,6 +888,20 @@ int main()
 
         }
         else std::printf("native_client: %s not found (run from the repo root) — using ImGui default font\n", font_path);
+
+        // Merge Font Awesome 6 Solid icons into the same atlas so FA_* constants render as icons.
+        const char* fa_path { "src/native_client/assets/fonts/fa-solid-900.ttf" };
+        if (std::ifstream { fa_path, std::ios::binary })
+        {
+
+            static const ImWchar fa_ranges[] { 0xE000, 0xF8FF, 0 };
+            ImFontConfig fa_cfg { };
+            fa_cfg.MergeMode        = true;
+            fa_cfg.PixelSnapH       = true;
+            fa_cfg.GlyphMinAdvanceX = 14.0f;
+            io.Fonts->AddFontFromFileTTF(fa_path, 16.0f * scale, &fa_cfg, fa_ranges);
+
+        }
 
     }
 
@@ -992,7 +1019,7 @@ int main()
         // capture loop (and stats ticks) up to 60s waiting for peer SDP
         // in the initial room, but GUI voice rooms are joined dynamically
         // later anyway. OSN_ICE=1 in the parent env still opts in.
-        setenv("OSN_ICE",            "0",                    0);
+        setenv("OSN_ICE",            "0",                    1); // always off from GUI; run network directly for ICE testing
         setenv("OSN_IPC_FD",         std::to_string(child_ipc_fd).c_str(), 1);
         // GUI parent renders video tiles; child runs headless decode+IPC.
         setenv("OSN_VIDEO_RENDER",   "0",                    1);
@@ -1137,6 +1164,7 @@ int main()
     bool audio_enabled       { false };
     bool video_enabled       { false };
     bool screenshare_enabled { false };
+    bool deafened            { false }; // true when user has silenced incoming audio
 
     char chat_draft[chat_input_capacity]      { };
     char add_friend_input[friend_input_capacity] { };
@@ -1535,10 +1563,7 @@ int main()
             ImGui::Text("%s", active_label.c_str());
             ImGui::Separator();
 
-            // In-call panel — media controls only exist while a call is
-            // live, so nothing can transmit outside one. While ringing,
-            // show the ring status instead; otherwise show any transient
-            // call status line ("X declined the call").
+            // Snapshot call state for this frame.
             std::string in_call_channel { };
             std::string in_call_peer_label { };
             std::string ringing_label { };
@@ -1552,70 +1577,198 @@ int main()
                 status_line = state.call_status_line;
 
             }
+
+            // ---- Discord-style call view (only while a live call exists) ----
             if (!in_call_channel.empty())
             {
 
-                ImGui::TextColored(ImVec4 { 0.35f, 0.85f, 0.45f, 1.0f }, "In call%s%s", in_call_peer_label.empty() ? "" : " with ", in_call_peer_label.c_str());
+                constexpr float tile_sz    { 96.0f };
+                constexpr float ctrl_bar_h { 56.0f };
 
-                const float btn_w { (ImGui::GetContentRegionAvail().x - 3 * ImGui::GetStyle().ItemSpacing.x) / 4.0f };
-                if (ImGui::Button(audio_enabled ? "Mute" : "Unmute", ImVec2 { btn_w, 30 }))
+                // ---- Participant + video tiles area -------------------------
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4 { 0.08f, 0.08f, 0.11f, 1.0f });
+                if (ImGui::BeginChild("##call_tiles",
+                    ImVec2 { 0, tile_sz + 32.0f }, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_HorizontalScrollbar))
                 {
 
-                    audio_enabled = !audio_enabled;
-                    if (network_pid > 0) kill(network_pid, SIGUSR1);
+                    const ImVec2 origin { ImGui::GetCursorScreenPos() };
+                    ImDrawList* dl      { ImGui::GetWindowDrawList() };
 
-                }
-                ImGui::SameLine();
-                if (ImGui::Button(video_enabled ? "Camera Off" : "Camera On", ImVec2 { btn_w, 30 }))
-                {
-
-                    // Turning ON prompts for which camera first; turning
-                    // OFF is immediate.
-                    if (video_enabled)
+                    // Draw an avatar circle tile at screen position (origin.x + x_off, origin.y + 4).
+                    auto draw_tile = [&](float x_off, const std::string& label, bool speaking, bool muted)
                     {
 
-                        video_enabled = false;
-                        if (network_pid > 0) kill(network_pid, SIGUSR2);
+                        const ImVec2 pos { origin.x + x_off, origin.y + 4.0f };
+                        const float cx   { pos.x + tile_sz * 0.5f };
+                        const float cy   { pos.y + tile_sz * 0.5f };
+                        const float r    { tile_sz * 0.44f };
 
-                    }
-                    else show_camera_modal = true;
+                        if (speaking)
+                            dl->AddCircle({ cx, cy }, r + 3.5f, IM_COL32(59, 165, 93, 220), 48, 3.0f);
 
-                }
-                ImGui::SameLine();
-                if (ImGui::Button(screenshare_enabled ? "Stop Share" : "Share Screen", ImVec2 { btn_w, 30 }))
-                {
+                        const std::size_t h { std::hash<std::string>{}(label) };
+                        const ImU32 bg { IM_COL32(
+                            static_cast<int>(50 + (h & 0x30)),
+                            static_cast<int>(80 + ((h >> 6) & 0x30)),
+                            static_cast<int>(140 + ((h >> 12) & 0x50)), 255) };
+                        dl->AddCircleFilled({ cx, cy }, r, bg);
 
-                    if (screenshare_enabled)
+                        const std::string init {
+                            label.size() >= 2
+                            ? std::string {
+                                static_cast<char>(std::toupper(static_cast<unsigned char>(label[0]))),
+                                static_cast<char>(std::toupper(static_cast<unsigned char>(label[1]))) }
+                            : (label.empty() ? std::string { "?" }
+                               : std::string { static_cast<char>(std::toupper(static_cast<unsigned char>(label[0]))) })
+                        };
+                        const ImVec2 tsz { ImGui::CalcTextSize(init.c_str()) };
+                        dl->AddText({ cx - tsz.x * 0.5f, cy - tsz.y * 0.5f },
+                                    IM_COL32(255, 255, 255, 230), init.c_str());
+
+                        if (muted)
+                            dl->AddCircleFilled({ cx + r * 0.65f, cy + r * 0.65f }, 7.0f,
+                                                IM_COL32(237, 66, 69, 255));
+
+                        const std::string disp { label.size() > 18 ? label.substr(0, 16) + ".." : label };
+                        const ImVec2 nsz { ImGui::CalcTextSize(disp.c_str()) };
+                        dl->AddText({ pos.x + (tile_sz - nsz.x) * 0.5f, pos.y + tile_sz + 4.0f },
+                                    IM_COL32(210, 210, 210, 255), disp.c_str());
+
+                        ImGui::Dummy({ tile_sz + 4.0f, tile_sz + 24.0f });
+
+                    };
+
+                    // Self tile
+                    const std::string self_label { state.self_display.empty() ? state.self_user_id : state.self_display };
+                    draw_tile(12.0f, self_label, audio_enabled, !audio_enabled);
+
+                    // Peer tile: video texture if their camera is on, else avatar circle
+                    if (!in_call_peer_label.empty())
                     {
 
-                        screenshare_enabled = false;
-                        if (network_pid > 0) kill(network_pid, SIGURG);
+                        ImGui::SameLine(0, 16.0f);
+                        const auto first_tex { video_textures.begin() };
+                        if (first_tex != video_textures.end() and first_tex->second.texture)
+                        {
+
+                            const float asp { first_tex->second.height > 0
+                                ? static_cast<float>(first_tex->second.width) / static_cast<float>(first_tex->second.height)
+                                : 1.333f };
+                            ImGui::Image((ImTextureID)(uintptr_t)first_tex->second.texture,
+                                         ImVec2 { tile_sz * asp, tile_sz });
+
+                        }
+                        else
+                        {
+
+                            const float x_off { 12.0f + tile_sz + 4.0f + 16.0f };
+                            draw_tile(x_off, in_call_peer_label, true, false);
+
+                        }
 
                     }
-                    else show_screen_modal = true;
 
-                }
-                ImGui::SameLine();
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.85f, 0.25f, 0.25f, 1.0f });
-                if (ImGui::Button("Hang Up", ImVec2 { btn_w, 30 }))
-                {
-
-                    std::string peer { };
+                    // Any additional video feeds (screenshare or second stream)
+                    bool is_first { true };
+                    for (auto& [pid, entry] : video_textures)
                     {
 
-                        std::scoped_lock<std::mutex> lock { state.mu };
-                        peer = state.call_peer_user_id;
+                        if (is_first) { is_first = false; continue; }
+                        if (!entry.texture) continue;
+                        ImGui::SameLine(0, 8.0f);
+                        const float asp { entry.height > 0
+                            ? static_cast<float>(entry.width) / static_cast<float>(entry.height)
+                            : 1.333f };
+                        ImGui::Image((ImTextureID)(uintptr_t)entry.texture,
+                                     ImVec2 { tile_sz * asp, tile_sz });
 
                     }
-                    ::signaling::Envelope env { };
-                    auto* end { env.mutable_call_end() };
-                    end->set_channel_id(in_call_channel);
-                    end->set_to_user_id(peer);
-                    ipc.send_envelope(env);
-                    stop_call_media();
 
                 }
+                ImGui::EndChild();
                 ImGui::PopStyleColor();
+
+                // ---- Control bar -------------------------------------------
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4 { 0.06f, 0.06f, 0.09f, 1.0f });
+                if (ImGui::BeginChild("##call_bar", ImVec2 { 0, ctrl_bar_h }, false, ImGuiWindowFlags_NoScrollbar))
+                {
+
+                    constexpr float btn_sz  { 40.0f };
+                    constexpr float n_btns  { 5.0f };
+                    const float     spacing { ImGui::GetStyle().ItemSpacing.x };
+                    const float     total_w { n_btns * btn_sz + (n_btns - 1.0f) * spacing };
+                    ImGui::SetCursorPos(ImVec2 {
+                        (ImGui::GetContentRegionAvail().x - total_w) * 0.5f,
+                        (ctrl_bar_h - btn_sz) * 0.5f
+                    });
+
+                    // Microphone
+                    if (!audio_enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.75f, 0.18f, 0.18f, 1.0f });
+                    if (ImGui::Button(!audio_enabled ? FA_MIC_SLASH : FA_MIC, ImVec2 { btn_sz, btn_sz }))
+                    {
+                        audio_enabled = !audio_enabled;
+                        if (network_pid > 0) kill(network_pid, SIGUSR1);
+                    }
+                    if (!audio_enabled) ImGui::PopStyleColor();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip(audio_enabled ? "Mute" : "Unmute");
+                    ImGui::SameLine();
+
+                    // Deafen
+                    if (deafened) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.75f, 0.18f, 0.18f, 1.0f });
+                    if (ImGui::Button(deafened ? FA_VOLUME_XMRK : FA_HEADPHONES, ImVec2 { btn_sz, btn_sz }))
+                    {
+                        deafened = !deafened;
+                        if (deafened and audio_enabled) { audio_enabled = false; if (network_pid > 0) kill(network_pid, SIGUSR1); }
+                    }
+                    if (deafened) ImGui::PopStyleColor();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip(deafened ? "Undeafen" : "Deafen");
+                    ImGui::SameLine();
+
+                    // Camera
+                    if (video_enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.18f, 0.48f, 0.80f, 1.0f });
+                    if (ImGui::Button(video_enabled ? FA_VIDEO : FA_VIDEO_SLASH, ImVec2 { btn_sz, btn_sz }))
+                    {
+                        if (video_enabled) { video_enabled = false; if (network_pid > 0) kill(network_pid, SIGUSR2); }
+                        else show_camera_modal = true;
+                    }
+                    if (video_enabled) ImGui::PopStyleColor();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip(video_enabled ? "Turn Off Camera" : "Turn On Camera");
+                    ImGui::SameLine();
+
+                    // Screenshare
+                    if (screenshare_enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.18f, 0.48f, 0.80f, 1.0f });
+                    if (ImGui::Button(FA_DESKTOP, ImVec2 { btn_sz, btn_sz }))
+                    {
+                        if (screenshare_enabled) { screenshare_enabled = false; if (network_pid > 0) kill(network_pid, SIGURG); }
+                        else show_screen_modal = true;
+                    }
+                    if (screenshare_enabled) ImGui::PopStyleColor();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip(screenshare_enabled ? "Stop Sharing" : "Share Screen");
+                    ImGui::SameLine();
+
+                    // Hang Up (red)
+                    ImGui::PushStyleColor(ImGuiCol_Button,       ImVec4 { 0.85f, 0.18f, 0.18f, 1.0f });
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4 { 0.95f, 0.28f, 0.28f, 1.0f });
+                    if (ImGui::Button(FA_PHONE_SLASH, ImVec2 { btn_sz, btn_sz }))
+                    {
+
+                        std::string peer { };
+                        { std::scoped_lock<std::mutex> lock { state.mu }; peer = state.call_peer_user_id; }
+                        ::signaling::Envelope env { };
+                        auto* end { env.mutable_call_end() };
+                        end->set_channel_id(in_call_channel);
+                        end->set_to_user_id(peer);
+                        ipc.send_envelope(env);
+                        stop_call_media();
+
+                    }
+                    ImGui::PopStyleColor(2);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("End Call");
+
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+
                 ImGui::Separator();
 
             }
@@ -1630,31 +1783,6 @@ int main()
             {
 
                 ImGui::TextDisabled("%s", status_line.c_str());
-                ImGui::Separator();
-
-            }
-
-            // Video tiles — one per remote peer's camera/screen stream.
-            // Textures are keyed by peer_id; new sources appear automatically.
-            if (!video_textures.empty())
-            {
-
-                constexpr float tile_h { 135.0f };
-                if (ImGui::BeginChild("##video_tiles", ImVec2 { 0, tile_h + 8.0f }, false, ImGuiWindowFlags_HorizontalScrollbar))
-                {
-
-                    for (auto& [pid, entry] : video_textures)
-                    {
-
-                        if (entry.texture == nullptr) continue;
-                        const float aspect { entry.height > 0 ? static_cast<float>(entry.width) / static_cast<float>(entry.height) : 1.333f };
-                        ImGui::Image((ImTextureID)(uintptr_t)entry.texture, ImVec2 { tile_h * aspect, tile_h });
-                        ImGui::SameLine();
-
-                    }
-
-                }
-                ImGui::EndChild();
                 ImGui::Separator();
 
             }
@@ -1816,6 +1944,20 @@ int main()
             ImGui::Spacing();
 
             std::string chosen_device { };
+#ifdef __APPLE__
+            // macOS: AVFoundation devices are referenced by index ("0", "1", …).
+            // Show up to 5 slots — the network child passes the index string to
+            // VideoCapture which opens it via avfoundation. Unknown indices fail
+            // gracefully and fall back to synthetic video.
+            for (int i { 0 }; i < 5; ++i)
+            {
+
+                const std::string label { "Camera " + std::to_string(i) };
+                if (ImGui::Button(label.c_str(), ImVec2 { 220, 0 })) chosen_device = std::to_string(i);
+
+            }
+            constexpr bool any_device { true };
+#else
             bool any_device { false };
             for (int i { 0 }; i < 10; ++i)
             {
@@ -1826,7 +1968,8 @@ int main()
                 if (ImGui::Button(dev.c_str(), ImVec2 { 220, 0 })) chosen_device = dev;
 
             }
-            if (!any_device) ImGui::TextDisabled("No cameras found.");
+            if (!any_device) ImGui::TextDisabled("No cameras found — attach a USB camera or use Test pattern.");
+#endif
             if (ImGui::Button("Test pattern", ImVec2 { 220, 0 })) chosen_device = "synthetic";
 
             if (!chosen_device.empty())

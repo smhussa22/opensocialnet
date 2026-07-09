@@ -162,6 +162,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(network PRIVATE PkgConfig::X11)
 endif()
 
+# macOS camera capture uses FFmpeg's avfoundation input device.
+if(APPLE)
+    pkg_check_modules(AVDEVICE QUIET IMPORTED_TARGET libavformat libavdevice)
+    if(AVDEVICE_FOUND AND TARGET PkgConfig::AVDEVICE)
+        target_link_libraries(network PRIVATE PkgConfig::AVDEVICE)
+    else()
+        message(STATUS "libavformat/libavdevice not found — macOS camera capture disabled (install Homebrew ffmpeg)")
+    endif()
+endif()
+
 # Tiny mic-to-WAV recorder. Same SDL/AudioCapture stack as the network
 # binary; lives here instead of in src/bench/ because the bench is
 # deliberately offline and shouldn't pull SDL.

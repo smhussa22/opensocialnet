@@ -360,7 +360,176 @@ namespace OpenSocialNet::Video
 
 }
 
-#else // non-Linux stubs — camera capture unsupported on this platform
+#elif defined(__APPLE__)
+
+// macOS: capture via FFmpeg's avfoundation input device.
+// avfoundation feeds an internal capture thread so av_read_frame returns from
+// an internal queue; AVFMT_FLAG_NONBLOCK makes it return AVERROR(EAGAIN) when
+// the queue is empty instead of blocking, keeping capture_frame() latency low.
+
+#include <cstring>
+
+extern "C"
+{
+
+#include <libavformat/avformat.h>
+#include <libavdevice/avdevice.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
+
+}
+
+namespace OpenSocialNet::Video
+{
+
+    bool VideoCapture::init(const char* device_path, int width, int height, int framerate) noexcept
+    {
+
+        avdevice_register_all();
+
+        const AVInputFormat* fmt { av_find_input_format("avfoundation") };
+        if (!fmt)
+        {
+            std::printf("[vid-cap] avfoundation format not available — install Homebrew ffmpeg\n");
+            return false;
+        }
+
+        // avfoundation device string: "<video_idx>:<audio_idx>" — pass "none" for audio
+        const std::string avf_dev { std::string(device_path) + ":none" };
+
+        char fps_str[16] { };
+        std::snprintf(fps_str, sizeof fps_str, "%d", framerate);
+        char sz_str[32] { };
+        std::snprintf(sz_str,  sizeof sz_str,  "%dx%d", width, height);
+
+        AVDictionary* opts { nullptr };
+        ::av_dict_set(&opts, "framerate",   fps_str, 0);
+        ::av_dict_set(&opts, "video_size",  sz_str,  0);
+
+        AVFormatContext* ctx { nullptr };
+        const int ret { ::avformat_open_input(&ctx, avf_dev.c_str(), const_cast<AVInputFormat*>(fmt), &opts) };
+        ::av_dict_free(&opts);
+
+        if (ret < 0)
+        {
+            char errbuf[256] { };
+            ::av_strerror(ret, errbuf, sizeof errbuf);
+            std::printf("[vid-cap] avfoundation open '%s': %s\n", avf_dev.c_str(), errbuf);
+            return false;
+        }
+
+        ctx->flags |= AVFMT_FLAG_NONBLOCK;
+        av_fmt_ctx_ = ctx;
+
+        if (::avformat_find_stream_info(ctx, nullptr) < 0)
+        {
+            std::printf("[vid-cap] avfoundation: find_stream_info failed\n");
+            shutdown();
+            return false;
+        }
+
+        for (unsigned i { 0 }; i < ctx->nb_streams; ++i)
+        {
+            if (ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+            {
+                video_stream_idx_ = static_cast<int>(i);
+                break;
+            }
+        }
+        if (video_stream_idx_ < 0) { std::printf("[vid-cap] avfoundation: no video stream\n"); shutdown(); return false; }
+
+        const AVCodecParameters* par { ctx->streams[video_stream_idx_]->codecpar };
+        const AVCodec* codec { ::avcodec_find_decoder(par->codec_id) };
+        if (!codec) { shutdown(); return false; }
+
+        AVCodecContext* cctx { ::avcodec_alloc_context3(codec) };
+        if (!cctx) { shutdown(); return false; }
+        av_codec_ctx_ = cctx;
+
+        ::avcodec_parameters_to_context(cctx, par);
+        if (::avcodec_open2(cctx, codec, nullptr) < 0) { shutdown(); return false; }
+
+        res_width  = cctx->width;
+        res_height = cctx->height;
+
+        av_sws_ctx_ = ::sws_getContext(res_width, res_height, cctx->pix_fmt,
+                                       res_width, res_height, AV_PIX_FMT_YUV420P,
+                                       SWS_BILINEAR, nullptr, nullptr, nullptr);
+        if (!av_sws_ctx_) { shutdown(); return false; }
+
+        av_packet_ = ::av_packet_alloc();
+        av_frame_  = ::av_frame_alloc();
+        if (!av_packet_ or !av_frame_) { shutdown(); return false; }
+
+        return true;
+
+    }
+
+    void VideoCapture::shutdown() noexcept
+    {
+
+        if (av_packet_)   { auto* p { static_cast<AVPacket*>(av_packet_) };         ::av_packet_free(&p);        av_packet_   = nullptr; }
+        if (av_frame_)    { auto* f { static_cast<AVFrame*>(av_frame_) };            ::av_frame_free(&f);         av_frame_    = nullptr; }
+        if (av_sws_ctx_)  { ::sws_freeContext(static_cast<SwsContext*>(av_sws_ctx_)); av_sws_ctx_ = nullptr; }
+        if (av_codec_ctx_){ auto* c { static_cast<AVCodecContext*>(av_codec_ctx_) }; ::avcodec_free_context(&c);  av_codec_ctx_ = nullptr; }
+        if (av_fmt_ctx_)  { auto* c { static_cast<AVFormatContext*>(av_fmt_ctx_) };  ::avformat_close_input(&c);  av_fmt_ctx_  = nullptr; }
+        video_stream_idx_ = -1;
+        res_width  = 0;
+        res_height = 0;
+
+    }
+
+    std::size_t VideoCapture::capture_frame(std::span<std::uint8_t> frame_buffer) noexcept
+    {
+
+        if (!valid()) return 0;
+
+        auto* ctx   { static_cast<AVFormatContext*>(av_fmt_ctx_) };
+        auto* cctx  { static_cast<AVCodecContext*>(av_codec_ctx_) };
+        auto* swsc  { static_cast<SwsContext*>(av_sws_ctx_) };
+        auto* pkt   { static_cast<AVPacket*>(av_packet_) };
+        auto* frame { static_cast<AVFrame*>(av_frame_) };
+
+        const std::size_t yuv_size { static_cast<std::size_t>(res_width) * static_cast<std::size_t>(res_height) * 3u / 2u };
+        if (frame_buffer.size() < yuv_size) return 0;
+
+        while (true)
+        {
+
+            const int ret { ::av_read_frame(ctx, pkt) };
+            if (ret == AVERROR(EAGAIN) or ret < 0) return 0;
+            if (pkt->stream_index != video_stream_idx_) { ::av_packet_unref(pkt); continue; }
+
+            bool got { false };
+            if (::avcodec_send_packet(cctx, pkt) >= 0 and ::avcodec_receive_frame(cctx, frame) >= 0)
+            {
+
+                std::uint8_t* dst[4] {
+                    frame_buffer.data(),
+                    frame_buffer.data() + static_cast<std::size_t>(res_width) * static_cast<std::size_t>(res_height),
+                    frame_buffer.data() + static_cast<std::size_t>(res_width) * static_cast<std::size_t>(res_height) * 5u / 4u,
+                    nullptr
+                };
+                int dst_stride[4] { res_width, res_width / 2, res_width / 2, 0 };
+                ::sws_scale(swsc, frame->data, frame->linesize, 0, res_height, dst, dst_stride);
+                got = true;
+
+            }
+            ::av_packet_unref(pkt);
+            if (got) return yuv_size;
+
+        }
+
+    }
+
+    bool VideoCapture::valid()  const noexcept { return av_fmt_ctx_ != nullptr; }
+    int  VideoCapture::width()  const noexcept { return res_width;  }
+    int  VideoCapture::height() const noexcept { return res_height; }
+
+}
+
+#else // non-Linux, non-macOS stubs
 
 namespace OpenSocialNet::Video
 {
@@ -368,7 +537,7 @@ namespace OpenSocialNet::Video
     bool VideoCapture::init(const char*, int, int, int) noexcept
     {
 
-        std::printf("[vid-cap] camera capture not supported on this platform — network will use synthetic video\n");
+        std::printf("[vid-cap] camera capture not supported on this platform\n");
         return false;
 
     }
@@ -383,4 +552,4 @@ namespace OpenSocialNet::Video
 
 }
 
-#endif // __linux__
+#endif // __linux__ / __APPLE__

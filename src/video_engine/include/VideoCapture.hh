@@ -45,15 +45,25 @@ namespace OpenSocialNet::Video
         [[nodiscard]] int height() const noexcept;
 
     private:
+#ifdef __linux__
         int device_fd { -1 }; // v4l2 device file descriptor
         std::uint8_t* buffers[4] { }; // mmap'd device buffers
         std::size_t buffer_lengths[4] { }; // length of each buffer
         std::size_t num_buffers { 0 }; // number of allocated buffers
-        int res_width { 0 }; // actual capture width
-        int res_height { 0 }; // actual capture height
         AVCodecContextPtr mjpeg_ctx { }; // libavcodec MJPEG decoder context
         AVPacketPtr mjpeg_packet { }; // packet wrapping the mmap'd MJPEG bytes
         AVFramePtr mjpeg_frame { }; // decoded I420 frame from MJPEG decoder
+#elif defined(__APPLE__)
+        // Opaque pointers to avoid exposing FFmpeg/avformat headers to consumers.
+        void* av_fmt_ctx_    { nullptr }; // AVFormatContext*
+        void* av_codec_ctx_  { nullptr }; // AVCodecContext*
+        void* av_sws_ctx_    { nullptr }; // SwsContext*
+        void* av_packet_     { nullptr }; // AVPacket* (preallocated)
+        void* av_frame_      { nullptr }; // AVFrame*  (preallocated)
+        int   video_stream_idx_ { -1 };   // index of the first video stream
+#endif
+        int res_width  { 0 }; // actual capture width
+        int res_height { 0 }; // actual capture height
 
     };
 
