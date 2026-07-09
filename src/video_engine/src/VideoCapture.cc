@@ -8,6 +8,7 @@
 
 // cpp stdlib headers
 #include <span>
+#include <string>
 
 // project headers
 
