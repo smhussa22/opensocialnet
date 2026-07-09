@@ -125,6 +125,11 @@ namespace OpenSocialNet::Network
         const std::string& session_id() const noexcept { return m_session_id; }
         const std::string& user_id()    const noexcept { return m_user_id; }
 
+        // The Ready envelope from the hello handshake. It arrives before
+        // any envelope handler can be registered, so consumers that need
+        // it (the GUI IPC bridge) replay it from here instead.
+        const ::signaling::Envelope& ready_envelope() const noexcept { return m_ready_env; }
+
         // Stop the reader thread + close the WS. Idempotent.
         void close() noexcept;
 
@@ -134,6 +139,7 @@ namespace OpenSocialNet::Network
         WebSocketClient            m_ws         { };  // owns the underlying WS connection
         std::string                m_user_id    { };  // copy of what we sent in Hello (for self-match in join_voice)
         std::string                m_session_id { };  // server-assigned session id from Ready
+        ::signaling::Envelope      m_ready_env  { };  // full Ready envelope, replayed to the GUI IPC bridge
 
         std::thread                m_reader     { };  // joined in close() / dtor
         std::atomic<bool>          m_running    { false }; // reader exit flag

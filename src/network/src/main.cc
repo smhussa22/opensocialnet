@@ -28,6 +28,13 @@
 // 3rd party headers
 #include <SDL3/SDL.h>
 
+extern "C"
+{
+
+    #include <libavutil/log.h>
+
+}
+
 // project headers
 #include "NetworkConstants.hh"
 #include "Packet.hh"
@@ -405,6 +412,16 @@ int main()
     // every [main]/[net-stats] line until 4KB had accumulated.
     std::setvbuf(stdout, nullptr, _IONBF, 0);
 
+    // Kill ffmpeg/x264 info chatter (h264 headers, encoder banners) —
+    // only genuine errors reach the log file.
+    ::av_log_set_level(AV_LOG_ERROR);
+
+    // Media gates at startup. The GUI launches us muted with the camera
+    // off (Discord-style: media starts only after a call is joined);
+    // standalone relay tests keep the old hot-mic default.
+    audio_muted  = env_int("OSN_START_MUTED", 0) != 0;
+    video_active = env_int("OSN_VIDEO_START", 1) != 0;
+
     std::signal(SIGINT, on_signal);
     std::signal(SIGTERM, on_signal);
     std::signal(SIGUSR1, on_audio_toggle);
@@ -615,6 +632,19 @@ int main()
         };
         PendingVoiceSwitch voice_switch { };
 
+        // Device switch mailbox — filled by the IPC reader when the GUI's
+        // device prompt picks a camera or screenshare target, consumed by
+        // the main loop (which owns the capture objects).
+        struct PendingDeviceSelect
+        {
+            std::mutex    mu            { };
+            bool          cam_pending   { false };
+            std::string   camera_device { };  // "/dev/videoN" or "synthetic"
+            bool          scr_pending   { false };
+            std::uint64_t screen_window { 0 }; // X11 window id, 0 = auto
+        };
+        PendingDeviceSelect device_select { };
+
         // ---- IPC bridge to the GUI parent (native_client) ----
         //
         // When native_client forks this binary, it passes a
@@ -643,12 +673,41 @@ int main()
 
             });
 
+            // The Ready envelope was consumed during the hello handshake,
+            // before this handler existed — replay it so the GUI learns
+            // the session is up (connection indicator + channel list).
+            if (signaling.ready_envelope().has_ready()) gui_ipc.send_envelope(signaling.ready_envelope());
+
             // GUI -> Network: forward whatever the parent pushes down.
             // Intercept JoinVoice / LeaveVoice first so the main loop can
             // restamp outgoing packet room_ids without signaling needing to
             // know about the local routing table.
-            gui_ipc.start_reader([&signaling, &voice_switch, initial_room_id_early, initial_room_str_early](const ::signaling::Envelope& env)
+            gui_ipc.start_reader([&signaling, &voice_switch, &device_select, initial_room_id_early, initial_room_str_early](const ::signaling::Envelope& env)
             {
+
+                // Local-only control frames never reach the gateway.
+                if (env.has_select_devices())
+                {
+
+                    const auto& sel { env.select_devices() };
+                    std::scoped_lock<std::mutex> lock { device_select.mu };
+                    if (!sel.camera_device().empty())
+                    {
+
+                        device_select.cam_pending   = true;
+                        device_select.camera_device = sel.camera_device();
+
+                    }
+                    if (sel.set_screen())
+                    {
+
+                        device_select.scr_pending   = true;
+                        device_select.screen_window = sel.screen_window();
+
+                    }
+                    return;
+
+                }
 
                 if (env.has_join_voice())
                 {
@@ -1035,6 +1094,8 @@ int main()
         // bit so receivers demux it into its own window.
         const bool screen_enabled { env_int("OSN_SCREEN", 0) != 0 };
         const int  screen_fps     { std::clamp(env_int("OSN_SCREEN_FPS", 10), 1, 30) };
+        const int  screen_out_w   { env_int("OSN_SCREEN_W", 640) };
+        const int  screen_out_h   { env_int("OSN_SCREEN_H", 360) };
         OpenSocialNet::Video::ScreenCapture screen_capture {};
         OpenSocialNet::Video::VideoEncoder screen_encoder {};
         OpenSocialNet::Video::VideoPacketizer screen_packetizer {};
@@ -1048,7 +1109,7 @@ int main()
             // OSN_SCREEN_WINDOW=0x<id> grabs that X11 window (xwininfo
             // shows ids); 0/unset = auto-latch onto the largest window.
             const unsigned long screen_window { std::strtoul(env_str("OSN_SCREEN_WINDOW", "0").c_str(), nullptr, 0) };
-            if (screen_capture.init(env_int("OSN_SCREEN_W", 640), env_int("OSN_SCREEN_H", 360), screen_window))
+            if (screen_capture.init(screen_out_w, screen_out_h, screen_window))
             {
 
                 const int screen_width { screen_capture.width() };
@@ -1198,6 +1259,92 @@ int main()
                 sim.submit(std::move(packet), sim_send);
                 ++packets_sent;
                 ticks_since_send = 0;
+
+            }
+
+            // Consume any device switch the GUI's prompt requested: reopen
+            // the camera on a new /dev/video*, or retarget the screen grab.
+            {
+
+                bool          do_cam  { false };
+                std::string   cam_dev { };
+                bool          do_scr  { false };
+                std::uint64_t scr_win { 0 };
+                {
+
+                    std::scoped_lock<std::mutex> lock { device_select.mu };
+                    if (device_select.cam_pending) { do_cam = true; cam_dev = device_select.camera_device; device_select.cam_pending = false; }
+                    if (device_select.scr_pending) { do_scr = true; scr_win = device_select.screen_window; device_select.scr_pending = false; }
+
+                }
+
+                if (do_cam and video_enabled)
+                {
+
+                    video_capture.shutdown();
+                    use_camera = false;
+                    if (cam_dev != "synthetic") use_camera = video_capture.init(cam_dev.c_str(), video_width, video_height, video_fps);
+
+                    if (use_camera and (video_capture.width() != video_width or video_capture.height() != video_height))
+                    {
+
+                        // New device delivers a different size — rebuild the
+                        // encode lane around it.
+                        video_width  = video_capture.width();
+                        video_height = video_capture.height();
+                        video_encoder.reset();
+                        video_send = video_encoder.init(video_width, video_height, video_fps);
+                        video_yuv.resize(static_cast<std::size_t>(video_width) * video_height * 3 / 2);
+                        video_h264.resize(video_yuv.size());
+
+                    }
+                    if (!use_camera)
+                    {
+
+                        synthetic_video.width  = video_width;
+                        synthetic_video.height = video_height;
+
+                    }
+                    std::printf("[main] camera switched to %s (%s)\n", cam_dev.c_str(), use_camera ? "live" : "synthetic fallback");
+
+                }
+
+                if (do_scr and screen_enabled)
+                {
+
+                    screen_capture.shutdown();
+                    if (screen_capture.init(screen_out_w, screen_out_h, static_cast<unsigned long>(scr_win)))
+                    {
+
+                        if (!screen_send)
+                        {
+
+                            // First-ever successful grab: the encode lane was
+                            // never built at startup, so build it now.
+                            screen_send = screen_encoder.init(screen_capture.width(), screen_capture.height(), screen_fps);
+                            if (screen_send)
+                            {
+
+                                const std::uint32_t screen_ssrc { (assigned_ssrc != 0 ? assigned_ssrc : peer_id) | 0x40000000u };
+                                screen_packetizer.init(screen_ssrc, 90000u / static_cast<std::uint32_t>(screen_fps), OpenSocialNet::Network::PayloadType::H264_Screen);
+                                screen_yuv.resize(static_cast<std::size_t>(screen_capture.width()) * screen_capture.height() * 3 / 2);
+                                screen_h264.resize(screen_yuv.size());
+
+                            }
+
+                        }
+                        std::printf("[main] screenshare retargeted to window=0x%llx\n", static_cast<unsigned long long>(scr_win));
+
+                    }
+                    else
+                    {
+
+                        screen_send = false;
+                        std::printf("[main] screen capture re-init failed — screenshare disabled\n");
+
+                    }
+
+                }
 
             }
 

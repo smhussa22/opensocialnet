@@ -19,6 +19,37 @@ extern "C"
 namespace OpenSocialNet::Video
 {
 
+    namespace
+    {
+
+        // Scan an Annex B buffer for an SPS (7) or IDR slice (5) NAL —
+        // either means the stream is decodable from this packet onward
+        // (the encoder repeats SPS/PPS in front of every IDR).
+        bool contains_sync_nal(std::span<const std::byte> data) noexcept
+        {
+
+            const auto* p { reinterpret_cast<const std::uint8_t*>(data.data()) };
+            const std::size_t n { data.size() };
+            for (std::size_t i { 0 }; i + 3 < n; ++i)
+            {
+
+                if (p[i] != 0 or p[i + 1] != 0) continue;
+
+                std::size_t nal_at { 0 };
+                if (p[i + 2] == 1) nal_at = i + 3;
+                else if (p[i + 2] == 0 and i + 4 < n and p[i + 3] == 1) nal_at = i + 4;
+                else continue;
+
+                const std::uint8_t nal_type { static_cast<std::uint8_t>(p[nal_at] & 0x1F) };
+                if (nal_type == 7 or nal_type == 5) return true;
+
+            }
+            return false;
+
+        }
+
+    }
+
     bool VideoDecoder::init() noexcept
     {
 
@@ -68,6 +99,16 @@ namespace OpenSocialNet::Video
 
         if (!valid()) return false;
         if (!yuv420p_planes || !strides) return false;
+
+        // gate on the first keyframe: slices that reference an SPS/PPS we
+        // never saw just make libavcodec scream "non-existing PPS"
+        if (!synced)
+        {
+
+            if (!contains_sync_nal(h264_data)) return false;
+            synced = true;
+
+        }
 
         // send packet to decoder and receive decoded frame
         packet->data = const_cast<std::uint8_t*>(reinterpret_cast<const std::uint8_t*>(h264_data.data()));
@@ -134,6 +175,7 @@ namespace OpenSocialNet::Video
         frame.reset();
         res_width = 0;
         res_height = 0;
+        synced = false;
 
     }
 

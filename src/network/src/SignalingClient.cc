@@ -102,6 +102,7 @@ namespace OpenSocialNet::Network
 
         m_user_id    = user_id;
         m_session_id = in_env.ready().session_id();
+        m_ready_env  = in_env;
         std::printf("[signaling] hello ok: session=%s\n", m_session_id.c_str());
         return true;
 

@@ -4,8 +4,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <signal.h>
 
@@ -494,6 +497,24 @@ namespace
         StatsSnapshot                                         stats         { }; // latest network-child stats tick
         bool                                                  gateway_ready { false }; // true once the gateway's Ready envelope arrives via IPC
 
+        // ---- call flow (Discord-style ring/join) ----
+        struct IncomingCall
+        {
+
+            bool        active        { false }; // an unanswered ring is on screen
+            std::string channel_id    { };       // voice room to join on accept
+            std::string from_user_id  { };       // whom to send CallAccept/Decline back to
+            std::string from_username { };       // display name for the ringing UI
+
+        };
+        IncomingCall incoming_call         { }; // set by kCallInvite on the reader thread
+        std::string  outgoing_call_channel { }; // non-empty while we're ringing someone
+        std::string  outgoing_call_user    { }; // whom we're ringing
+        std::string  call_peer_user_id     { }; // other party while a call is live (CallEnd target)
+        bool         call_accepted_flag    { false }; // reader thread saw CallAccept for our ring
+        bool         call_ended_flag       { false }; // reader thread saw CallEnd for the live call
+        std::string  call_status_line      { }; // transient status ("X declined the call")
+
         // UI signal flags — toggled by the reader thread, consumed by the
         // UI thread when it next renders. Cheap booleans guard whether
         // the chat pane auto-scrolls to bottom on a new arrival.
@@ -569,6 +590,13 @@ namespace
 
                 ChatLine line { };
                 line.sender_id   = evt.sender_id();
+                if (!evt.sender_username().empty())
+                {
+
+                    line.sender_name = evt.sender_username();
+
+                }
+                else
                 {
 
                     std::scoped_lock<std::mutex> lock { state.mu };
@@ -698,9 +726,71 @@ namespace
                     const auto& msg { resp.msgs(i) };
                     ChatLine line { };
                     line.sender_id   = msg.sender_id();
-                    line.sender_name = display_for(state, msg.sender_id());
+                    line.sender_name = !msg.sender_username().empty() ? msg.sender_username() : display_for(state, msg.sender_id());
                     line.content     = msg.content();
                     dq.push_front(std::move(line));
+
+                }
+                break;
+
+            }
+
+            case ::signaling::Envelope::kCallInvite:
+            {
+
+                const auto& inv { env.call_invite() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.incoming_call.active        = true;
+                state.incoming_call.channel_id    = inv.channel_id();
+                state.incoming_call.from_user_id  = inv.from_user_id();
+                state.incoming_call.from_username = inv.from_username();
+                break;
+
+            }
+
+            case ::signaling::Envelope::kCallAccept:
+            {
+
+                const auto& acc { env.call_accept() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                if (acc.channel_id() == state.outgoing_call_channel) state.call_accepted_flag = true;
+                break;
+
+            }
+
+            case ::signaling::Envelope::kCallDecline:
+            {
+
+                const auto& dec { env.call_decline() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                if (dec.channel_id() == state.outgoing_call_channel)
+                {
+
+                    state.call_status_line = display_for(state, dec.from_user_id()) + " declined the call";
+                    state.outgoing_call_channel.clear();
+                    state.outgoing_call_user.clear();
+
+                }
+                break;
+
+            }
+
+            case ::signaling::Envelope::kCallEnd:
+            {
+
+                const auto& end { env.call_end() };
+                std::scoped_lock<std::mutex> lock { state.mu };
+                // Caller cancelled the ring before we answered.
+                if (state.incoming_call.active and end.channel_id() == state.incoming_call.channel_id) state.incoming_call = { };
+                // Other side hung up a live call.
+                if (!state.active_voice_channel.empty() and end.channel_id() == state.active_voice_channel) state.call_ended_flag = true;
+                // Or gave up on a ring we had outstanding (shouldn't happen — they'd decline — but be tolerant).
+                if (end.channel_id() == state.outgoing_call_channel)
+                {
+
+                    state.outgoing_call_channel.clear();
+                    state.outgoing_call_user.clear();
+                    state.call_status_line = "Call ended";
 
                 }
                 break;
@@ -861,6 +951,28 @@ int main()
 
         ::close(parent_ipc_fd);
 
+        // Redirect the child's stdout/stderr into logs/ so codec and
+        // signaling chatter never reaches the user's terminal; the CSV
+        // benchmarks the child writes already live in the same folder.
+        ::mkdir("logs", 0755);
+        {
+
+            char ts_buf[32] { };
+            const std::time_t now { std::time(nullptr) };
+            std::strftime(ts_buf, sizeof ts_buf, "%Y%m%d_%H%M%S", std::localtime(&now));
+            const std::string log_path { std::string { "logs/" } + ts_buf + "_" + user_name + "_network.log" };
+            const int log_fd { ::open(log_path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644) };
+            if (log_fd >= 0)
+            {
+
+                ::dup2(log_fd, STDOUT_FILENO);
+                ::dup2(log_fd, STDERR_FILENO);
+                if (log_fd > STDERR_FILENO) ::close(log_fd);
+
+            }
+
+        }
+
         const std::string relay_host { signaling_host };
         const std::string local_port { "0" };
 
@@ -871,6 +983,11 @@ int main()
         setenv("OSN_LOCAL_PORT",     local_port.c_str(),     1);
         setenv("OSN_VIDEO",          "1",                    1);
         setenv("OSN_SCREEN",         "1",                    1);
+        // Discord-style: no media flows until the user actually joins a
+        // call. The child starts muted with the camera off; the GUI
+        // unmutes via SIGUSR1 once a call is accepted.
+        setenv("OSN_START_MUTED",    "1",                    1);
+        setenv("OSN_VIDEO_START",    "0",                    1);
         // Relay path by default: the startup ICE dance would block the
         // capture loop (and stats ticks) up to 60s waiting for peer SDP
         // in the initial room, but GUI voice rooms are joined dynamically
@@ -1014,16 +1131,22 @@ int main()
     std::unordered_map<std::uint32_t, VideoTexEntry> video_textures { };
 
     // ---- per-frame UI state ----
-    bool audio_enabled       { true };
-    bool video_enabled       { true };
+    // All media starts OFF — the network child is launched muted
+    // (OSN_START_MUTED / OSN_VIDEO_START) and only a joined call flips
+    // the mic on. These mirror the child's toggle state 1:1.
+    bool audio_enabled       { false };
+    bool video_enabled       { false };
     bool screenshare_enabled { false };
 
     char chat_draft[chat_input_capacity]      { };
     char add_friend_input[friend_input_capacity] { };
     char join_channel_input[friend_input_capacity] { };
+    char screen_window_input[32] { };
     bool show_add_friend_modal   { false };
     bool show_requests_modal     { false };
     bool show_join_channel_modal { false };
+    bool show_camera_modal       { false };
+    bool show_screen_modal       { false };
     bool show_stats_overlay      { false };
 
     // Track which channel we last fetched history for; request once on switch.
@@ -1059,6 +1182,46 @@ int main()
 
     };
 
+    // Join the voice room and open the mic. Called only once a call is
+    // actually established (we accepted, or our ring was accepted).
+    auto start_call_media = [&](const std::string& channel)
+    {
+
+        ::signaling::Envelope env { };
+        env.mutable_join_voice()->set_channel_id(channel);
+        ipc.send_envelope(env);
+        if (!audio_enabled and network_pid > 0) { kill(network_pid, SIGUSR1); audio_enabled = true; }
+
+    };
+
+    // Tear down all media: leave the voice room, close the mic, and kill
+    // camera/screenshare if they were live. Idempotent.
+    auto stop_call_media = [&]()
+    {
+
+        std::string channel { };
+        {
+
+            std::scoped_lock<std::mutex> lock { state.mu };
+            channel = state.active_voice_channel;
+            state.active_voice_channel.clear();
+            state.call_peer_user_id.clear();
+
+        }
+        if (!channel.empty())
+        {
+
+            ::signaling::Envelope env { };
+            env.mutable_leave_voice()->set_channel_id(channel);
+            ipc.send_envelope(env);
+
+        }
+        if (audio_enabled and network_pid > 0)       { kill(network_pid, SIGUSR1); audio_enabled = false; }
+        if (video_enabled and network_pid > 0)       { kill(network_pid, SIGUSR2); video_enabled = false; }
+        if (screenshare_enabled and network_pid > 0) { kill(network_pid, SIGURG);  screenshare_enabled = false; }
+
+    };
+
 
     bool running { true };
     bool network_child_alive { true };
@@ -1084,6 +1247,63 @@ int main()
             network_child_alive = false;
             network_pid = -1;
             std::printf("native_client: network child exited — gateway offline\n");
+
+        }
+
+        // Caller side: our ring was accepted — join the voice room now.
+        {
+
+            bool accepted { false };
+            std::string acc_channel { };
+            std::string acc_peer { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                if (state.call_accepted_flag)
+                {
+
+                    accepted    = true;
+                    acc_channel = state.outgoing_call_channel;
+                    acc_peer    = state.outgoing_call_user;
+                    state.call_accepted_flag = false;
+                    state.outgoing_call_channel.clear();
+                    state.outgoing_call_user.clear();
+
+                }
+
+            }
+            if (accepted)
+            {
+
+                start_call_media(acc_channel);
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.active_voice_channel = acc_channel;
+                state.call_peer_user_id    = acc_peer;
+                state.active_channel       = acc_channel;
+                state.call_status_line.clear();
+
+            }
+
+        }
+
+        // Either side: the other party hung up — tear our media down.
+        {
+
+            bool ended { false };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                if (state.call_ended_flag) { ended = true; state.call_ended_flag = false; }
+
+            }
+            if (ended)
+            {
+
+                stop_call_media();
+                std::scoped_lock<std::mutex> lock { state.mu };
+                state.call_status_line = "Call ended";
+
+            }
 
         }
 
@@ -1155,14 +1375,17 @@ int main()
             {
 
                 std::scoped_lock<std::mutex> lock { state.mu };
+                bool any_group { false };
                 for (const auto& ch : state.channels)
                 {
 
                     if (ch.starts_with("dm:")) continue; // DMs render in the Friends list below
+                    any_group = true;
                     const bool selected { ch == state.active_channel };
                     if (ImGui::Selectable(("# " + ch).c_str(), selected)) state.active_channel = ch;
 
                 }
+                if (!any_group) ImGui::TextDisabled("No channels yet.\nJoin one below!");
 
             }
             if (ImGui::Button("+ Join Channel", ImVec2 { -1, 0 })) show_join_channel_modal = true;
@@ -1170,10 +1393,14 @@ int main()
             ImGui::Separator();
             ImGui::TextDisabled("Friends");
 
-            // Capture call/leave requests outside the lock so we can
-            // send IPC envelopes without holding state.mu.
-            std::string call_request  { };
-            std::string leave_request { };
+            // Capture ring/cancel/hangup requests outside the lock so we
+            // can send IPC envelopes without holding state.mu.
+            std::string ring_channel   { };
+            std::string ring_user      { };
+            std::string cancel_channel { };
+            std::string cancel_user    { };
+            std::string hangup_channel { };
+            std::string hangup_peer    { };
             {
 
                 std::scoped_lock<std::mutex> lock { state.mu };
@@ -1183,36 +1410,56 @@ int main()
                     ImGui::PushID(f.user_id.c_str());
                     const bool sel     { f.dm_channel_id == state.active_channel };
                     const bool in_call { f.dm_channel_id == state.active_voice_channel };
+                    const bool ringing { f.dm_channel_id == state.outgoing_call_channel };
                     const std::string label { f.username.empty() ? f.user_id : f.username };
                     if (ImGui::Selectable(label.c_str(), sel, 0, ImVec2 { sidebar_width - 75.0f, 0 })) state.active_channel = f.dm_channel_id;
                     ImGui::SameLine();
-                    if (in_call) { if (ImGui::SmallButton("Leave")) leave_request = f.dm_channel_id; }
-                    else         { if (ImGui::SmallButton("Call"))  call_request  = f.dm_channel_id; }
+                    if (in_call)      { if (ImGui::SmallButton("Hang Up")) { hangup_channel = f.dm_channel_id; hangup_peer = state.call_peer_user_id; } }
+                    else if (ringing) { if (ImGui::SmallButton("Cancel"))  { cancel_channel = f.dm_channel_id; cancel_user = f.user_id; } }
+                    else              { if (ImGui::SmallButton("Call"))    { ring_channel = f.dm_channel_id; ring_user = f.user_id; } }
                     ImGui::PopID();
 
                 }
-                if (state.friends_.empty()) ImGui::TextDisabled("(none yet)");
+                if (state.friends_.empty()) ImGui::TextDisabled("No friends yet.\nUse + Add Friend to\nfind people by email.");
 
             }
 
-            if (!call_request.empty())
+            if (!ring_channel.empty())
             {
 
                 ::signaling::Envelope env { };
-                env.mutable_join_voice()->set_channel_id(call_request);
+                auto* inv { env.mutable_call_invite() };
+                inv->set_channel_id(ring_channel);
+                inv->set_to_user_id(ring_user);
                 ipc.send_envelope(env);
                 std::scoped_lock<std::mutex> lock { state.mu };
-                state.active_voice_channel = call_request;
+                state.outgoing_call_channel = ring_channel;
+                state.outgoing_call_user    = ring_user;
+                state.call_status_line.clear();
 
             }
-            if (!leave_request.empty())
+            if (!cancel_channel.empty())
             {
 
                 ::signaling::Envelope env { };
-                env.mutable_leave_voice()->set_channel_id(leave_request);
+                auto* end { env.mutable_call_end() };
+                end->set_channel_id(cancel_channel);
+                end->set_to_user_id(cancel_user);
                 ipc.send_envelope(env);
                 std::scoped_lock<std::mutex> lock { state.mu };
-                state.active_voice_channel.clear();
+                state.outgoing_call_channel.clear();
+                state.outgoing_call_user.clear();
+
+            }
+            if (!hangup_channel.empty())
+            {
+
+                ::signaling::Envelope env { };
+                auto* end { env.mutable_call_end() };
+                end->set_channel_id(hangup_channel);
+                end->set_to_user_id(hangup_peer);
+                ipc.send_envelope(env);
+                stop_call_media();
 
             }
 
@@ -1288,27 +1535,104 @@ int main()
             ImGui::Text("%s", active_label.c_str());
             ImGui::Separator();
 
-            // Media buttons row.
-            const float btn_w { (ImGui::GetContentRegionAvail().x - 2 * ImGui::GetStyle().ItemSpacing.x) / 3.0f };
-            if (ImGui::Button(audio_enabled ? "Mute" : "Unmute", ImVec2 { btn_w, 30 }))
+            // In-call panel — media controls only exist while a call is
+            // live, so nothing can transmit outside one. While ringing,
+            // show the ring status instead; otherwise show any transient
+            // call status line ("X declined the call").
+            std::string in_call_channel { };
+            std::string in_call_peer_label { };
+            std::string ringing_label { };
+            std::string status_line { };
             {
-                audio_enabled = !audio_enabled;
-                if (network_pid > 0) kill(network_pid, SIGUSR1);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(video_enabled ? "Camera Off" : "Camera On", ImVec2 { btn_w, 30 }))
-            {
-                video_enabled = !video_enabled;
-                if (network_pid > 0) kill(network_pid, SIGUSR2);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(screenshare_enabled ? "Stop Share" : "Share Screen", ImVec2 { btn_w, 30 }))
-            {
-                screenshare_enabled = !screenshare_enabled;
-                if (network_pid > 0) kill(network_pid, SIGURG);
-            }
 
-            ImGui::Separator();
+                std::scoped_lock<std::mutex> lock { state.mu };
+                in_call_channel = state.active_voice_channel;
+                if (!state.call_peer_user_id.empty()) in_call_peer_label = display_for(state, state.call_peer_user_id);
+                if (!state.outgoing_call_user.empty()) ringing_label = display_for(state, state.outgoing_call_user);
+                status_line = state.call_status_line;
+
+            }
+            if (!in_call_channel.empty())
+            {
+
+                ImGui::TextColored(ImVec4 { 0.35f, 0.85f, 0.45f, 1.0f }, "In call%s%s", in_call_peer_label.empty() ? "" : " with ", in_call_peer_label.c_str());
+
+                const float btn_w { (ImGui::GetContentRegionAvail().x - 3 * ImGui::GetStyle().ItemSpacing.x) / 4.0f };
+                if (ImGui::Button(audio_enabled ? "Mute" : "Unmute", ImVec2 { btn_w, 30 }))
+                {
+
+                    audio_enabled = !audio_enabled;
+                    if (network_pid > 0) kill(network_pid, SIGUSR1);
+
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(video_enabled ? "Camera Off" : "Camera On", ImVec2 { btn_w, 30 }))
+                {
+
+                    // Turning ON prompts for which camera first; turning
+                    // OFF is immediate.
+                    if (video_enabled)
+                    {
+
+                        video_enabled = false;
+                        if (network_pid > 0) kill(network_pid, SIGUSR2);
+
+                    }
+                    else show_camera_modal = true;
+
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(screenshare_enabled ? "Stop Share" : "Share Screen", ImVec2 { btn_w, 30 }))
+                {
+
+                    if (screenshare_enabled)
+                    {
+
+                        screenshare_enabled = false;
+                        if (network_pid > 0) kill(network_pid, SIGURG);
+
+                    }
+                    else show_screen_modal = true;
+
+                }
+                ImGui::SameLine();
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.85f, 0.25f, 0.25f, 1.0f });
+                if (ImGui::Button("Hang Up", ImVec2 { btn_w, 30 }))
+                {
+
+                    std::string peer { };
+                    {
+
+                        std::scoped_lock<std::mutex> lock { state.mu };
+                        peer = state.call_peer_user_id;
+
+                    }
+                    ::signaling::Envelope env { };
+                    auto* end { env.mutable_call_end() };
+                    end->set_channel_id(in_call_channel);
+                    end->set_to_user_id(peer);
+                    ipc.send_envelope(env);
+                    stop_call_media();
+
+                }
+                ImGui::PopStyleColor();
+                ImGui::Separator();
+
+            }
+            else if (!ringing_label.empty())
+            {
+
+                ImGui::TextColored(ImVec4 { 0.95f, 0.75f, 0.30f, 1.0f }, "Ringing %s ...", ringing_label.c_str());
+                ImGui::Separator();
+
+            }
+            else if (!status_line.empty())
+            {
+
+                ImGui::TextDisabled("%s", status_line.c_str());
+                ImGui::Separator();
+
+            }
 
             // Video tiles — one per remote peer's camera/screen stream.
             // Textures are keyed by peer_id; new sources appear automatically.
@@ -1359,7 +1683,8 @@ int main()
                 else
                 {
 
-                    ImGui::TextDisabled("(no messages yet)");
+                    ImGui::TextDisabled("This is the beginning of your conversation.");
+                    ImGui::TextDisabled("Say hi!");
 
                 }
 
@@ -1389,6 +1714,191 @@ int main()
         ImGui::End();
 
         // ---- MODALS ----
+
+        // Incoming call — Discord-style ring. Nothing joins until the
+        // user explicitly hits Join; Decline (or the caller cancelling)
+        // dismisses it.
+        {
+
+            bool has_incoming { false };
+            AppState::IncomingCall inc { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                has_incoming = state.incoming_call.active;
+                inc = state.incoming_call;
+
+            }
+            if (has_incoming and !ImGui::IsPopupOpen("Incoming Call")) ImGui::OpenPopup("Incoming Call");
+            ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2 { 0.5f, 0.5f });
+            if (ImGui::BeginPopupModal("Incoming Call", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+
+                if (!has_incoming)
+                {
+
+                    // Caller cancelled the ring while the modal was up.
+                    ImGui::CloseCurrentPopup();
+
+                }
+                else
+                {
+
+                    const std::string who { inc.from_username.empty() ? inc.from_user_id : inc.from_username };
+                    ImGui::Text("%s is calling...", who.c_str());
+                    ImGui::Spacing();
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.24f, 0.65f, 0.36f, 1.0f });
+                    if (ImGui::Button("Join", ImVec2 { 120, 0 }))
+                    {
+
+                        ::signaling::Envelope env { };
+                        auto* acc { env.mutable_call_accept() };
+                        acc->set_channel_id(inc.channel_id);
+                        acc->set_to_user_id(inc.from_user_id);
+                        ipc.send_envelope(env);
+                        start_call_media(inc.channel_id);
+                        {
+
+                            std::scoped_lock<std::mutex> lock { state.mu };
+                            state.active_voice_channel = inc.channel_id;
+                            state.call_peer_user_id    = inc.from_user_id;
+                            state.active_channel       = inc.channel_id;
+                            state.incoming_call        = { };
+
+                        }
+                        ImGui::CloseCurrentPopup();
+
+                    }
+                    ImGui::PopStyleColor();
+                    ImGui::SameLine();
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.85f, 0.25f, 0.25f, 1.0f });
+                    if (ImGui::Button("Decline", ImVec2 { 120, 0 }))
+                    {
+
+                        ::signaling::Envelope env { };
+                        auto* dec { env.mutable_call_decline() };
+                        dec->set_channel_id(inc.channel_id);
+                        dec->set_to_user_id(inc.from_user_id);
+                        ipc.send_envelope(env);
+                        {
+
+                            std::scoped_lock<std::mutex> lock { state.mu };
+                            state.incoming_call = { };
+
+                        }
+                        ImGui::CloseCurrentPopup();
+
+                    }
+                    ImGui::PopStyleColor();
+
+                }
+                ImGui::EndPopup();
+
+            }
+
+        }
+
+        // Camera picker — enumerate /dev/video* and let the user choose
+        // which device goes live before anything transmits.
+        if (show_camera_modal)
+        {
+
+            ImGui::OpenPopup("Select Camera");
+            show_camera_modal = false;
+
+        }
+        ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2 { 0.5f, 0.5f });
+        if (ImGui::BeginPopupModal("Select Camera", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+
+            ImGui::TextDisabled("Choose a camera to turn on:");
+            ImGui::Spacing();
+
+            std::string chosen_device { };
+            bool any_device { false };
+            for (int i { 0 }; i < 10; ++i)
+            {
+
+                const std::string dev { "/dev/video" + std::to_string(i) };
+                if (::access(dev.c_str(), F_OK) != 0) continue;
+                any_device = true;
+                if (ImGui::Button(dev.c_str(), ImVec2 { 220, 0 })) chosen_device = dev;
+
+            }
+            if (!any_device) ImGui::TextDisabled("No cameras found.");
+            if (ImGui::Button("Test pattern", ImVec2 { 220, 0 })) chosen_device = "synthetic";
+
+            if (!chosen_device.empty())
+            {
+
+                ::signaling::Envelope env { };
+                env.mutable_select_devices()->set_camera_device(chosen_device);
+                ipc.send_envelope(env);
+                if (!video_enabled and network_pid > 0) { kill(network_pid, SIGUSR2); video_enabled = true; }
+                ImGui::CloseCurrentPopup();
+
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Cancel", ImVec2 { 220, 0 })) ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+
+        }
+
+        // Screenshare picker — grab everything (auto = largest window,
+        // since the WSLg root is always black) or a specific X11 window id.
+        if (show_screen_modal)
+        {
+
+            ImGui::OpenPopup("Share Screen");
+            screen_window_input[0] = '\0';
+            show_screen_modal      = false;
+
+        }
+        ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Appearing, ImVec2 { 0.5f, 0.5f });
+        if (ImGui::BeginPopupModal("Share Screen", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+
+            ImGui::TextDisabled("What do you want to share?");
+            ImGui::Spacing();
+
+            bool          share_now  { false };
+            std::uint64_t target_win { 0 };
+
+            if (ImGui::Button("Entire screen (auto)", ImVec2 { 260, 0 })) share_now = true;
+
+            ImGui::Spacing();
+            ImGui::TextDisabled("...or a specific window (xwininfo id):");
+            ImGui::SetNextItemWidth(160);
+            ImGui::InputTextWithHint("##win_id", "0x3a00007", screen_window_input, sizeof screen_window_input);
+            ImGui::SameLine();
+            if (ImGui::Button("Share window") and screen_window_input[0] != '\0')
+            {
+
+                target_win = std::strtoull(screen_window_input, nullptr, 0);
+                if (target_win != 0) share_now = true;
+
+            }
+
+            if (share_now)
+            {
+
+                ::signaling::Envelope env { };
+                auto* sel { env.mutable_select_devices() };
+                sel->set_screen_window(target_win);
+                sel->set_set_screen(true);
+                ipc.send_envelope(env);
+                if (!screenshare_enabled and network_pid > 0) { kill(network_pid, SIGURG); screenshare_enabled = true; }
+                ImGui::CloseCurrentPopup();
+
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Cancel", ImVec2 { 260, 0 })) ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+
+        }
 
         if (show_add_friend_modal)
         {
@@ -1542,7 +2052,7 @@ int main()
                 mine = state.channels;
 
             }
-            if (browse.empty()) ImGui::TextDisabled("(none yet)");
+            if (browse.empty()) ImGui::TextDisabled("No public channels yet — type a name above to create one.");
             for (const auto& ch : browse)
             {
 

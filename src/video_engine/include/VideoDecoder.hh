@@ -38,6 +38,8 @@ namespace OpenSocialNet::Video
         bool init() noexcept;
 
         // decodes H.264 bitstream packet into raw YUV420P frame. returns true if frame ready.
+        // packets received before the first SPS/IDR are dropped silently so a
+        // mid-stream join doesn't flood the decoder with unreferencable slices.
         bool decode_packet(std::span<const std::byte> h264_data, std::uint8_t** yuv420p_planes, int* strides) noexcept;
 
         // flushes remaining frames from decoder. returns true if frame available.
@@ -59,6 +61,7 @@ namespace OpenSocialNet::Video
         AVFramePtr frame { }; // decoded frame buffer
         int res_width { 0 }; // decoded frame width
         int res_height { 0 }; // decoded frame height
+        bool synced { false }; // true once the first SPS/IDR has been seen
 
     };
 

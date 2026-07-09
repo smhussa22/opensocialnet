@@ -40,6 +40,7 @@ namespace OpenSocialNet::Video
         param.b_repeat_headers = 1;
         param.i_keyint_max = framerate; // keyframe every second so receivers can sync quickly
         param.b_intra_refresh = 0;
+        param.i_log_level = X264_LOG_ERROR; // no banner / shutdown stats dump in user-facing output
 
         ::x264_param_apply_profile(&param, "baseline");
 

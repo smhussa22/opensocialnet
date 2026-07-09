@@ -75,6 +75,7 @@ namespace OpenSocialNet::Signaling
             std::string message_id { }; // generated TimeUUID for the new row
             std::string channel_id { }; // target channel for fanout
             std::string sender_id { }; // who sent it
+            std::string sender_username { }; // display name resolved before the INSERT ran
             std::string content { }; // body
             std::string client_nonce { }; // echoed back so the client can ack
 
@@ -147,6 +148,7 @@ namespace OpenSocialNet::Signaling
                 evt->set_client_nonce(c->client_nonce);
                 evt->set_channel_id(c->channel_id);
                 evt->set_sender_id(c->sender_id);
+                evt->set_sender_username(c->sender_username);
                 evt->set_content(c->content);
                 evt->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 
@@ -237,6 +239,7 @@ namespace OpenSocialNet::Signaling
                     evt->set_message_id(uuid_str);
                     evt->set_channel_id(c->channel_id);
                     evt->set_sender_id(std::string(sender, sender_len));
+                    evt->set_sender_username(c->state->scylla->username_for(std::string(sender, sender_len)));
                     evt->set_content(std::string(content, content_len));
                     evt->set_timestamp_ms(::cass_uuid_timestamp(uuid));
 
@@ -421,6 +424,7 @@ namespace OpenSocialNet::Signaling
         ctx->message_id = uuid_str;
         ctx->channel_id = req.channel_id();
         ctx->sender_id = sess->user_id;
+        ctx->sender_username = state.scylla->username_for(sess->user_id);
         ctx->content = req.content();
         ctx->client_nonce = req.client_nonce();
 
@@ -931,6 +935,84 @@ namespace OpenSocialNet::Signaling
     }
 
 
+    // ---- calls: pure relay. The gateway stamps the sender's identity and
+    // forwards to every live session of the target user. No persistence —
+    // an unanswered ring on an offline user simply vanishes, like a missed
+    // call before voicemail existed.
+
+    void on_call_invite(GatewayState& state, WebSocket* ws, const ::signaling::CallInvite& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+        if (req.to_user_id().empty() or req.channel_id().empty()) { send_error(ws, 400, "invalid call invite"); return; }
+
+        ::signaling::Envelope evt { };
+        auto* inv { evt.mutable_call_invite() };
+        inv->set_channel_id(req.channel_id());
+        inv->set_from_user_id(sess->user_id);
+        inv->set_from_username(state.scylla->username_for(sess->user_id));
+        inv->set_to_user_id(req.to_user_id());
+        notify_user(state, req.to_user_id(), evt);
+        std::cerr << "[call] invite " << sess->user_id << " -> " << req.to_user_id() << " channel=" << req.channel_id() << '\n';
+
+    }
+
+
+    void on_call_accept(GatewayState& state, WebSocket* ws, const ::signaling::CallAccept& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+        if (req.to_user_id().empty() or req.channel_id().empty()) { send_error(ws, 400, "invalid call accept"); return; }
+
+        ::signaling::Envelope evt { };
+        auto* acc { evt.mutable_call_accept() };
+        acc->set_channel_id(req.channel_id());
+        acc->set_from_user_id(sess->user_id);
+        acc->set_to_user_id(req.to_user_id());
+        notify_user(state, req.to_user_id(), evt);
+        std::cerr << "[call] accept " << sess->user_id << " -> " << req.to_user_id() << '\n';
+
+    }
+
+
+    void on_call_decline(GatewayState& state, WebSocket* ws, const ::signaling::CallDecline& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+        if (req.to_user_id().empty() or req.channel_id().empty()) { send_error(ws, 400, "invalid call decline"); return; }
+
+        ::signaling::Envelope evt { };
+        auto* dec { evt.mutable_call_decline() };
+        dec->set_channel_id(req.channel_id());
+        dec->set_from_user_id(sess->user_id);
+        dec->set_to_user_id(req.to_user_id());
+        notify_user(state, req.to_user_id(), evt);
+        std::cerr << "[call] decline " << sess->user_id << " -> " << req.to_user_id() << '\n';
+
+    }
+
+
+    void on_call_end(GatewayState& state, WebSocket* ws, const ::signaling::CallEnd& req)
+    {
+
+        auto* sess = ws->getUserData();
+        if (!sess->authenticated) { send_error(ws, 401, "not authenticated"); return; }
+        if (req.to_user_id().empty() or req.channel_id().empty()) { send_error(ws, 400, "invalid call end"); return; }
+
+        ::signaling::Envelope evt { };
+        auto* end { evt.mutable_call_end() };
+        end->set_channel_id(req.channel_id());
+        end->set_from_user_id(sess->user_id);
+        end->set_to_user_id(req.to_user_id());
+        notify_user(state, req.to_user_id(), evt);
+        std::cerr << "[call] end " << sess->user_id << " -> " << req.to_user_id() << '\n';
+
+    }
+
+
     void on_message(GatewayState& state, WebSocket* ws, std::string_view data, ::uWS::OpCode op)
     {
 
@@ -998,6 +1080,22 @@ namespace OpenSocialNet::Signaling
 
             case ::signaling::Envelope::kListChannels:
                 on_list_channels(state, ws, envelope.list_channels());
+                break;
+
+            case ::signaling::Envelope::kCallInvite:
+                on_call_invite(state, ws, envelope.call_invite());
+                break;
+
+            case ::signaling::Envelope::kCallAccept:
+                on_call_accept(state, ws, envelope.call_accept());
+                break;
+
+            case ::signaling::Envelope::kCallDecline:
+                on_call_decline(state, ws, envelope.call_decline());
+                break;
+
+            case ::signaling::Envelope::kCallEnd:
+                on_call_end(state, ws, envelope.call_end());
                 break;
 
             default:

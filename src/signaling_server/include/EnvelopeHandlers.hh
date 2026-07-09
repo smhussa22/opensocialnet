@@ -45,6 +45,10 @@ namespace OpenSocialNet::Signaling
     void on_lookup_user(GatewayState& state, WebSocket* ws, const ::signaling::LookupUser& req);
     void on_join_channel(GatewayState& state, WebSocket* ws, const ::signaling::JoinChannel& req);
     void on_list_channels(GatewayState& state, WebSocket* ws, const ::signaling::ListChannels& req);
+    void on_call_invite(GatewayState& state, WebSocket* ws, const ::signaling::CallInvite& req);
+    void on_call_accept(GatewayState& state, WebSocket* ws, const ::signaling::CallAccept& req);
+    void on_call_decline(GatewayState& state, WebSocket* ws, const ::signaling::CallDecline& req);
+    void on_call_end(GatewayState& state, WebSocket* ws, const ::signaling::CallEnd& req);
 
     // Pull a session out of a voice room's membership list and broadcast
     // VoicePeerLeft to whoever is left. Exposed so the WS close handler

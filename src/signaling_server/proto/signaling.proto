@@ -43,8 +43,15 @@ message Envelope
     ChannelJoinedEvent          channel_joined_event           = 46; // reply to JoinChannel — membership confirmed
     ChannelListResponse         channel_list_response          = 47; // reply to ListChannels
 
+    // ---- calls (both directions: client sends, server relays to the target user) ----
+    CallInvite                  call_invite                    = 50; // "ring user X in channel Y"
+    CallAccept                  call_accept                    = 51; // callee joined — caller should start media
+    CallDecline                 call_decline                   = 52; // callee said no
+    CallEnd                     call_end                       = 53; // either side hung up (or caller cancelled the ring)
+
     // ---- local IPC only (never on the WebSocket wire) ----
     ClientStats                 client_stats                   = 60; // network child -> GUI parent, one per stats tick
+    SelectDevices               select_devices                 = 61; // GUI parent -> network child: camera / screenshare target choice
 
     // Tags 16-19 and 37-41 are reserved — they used to carry the WebRTC
     // SDP / ICE / screen-share envelopes for the browser+libdatachannel
@@ -91,12 +98,13 @@ message SendMessage
 message ChatMessageEvent
 {
 
-  string message_id   = 1; // canonical id assigned by server (e.g. Scylla TimeUUID)
-  string client_nonce = 2;
-  string channel_id   = 3;
-  string sender_id    = 4;
-  string content      = 5;
-  int64  timestamp_ms = 6;
+  string message_id      = 1; // canonical id assigned by server (e.g. Scylla TimeUUID)
+  string client_nonce    = 2;
+  string channel_id      = 3;
+  string sender_id       = 4;
+  string content         = 5;
+  int64  timestamp_ms    = 6;
+  string sender_username = 7; // display name resolved server-side so receivers never show a raw id
 
 }
 
@@ -276,6 +284,65 @@ message ChannelInfo
 }
 
 message ChannelListResponse { repeated ChannelInfo channels = 1; }
+
+// ---- calls ----
+// Discord-style ring/join: nothing auto-connects. The caller sends
+// CallInvite naming the channel and the target user; the gateway stamps
+// the caller's identity and relays to every live session of the target.
+// The callee answers with CallAccept (both sides then JoinVoice) or
+// CallDecline. CallEnd tears the call down from either side and also
+// cancels an unanswered ring.
+
+message CallInvite
+{
+
+  string channel_id    = 1; // DM/group channel the call lives in (used as the voice room)
+  string from_user_id  = 2; // stamped by the server from the session
+  string from_username = 3; // stamped by the server for the ringing UI
+  string to_user_id    = 4; // whom to ring (set by the caller)
+
+}
+
+message CallAccept
+{
+
+  string channel_id   = 1;
+  string from_user_id = 2; // stamped by the server
+  string to_user_id   = 3; // the original caller (set by the callee)
+
+}
+
+message CallDecline
+{
+
+  string channel_id   = 1;
+  string from_user_id = 2; // stamped by the server
+  string to_user_id   = 3; // the original caller (set by the callee)
+
+}
+
+message CallEnd
+{
+
+  string channel_id   = 1;
+  string from_user_id = 2; // stamped by the server
+  string to_user_id   = 3; // the other party (set by whoever hangs up)
+
+}
+
+// ---- local IPC device selection (GUI parent -> network child) ----
+// Sent when the user picks a camera or screenshare target in the GUI's
+// device prompt. The network child reopens the capture pipeline with the
+// new target; it never reaches the WebSocket wire.
+
+message SelectDevices
+{
+
+  string camera_device = 1; // e.g. "/dev/video2"; "synthetic" = test pattern; empty = leave camera alone
+  uint64 screen_window = 2; // X11 window id to grab; 0 = auto (largest window)
+  bool   set_screen    = 3; // true when screen_window is intentional (0 is a valid "auto" choice)
+
+}
 
 // ---- local IPC stats (network child -> GUI parent) ----
 // One of these per stats tick. Mirrors the [net-stats]/[vid-stats] log
