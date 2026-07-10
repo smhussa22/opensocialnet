@@ -125,6 +125,7 @@ add_executable(native_client
 target_include_directories(native_client PRIVATE
     include
     ${CMAKE_CURRENT_SOURCE_DIR}/../network/include  # Ipc.hh (header-only)
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party         # stb_image.h (avatar decode)
     ${NATIVE_PROTO_GEN_DIR}                         # generated signaling.pb.h
     ${Protobuf_INCLUDE_DIRS}
     ${imgui_SOURCE_DIR}

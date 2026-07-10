@@ -210,6 +210,9 @@ inline constexpr Ready::Impl_::Impl_(
         channel_ids_{},
         session_id_(
             &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        avatar_url_(
+            &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
 template <typename>
@@ -519,6 +522,9 @@ inline constexpr FriendSummary::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         dm_channel_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        avatar_url_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         since_ms_{::int64_t{0}} {}
@@ -850,6 +856,9 @@ inline constexpr CallInvite::Impl_::Impl_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()),
         to_user_id_(
+            &::google::protobuf::internal::fixed_address_empty_string,
+            ::_pbi::ConstantInitialized()),
+        from_avatar_url_(
             &::google::protobuf::internal::fixed_address_empty_string,
             ::_pbi::ConstantInitialized()) {}
 
@@ -1220,11 +1229,13 @@ const ::uint32_t
         1,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::Ready, _impl_._has_bits_),
-        5, // hasbit index offset
+        6, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::Ready, _impl_.session_id_),
         PROTOBUF_FIELD_OFFSET(::signaling::Ready, _impl_.channel_ids_),
+        PROTOBUF_FIELD_OFFSET(::signaling::Ready, _impl_.avatar_url_),
         1,
         0,
+        2,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::Heartbeat, _impl_._has_bits_),
         4, // hasbit index offset
@@ -1332,14 +1343,16 @@ const ::uint32_t
         0x000, // bitmap
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::FriendSummary, _impl_._has_bits_),
-        7, // hasbit index offset
+        8, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::FriendSummary, _impl_.user_id_),
         PROTOBUF_FIELD_OFFSET(::signaling::FriendSummary, _impl_.username_),
         PROTOBUF_FIELD_OFFSET(::signaling::FriendSummary, _impl_.dm_channel_id_),
         PROTOBUF_FIELD_OFFSET(::signaling::FriendSummary, _impl_.since_ms_),
+        PROTOBUF_FIELD_OFFSET(::signaling::FriendSummary, _impl_.avatar_url_),
         0,
         1,
         2,
+        4,
         3,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::PendingFriendRequest, _impl_._has_bits_),
@@ -1422,15 +1435,17 @@ const ::uint32_t
         0,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::CallInvite, _impl_._has_bits_),
-        7, // hasbit index offset
+        8, // hasbit index offset
         PROTOBUF_FIELD_OFFSET(::signaling::CallInvite, _impl_.channel_id_),
         PROTOBUF_FIELD_OFFSET(::signaling::CallInvite, _impl_.from_user_id_),
         PROTOBUF_FIELD_OFFSET(::signaling::CallInvite, _impl_.from_username_),
         PROTOBUF_FIELD_OFFSET(::signaling::CallInvite, _impl_.to_user_id_),
+        PROTOBUF_FIELD_OFFSET(::signaling::CallInvite, _impl_.from_avatar_url_),
         0,
         1,
         2,
         3,
+        4,
         0x081, // bitmap
         PROTOBUF_FIELD_OFFSET(::signaling::CallAccept, _impl_._has_bits_),
         6, // hasbit index offset
@@ -1526,40 +1541,40 @@ static const ::_pbi::MigrationSchema
         {0, sizeof(::signaling::Envelope)},
         {71, sizeof(::signaling::Hello)},
         {78, sizeof(::signaling::Ready)},
-        {85, sizeof(::signaling::Heartbeat)},
-        {90, sizeof(::signaling::HeartbeatAck)},
-        {95, sizeof(::signaling::SendMessage)},
-        {104, sizeof(::signaling::ChatMessageEvent)},
-        {121, sizeof(::signaling::FetchHistory)},
-        {132, sizeof(::signaling::HistoryResponse)},
-        {139, sizeof(::signaling::JoinVoice)},
-        {144, sizeof(::signaling::LeaveVoice)},
-        {149, sizeof(::signaling::VoicePeer)},
-        {160, sizeof(::signaling::VoicePeerJoined)},
-        {167, sizeof(::signaling::VoicePeerLeft)},
-        {174, sizeof(::signaling::SendFriendRequest)},
-        {179, sizeof(::signaling::AcceptFriendRequest)},
-        {184, sizeof(::signaling::RejectFriendRequest)},
-        {189, sizeof(::signaling::FetchFriends)},
-        {190, sizeof(::signaling::FriendSummary)},
-        {201, sizeof(::signaling::PendingFriendRequest)},
-        {210, sizeof(::signaling::FriendListResponse)},
-        {217, sizeof(::signaling::FriendRequestEvent)},
-        {226, sizeof(::signaling::FriendRequestAcceptedEvent)},
-        {235, sizeof(::signaling::LookupUser)},
-        {242, sizeof(::signaling::LookupUserResponse)},
-        {255, sizeof(::signaling::JoinChannel)},
-        {260, sizeof(::signaling::ListChannels)},
-        {261, sizeof(::signaling::ChannelJoinedEvent)},
-        {266, sizeof(::signaling::ChannelInfo)},
-        {275, sizeof(::signaling::ChannelListResponse)},
-        {280, sizeof(::signaling::CallInvite)},
-        {291, sizeof(::signaling::CallAccept)},
-        {300, sizeof(::signaling::CallDecline)},
-        {309, sizeof(::signaling::CallEnd)},
-        {318, sizeof(::signaling::SelectDevices)},
-        {327, sizeof(::signaling::ClientStats)},
-        {372, sizeof(::signaling::ErrorEvent)},
+        {87, sizeof(::signaling::Heartbeat)},
+        {92, sizeof(::signaling::HeartbeatAck)},
+        {97, sizeof(::signaling::SendMessage)},
+        {106, sizeof(::signaling::ChatMessageEvent)},
+        {123, sizeof(::signaling::FetchHistory)},
+        {134, sizeof(::signaling::HistoryResponse)},
+        {141, sizeof(::signaling::JoinVoice)},
+        {146, sizeof(::signaling::LeaveVoice)},
+        {151, sizeof(::signaling::VoicePeer)},
+        {162, sizeof(::signaling::VoicePeerJoined)},
+        {169, sizeof(::signaling::VoicePeerLeft)},
+        {176, sizeof(::signaling::SendFriendRequest)},
+        {181, sizeof(::signaling::AcceptFriendRequest)},
+        {186, sizeof(::signaling::RejectFriendRequest)},
+        {191, sizeof(::signaling::FetchFriends)},
+        {192, sizeof(::signaling::FriendSummary)},
+        {205, sizeof(::signaling::PendingFriendRequest)},
+        {214, sizeof(::signaling::FriendListResponse)},
+        {221, sizeof(::signaling::FriendRequestEvent)},
+        {230, sizeof(::signaling::FriendRequestAcceptedEvent)},
+        {239, sizeof(::signaling::LookupUser)},
+        {246, sizeof(::signaling::LookupUserResponse)},
+        {259, sizeof(::signaling::JoinChannel)},
+        {264, sizeof(::signaling::ListChannels)},
+        {265, sizeof(::signaling::ChannelJoinedEvent)},
+        {270, sizeof(::signaling::ChannelInfo)},
+        {279, sizeof(::signaling::ChannelListResponse)},
+        {284, sizeof(::signaling::CallInvite)},
+        {297, sizeof(::signaling::CallAccept)},
+        {306, sizeof(::signaling::CallDecline)},
+        {315, sizeof(::signaling::CallEnd)},
+        {324, sizeof(::signaling::SelectDevices)},
+        {333, sizeof(::signaling::ClientStats)},
+        {378, sizeof(::signaling::ErrorEvent)},
 };
 static const ::_pb::Message* PROTOBUF_NONNULL const file_default_instances[] = {
     &::signaling::_Envelope_default_instance_._instance,
@@ -1646,33 +1661,34 @@ const char descriptor_table_protodef_signaling_2eproto[] ABSL_ATTRIBUTE_SECTION_
     "nt_stats\030< \001(\0132\026.signaling.ClientStatsH\000"
     "\0222\n\016select_devices\030= \001(\0132\030.signaling.Sel"
     "ectDevicesH\000B\t\n\007payload\",\n\005Hello\022\017\n\007user"
-    "_id\030\001 \001(\t\022\022\n\nauth_token\030\002 \001(\t\"0\n\005Ready\022\022"
-    "\n\nsession_id\030\001 \001(\t\022\023\n\013channel_ids\030\002 \003(\t\""
-    "\032\n\tHeartbeat\022\r\n\005nonce\030\001 \001(\004\"\035\n\014Heartbeat"
-    "Ack\022\r\n\005nonce\030\001 \001(\004\"H\n\013SendMessage\022\024\n\014cli"
-    "ent_nonce\030\001 \001(\t\022\022\n\nchannel_id\030\002 \001(\t\022\017\n\007c"
-    "ontent\030\003 \001(\t\"\243\001\n\020ChatMessageEvent\022\022\n\nmes"
-    "sage_id\030\001 \001(\t\022\024\n\014client_nonce\030\002 \001(\t\022\022\n\nc"
-    "hannel_id\030\003 \001(\t\022\021\n\tsender_id\030\004 \001(\t\022\017\n\007co"
-    "ntent\030\005 \001(\t\022\024\n\014timestamp_ms\030\006 \001(\003\022\027\n\017sen"
-    "der_username\030\007 \001(\t\"`\n\014FetchHistory\022\022\n\nre"
-    "quest_id\030\001 \001(\t\022\022\n\nchannel_id\030\002 \001(\t\022\031\n\021be"
-    "fore_message_id\030\003 \001(\t\022\r\n\005limit\030\004 \001(\r\"P\n\017"
-    "HistoryResponse\022\022\n\nrequest_id\030\001 \001(\t\022)\n\004m"
-    "sgs\030\002 \003(\0132\033.signaling.ChatMessageEvent\"\037"
-    "\n\tJoinVoice\022\022\n\nchannel_id\030\001 \001(\t\" \n\nLeave"
-    "Voice\022\022\n\nchannel_id\030\001 \001(\t\"D\n\tVoicePeer\022\017"
-    "\n\007user_id\030\001 \001(\t\022\n\n\002ip\030\002 \001(\t\022\014\n\004port\030\003 \001("
-    "\r\022\014\n\004ssrc\030\004 \001(\r\"I\n\017VoicePeerJoined\022\022\n\nch"
-    "annel_id\030\001 \001(\t\022\"\n\004peer\030\002 \001(\0132\024.signaling"
-    ".VoicePeer\"4\n\rVoicePeerLeft\022\022\n\nchannel_i"
-    "d\030\001 \001(\t\022\017\n\007user_id\030\002 \001(\t\"\'\n\021SendFriendRe"
-    "quest\022\022\n\nto_user_id\030\001 \001(\t\"+\n\023AcceptFrien"
-    "dRequest\022\024\n\014from_user_id\030\001 \001(\t\"+\n\023Reject"
-    "FriendRequest\022\024\n\014from_user_id\030\001 \001(\t\"\016\n\014F"
-    "etchFriends\"[\n\rFriendSummary\022\017\n\007user_id\030"
-    "\001 \001(\t\022\020\n\010username\030\002 \001(\t\022\025\n\rdm_channel_id"
-    "\030\003 \001(\t\022\020\n\010since_ms\030\004 \001(\003\"Z\n\024PendingFrien"
+    "_id\030\001 \001(\t\022\022\n\nauth_token\030\002 \001(\t\"D\n\005Ready\022\022"
+    "\n\nsession_id\030\001 \001(\t\022\023\n\013channel_ids\030\002 \003(\t\022"
+    "\022\n\navatar_url\030\003 \001(\t\"\032\n\tHeartbeat\022\r\n\005nonc"
+    "e\030\001 \001(\004\"\035\n\014HeartbeatAck\022\r\n\005nonce\030\001 \001(\004\"H"
+    "\n\013SendMessage\022\024\n\014client_nonce\030\001 \001(\t\022\022\n\nc"
+    "hannel_id\030\002 \001(\t\022\017\n\007content\030\003 \001(\t\"\243\001\n\020Cha"
+    "tMessageEvent\022\022\n\nmessage_id\030\001 \001(\t\022\024\n\014cli"
+    "ent_nonce\030\002 \001(\t\022\022\n\nchannel_id\030\003 \001(\t\022\021\n\ts"
+    "ender_id\030\004 \001(\t\022\017\n\007content\030\005 \001(\t\022\024\n\014times"
+    "tamp_ms\030\006 \001(\003\022\027\n\017sender_username\030\007 \001(\t\"`"
+    "\n\014FetchHistory\022\022\n\nrequest_id\030\001 \001(\t\022\022\n\nch"
+    "annel_id\030\002 \001(\t\022\031\n\021before_message_id\030\003 \001("
+    "\t\022\r\n\005limit\030\004 \001(\r\"P\n\017HistoryResponse\022\022\n\nr"
+    "equest_id\030\001 \001(\t\022)\n\004msgs\030\002 \003(\0132\033.signalin"
+    "g.ChatMessageEvent\"\037\n\tJoinVoice\022\022\n\nchann"
+    "el_id\030\001 \001(\t\" \n\nLeaveVoice\022\022\n\nchannel_id\030"
+    "\001 \001(\t\"D\n\tVoicePeer\022\017\n\007user_id\030\001 \001(\t\022\n\n\002i"
+    "p\030\002 \001(\t\022\014\n\004port\030\003 \001(\r\022\014\n\004ssrc\030\004 \001(\r\"I\n\017V"
+    "oicePeerJoined\022\022\n\nchannel_id\030\001 \001(\t\022\"\n\004pe"
+    "er\030\002 \001(\0132\024.signaling.VoicePeer\"4\n\rVoiceP"
+    "eerLeft\022\022\n\nchannel_id\030\001 \001(\t\022\017\n\007user_id\030\002"
+    " \001(\t\"\'\n\021SendFriendRequest\022\022\n\nto_user_id\030"
+    "\001 \001(\t\"+\n\023AcceptFriendRequest\022\024\n\014from_use"
+    "r_id\030\001 \001(\t\"+\n\023RejectFriendRequest\022\024\n\014fro"
+    "m_user_id\030\001 \001(\t\"\016\n\014FetchFriends\"o\n\rFrien"
+    "dSummary\022\017\n\007user_id\030\001 \001(\t\022\020\n\010username\030\002 "
+    "\001(\t\022\025\n\rdm_channel_id\030\003 \001(\t\022\020\n\010since_ms\030\004"
+    " \001(\003\022\022\n\navatar_url\030\005 \001(\t\"Z\n\024PendingFrien"
     "dRequest\022\024\n\014from_user_id\030\001 \001(\t\022\025\n\rfrom_u"
     "sername\030\002 \001(\t\022\025\n\rcreated_at_ms\030\003 \001(\003\"r\n\022"
     "FriendListResponse\022)\n\007friends\030\001 \003(\0132\030.si"
@@ -1691,37 +1707,38 @@ const char descriptor_table_protodef_signaling_2eproto[] ABSL_ATTRIBUTE_SECTION_
     "nnel_id\030\001 \001(\t\"=\n\013ChannelInfo\022\022\n\nchannel_"
     "id\030\001 \001(\t\022\014\n\004name\030\002 \001(\t\022\014\n\004kind\030\003 \001(\t\"\?\n\023"
     "ChannelListResponse\022(\n\010channels\030\001 \003(\0132\026."
-    "signaling.ChannelInfo\"a\n\nCallInvite\022\022\n\nc"
+    "signaling.ChannelInfo\"z\n\nCallInvite\022\022\n\nc"
     "hannel_id\030\001 \001(\t\022\024\n\014from_user_id\030\002 \001(\t\022\025\n"
     "\rfrom_username\030\003 \001(\t\022\022\n\nto_user_id\030\004 \001(\t"
-    "\"J\n\nCallAccept\022\022\n\nchannel_id\030\001 \001(\t\022\024\n\014fr"
-    "om_user_id\030\002 \001(\t\022\022\n\nto_user_id\030\003 \001(\t\"K\n\013"
-    "CallDecline\022\022\n\nchannel_id\030\001 \001(\t\022\024\n\014from_"
-    "user_id\030\002 \001(\t\022\022\n\nto_user_id\030\003 \001(\t\"G\n\007Cal"
-    "lEnd\022\022\n\nchannel_id\030\001 \001(\t\022\024\n\014from_user_id"
-    "\030\002 \001(\t\022\022\n\nto_user_id\030\003 \001(\t\"Q\n\rSelectDevi"
-    "ces\022\025\n\rcamera_device\030\001 \001(\t\022\025\n\rscreen_win"
-    "dow\030\002 \001(\004\022\022\n\nset_screen\030\003 \001(\010\"\367\003\n\013Client"
-    "Stats\022\021\n\telapsed_s\030\001 \001(\001\022\025\n\raudio_source"
-    "s\030\002 \001(\r\022\030\n\020packets_observed\030\003 \001(\004\022\024\n\014pac"
-    "kets_lost\030\004 \001(\004\022\023\n\013packets_ooo\030\005 \001(\004\022\021\n\t"
-    "jitter_ms\030\006 \001(\001\022\023\n\013jb_buffered\030\007 \001(\004\022\024\n\014"
-    "jb_threshold\030\010 \001(\004\022\026\n\016jb_adaptations\030\t \001"
-    "(\004\022\025\n\rdrop_overflow\030\n \001(\004\022\024\n\014packets_sen"
-    "t\030\013 \001(\004\022\030\n\020plc_concealments\030\014 \001(\004\022\r\n\005pee"
-    "rs\030\r \001(\r\022\023\n\013rtt_summary\030\016 \001(\t\022\025\n\rvideo_s"
-    "ources\030\017 \001(\r\022\030\n\020vid_packets_lost\030\020 \001(\004\022\032"
-    "\n\022vid_frames_decoded\030\021 \001(\004\022\034\n\024vid_frames"
-    "_concealed\030\022 \001(\004\022\033\n\023vid_frames_rendered\030"
-    "\023 \001(\004\022\027\n\017vid_frames_sent\030\024 \001(\004\022\027\n\017scr_fr"
-    "ames_sent\030\025 \001(\004\"+\n\nErrorEvent\022\014\n\004code\030\001 "
-    "\001(\r\022\017\n\007message\030\002 \001(\tb\006proto3"
+    "\022\027\n\017from_avatar_url\030\005 \001(\t\"J\n\nCallAccept\022"
+    "\022\n\nchannel_id\030\001 \001(\t\022\024\n\014from_user_id\030\002 \001("
+    "\t\022\022\n\nto_user_id\030\003 \001(\t\"K\n\013CallDecline\022\022\n\n"
+    "channel_id\030\001 \001(\t\022\024\n\014from_user_id\030\002 \001(\t\022\022"
+    "\n\nto_user_id\030\003 \001(\t\"G\n\007CallEnd\022\022\n\nchannel"
+    "_id\030\001 \001(\t\022\024\n\014from_user_id\030\002 \001(\t\022\022\n\nto_us"
+    "er_id\030\003 \001(\t\"Q\n\rSelectDevices\022\025\n\rcamera_d"
+    "evice\030\001 \001(\t\022\025\n\rscreen_window\030\002 \001(\004\022\022\n\nse"
+    "t_screen\030\003 \001(\010\"\367\003\n\013ClientStats\022\021\n\telapse"
+    "d_s\030\001 \001(\001\022\025\n\raudio_sources\030\002 \001(\r\022\030\n\020pack"
+    "ets_observed\030\003 \001(\004\022\024\n\014packets_lost\030\004 \001(\004"
+    "\022\023\n\013packets_ooo\030\005 \001(\004\022\021\n\tjitter_ms\030\006 \001(\001"
+    "\022\023\n\013jb_buffered\030\007 \001(\004\022\024\n\014jb_threshold\030\010 "
+    "\001(\004\022\026\n\016jb_adaptations\030\t \001(\004\022\025\n\rdrop_over"
+    "flow\030\n \001(\004\022\024\n\014packets_sent\030\013 \001(\004\022\030\n\020plc_"
+    "concealments\030\014 \001(\004\022\r\n\005peers\030\r \001(\r\022\023\n\013rtt"
+    "_summary\030\016 \001(\t\022\025\n\rvideo_sources\030\017 \001(\r\022\030\n"
+    "\020vid_packets_lost\030\020 \001(\004\022\032\n\022vid_frames_de"
+    "coded\030\021 \001(\004\022\034\n\024vid_frames_concealed\030\022 \001("
+    "\004\022\033\n\023vid_frames_rendered\030\023 \001(\004\022\027\n\017vid_fr"
+    "ames_sent\030\024 \001(\004\022\027\n\017scr_frames_sent\030\025 \001(\004"
+    "\"+\n\nErrorEvent\022\014\n\004code\030\001 \001(\r\022\017\n\007message\030"
+    "\002 \001(\tb\006proto3"
 };
 static ::absl::once_flag descriptor_table_signaling_2eproto_once;
 PROTOBUF_CONSTINIT const ::_pbi::DescriptorTable descriptor_table_signaling_2eproto = {
     false,
     false,
-    4548,
+    4613,
     descriptor_table_protodef_signaling_2eproto,
     "signaling.proto",
     &descriptor_table_signaling_2eproto_once,
@@ -3904,7 +3921,8 @@ PROTOBUF_NDEBUG_INLINE Ready::Impl_::Impl_(
       : _has_bits_{from._has_bits_},
         _cached_size_{0},
         channel_ids_{visibility, arena, from.channel_ids_},
-        session_id_(arena, from.session_id_) {}
+        session_id_(arena, from.session_id_),
+        avatar_url_(arena, from.avatar_url_) {}
 
 Ready::Ready(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -3927,7 +3945,8 @@ PROTOBUF_NDEBUG_INLINE Ready::Impl_::Impl_(
     [[maybe_unused]] ::google::protobuf::Arena* PROTOBUF_NULLABLE arena)
       : _cached_size_{0},
         channel_ids_{visibility, arena},
-        session_id_(arena) {}
+        session_id_(arena),
+        avatar_url_(arena) {}
 
 inline void Ready::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -3944,6 +3963,7 @@ inline void Ready::SharedDtor(MessageLite& self) {
   this_._internal_metadata_.Delete<::google::protobuf::UnknownFieldSet>();
   ABSL_DCHECK(this_.GetArena() == nullptr);
   this_._impl_.session_id_.Destroy();
+  this_._impl_.avatar_url_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -4002,16 +4022,16 @@ Ready::GetClassData() const {
   return Ready_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<1, 2, 0, 45, 2>
+const ::_pbi::TcParseTable<2, 3, 0, 55, 2>
 Ready::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(Ready, _impl_._has_bits_),
     0, // no _extensions_
-    2, 8,  // max_field_number, fast_idx_mask
+    3, 24,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967292,  // skipmap
+    4294967288,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    2,  // num_field_entries
+    3,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     Ready_class_data_.base(),
@@ -4021,14 +4041,19 @@ Ready::_table_ = {
     ::_pbi::TcParser::GetTable<::signaling::Ready>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // repeated string channel_ids = 2;
-    {::_pbi::TcParser::FastUR1,
-     {18, 0, 0,
-      PROTOBUF_FIELD_OFFSET(Ready, _impl_.channel_ids_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string session_id = 1;
     {::_pbi::TcParser::FastUS1,
      {10, 1, 0,
       PROTOBUF_FIELD_OFFSET(Ready, _impl_.session_id_)}},
+    // repeated string channel_ids = 2;
+    {::_pbi::TcParser::FastUR1,
+     {18, 0, 0,
+      PROTOBUF_FIELD_OFFSET(Ready, _impl_.channel_ids_)}},
+    // string avatar_url = 3;
+    {::_pbi::TcParser::FastUS1,
+     {26, 2, 0,
+      PROTOBUF_FIELD_OFFSET(Ready, _impl_.avatar_url_)}},
   }}, {{
     65535, 65535
   }}, {{
@@ -4036,13 +4061,16 @@ Ready::_table_ = {
     {PROTOBUF_FIELD_OFFSET(Ready, _impl_.session_id_), _Internal::kHasBitsOffset + 1, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // repeated string channel_ids = 2;
     {PROTOBUF_FIELD_OFFSET(Ready, _impl_.channel_ids_), _Internal::kHasBitsOffset + 0, 0, (0 | ::_fl::kFcRepeated | ::_fl::kUtf8String | ::_fl::kRepSString)},
+    // string avatar_url = 3;
+    {PROTOBUF_FIELD_OFFSET(Ready, _impl_.avatar_url_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\17\12\13\0\0\0\0\0"
+    "\17\12\13\12\0\0\0\0"
     "signaling.Ready"
     "session_id"
     "channel_ids"
+    "avatar_url"
   }},
 };
 PROTOBUF_NOINLINE void Ready::Clear() {
@@ -4053,12 +4081,15 @@ PROTOBUF_NOINLINE void Ready::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       _impl_.channel_ids_.Clear();
     }
     if (CheckHasBit(cached_has_bits, 0x00000002U)) {
       _impl_.session_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      _impl_.avatar_url_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -4104,6 +4135,16 @@ PROTOBUF_NOINLINE void Ready::Clear() {
     }
   }
 
+  // string avatar_url = 3;
+  if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+    if (!this_._internal_avatar_url().empty()) {
+      const ::std::string& _s = this_._internal_avatar_url();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.Ready.avatar_url");
+      target = stream->WriteStringMaybeAliased(3, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -4129,7 +4170,7 @@ PROTOBUF_NOINLINE void Ready::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     // repeated string channel_ids = 2;
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       total_size +=
@@ -4144,6 +4185,13 @@ PROTOBUF_NOINLINE void Ready::Clear() {
       if (!this_._internal_session_id().empty()) {
         total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
                                         this_._internal_session_id());
+      }
+    }
+    // string avatar_url = 3;
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!this_._internal_avatar_url().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_avatar_url());
       }
     }
   }
@@ -4166,7 +4214,7 @@ void Ready::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000003U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
     if (CheckHasBitForRepeated(cached_has_bits, 0x00000001U)) {
       _this->_internal_mutable_channel_ids()->InternalMergeFromWithArena(
           ::google::protobuf::MessageLite::internal_visibility(), arena,
@@ -4178,6 +4226,15 @@ void Ready::MergeImpl(::google::protobuf::MessageLite& to_msg,
       } else {
         if (_this->_impl_.session_id_.IsDefault()) {
           _this->_internal_set_session_id("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000004U)) {
+      if (!from._internal_avatar_url().empty()) {
+        _this->_internal_set_avatar_url(from._internal_avatar_url());
+      } else {
+        if (_this->_impl_.avatar_url_.IsDefault()) {
+          _this->_internal_set_avatar_url("");
         }
       }
     }
@@ -4203,6 +4260,7 @@ void Ready::InternalSwap(Ready* PROTOBUF_RESTRICT PROTOBUF_NONNULL other) {
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   _impl_.channel_ids_.InternalSwap(&other->_impl_.channel_ids_);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.session_id_, &other->_impl_.session_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.avatar_url_, &other->_impl_.avatar_url_, arena);
 }
 
 ::google::protobuf::Metadata Ready::GetMetadata() const {
@@ -8849,7 +8907,8 @@ PROTOBUF_NDEBUG_INLINE FriendSummary::Impl_::Impl_(
         _cached_size_{0},
         user_id_(arena, from.user_id_),
         username_(arena, from.username_),
-        dm_channel_id_(arena, from.dm_channel_id_) {}
+        dm_channel_id_(arena, from.dm_channel_id_),
+        avatar_url_(arena, from.avatar_url_) {}
 
 FriendSummary::FriendSummary(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -8874,7 +8933,8 @@ PROTOBUF_NDEBUG_INLINE FriendSummary::Impl_::Impl_(
       : _cached_size_{0},
         user_id_(arena),
         username_(arena),
-        dm_channel_id_(arena) {}
+        dm_channel_id_(arena),
+        avatar_url_(arena) {}
 
 inline void FriendSummary::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -8894,6 +8954,7 @@ inline void FriendSummary::SharedDtor(MessageLite& self) {
   this_._impl_.user_id_.Destroy();
   this_._impl_.username_.Destroy();
   this_._impl_.dm_channel_id_.Destroy();
+  this_._impl_.avatar_url_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -8940,16 +9001,16 @@ FriendSummary::GetClassData() const {
   return FriendSummary_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 0, 60, 2>
+const ::_pbi::TcParseTable<3, 5, 0, 70, 2>
 FriendSummary::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    5, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967264,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    5,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     FriendSummary_class_data_.base(),
@@ -8959,10 +9020,7 @@ FriendSummary::_table_ = {
     ::_pbi::TcParser::GetTable<::signaling::FriendSummary>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // int64 since_ms = 4;
-    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(FriendSummary, _impl_.since_ms_), 3>(),
-     {32, 3, 0,
-      PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.since_ms_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string user_id = 1;
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
@@ -8975,6 +9033,16 @@ FriendSummary::_table_ = {
     {::_pbi::TcParser::FastUS1,
      {26, 2, 0,
       PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.dm_channel_id_)}},
+    // int64 since_ms = 4;
+    {::_pbi::TcParser::SingularVarintNoZag1<::uint64_t, offsetof(FriendSummary, _impl_.since_ms_), 4>(),
+     {32, 4, 0,
+      PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.since_ms_)}},
+    // string avatar_url = 5;
+    {::_pbi::TcParser::FastUS1,
+     {42, 3, 0,
+      PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.avatar_url_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -8985,15 +9053,18 @@ FriendSummary::_table_ = {
     // string dm_channel_id = 3;
     {PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.dm_channel_id_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // int64 since_ms = 4;
-    {PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.since_ms_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kInt64)},
+    {PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.since_ms_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kInt64)},
+    // string avatar_url = 5;
+    {PROTOBUF_FIELD_OFFSET(FriendSummary, _impl_.avatar_url_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\27\7\10\15\0\0\0\0"
+    "\27\7\10\15\0\12\0\0"
     "signaling.FriendSummary"
     "user_id"
     "username"
     "dm_channel_id"
+    "avatar_url"
   }},
 };
 PROTOBUF_NOINLINE void FriendSummary::Clear() {
@@ -9004,7 +9075,7 @@ PROTOBUF_NOINLINE void FriendSummary::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x00000007U)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.user_id_.ClearNonDefaultToEmpty();
     }
@@ -9013,6 +9084,9 @@ PROTOBUF_NOINLINE void FriendSummary::Clear() {
     }
     if (CheckHasBit(cached_has_bits, 0x00000004U)) {
       _impl_.dm_channel_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      _impl_.avatar_url_.ClearNonDefaultToEmpty();
     }
   }
   _impl_.since_ms_ = ::int64_t{0};
@@ -9070,11 +9144,21 @@ PROTOBUF_NOINLINE void FriendSummary::Clear() {
   }
 
   // int64 since_ms = 4;
-  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
     if (this_._internal_since_ms() != 0) {
       target =
           ::google::protobuf::internal::WireFormatLite::WriteInt64ToArrayWithField<4>(
               stream, this_._internal_since_ms(), target);
+    }
+  }
+
+  // string avatar_url = 5;
+  if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+    if (!this_._internal_avatar_url().empty()) {
+      const ::std::string& _s = this_._internal_avatar_url();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.FriendSummary.avatar_url");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
     }
   }
 
@@ -9103,7 +9187,7 @@ PROTOBUF_NOINLINE void FriendSummary::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     // string user_id = 1;
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_user_id().empty()) {
@@ -9125,8 +9209,15 @@ PROTOBUF_NOINLINE void FriendSummary::Clear() {
                                         this_._internal_dm_channel_id());
       }
     }
-    // int64 since_ms = 4;
+    // string avatar_url = 5;
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!this_._internal_avatar_url().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_avatar_url());
+      }
+    }
+    // int64 since_ms = 4;
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (this_._internal_since_ms() != 0) {
         total_size += ::_pbi::WireFormatLite::Int64SizePlusOne(
             this_._internal_since_ms());
@@ -9151,7 +9242,7 @@ void FriendSummary::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_user_id().empty()) {
         _this->_internal_set_user_id(from._internal_user_id());
@@ -9180,6 +9271,15 @@ void FriendSummary::MergeImpl(::google::protobuf::MessageLite& to_msg,
       }
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
+      if (!from._internal_avatar_url().empty()) {
+        _this->_internal_set_avatar_url(from._internal_avatar_url());
+      } else {
+        if (_this->_impl_.avatar_url_.IsDefault()) {
+          _this->_internal_set_avatar_url("");
+        }
+      }
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
       if (from._internal_since_ms() != 0) {
         _this->_impl_.since_ms_ = from._impl_.since_ms_;
       }
@@ -9207,6 +9307,7 @@ void FriendSummary::InternalSwap(FriendSummary* PROTOBUF_RESTRICT PROTOBUF_NONNU
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.user_id_, &other->_impl_.user_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.username_, &other->_impl_.username_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.dm_channel_id_, &other->_impl_.dm_channel_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.avatar_url_, &other->_impl_.avatar_url_, arena);
   swap(_impl_.since_ms_, other->_impl_.since_ms_);
 }
 
@@ -12693,7 +12794,8 @@ PROTOBUF_NDEBUG_INLINE CallInvite::Impl_::Impl_(
         channel_id_(arena, from.channel_id_),
         from_user_id_(arena, from.from_user_id_),
         from_username_(arena, from.from_username_),
-        to_user_id_(arena, from.to_user_id_) {}
+        to_user_id_(arena, from.to_user_id_),
+        from_avatar_url_(arena, from.from_avatar_url_) {}
 
 CallInvite::CallInvite(
     ::google::protobuf::Arena* PROTOBUF_NULLABLE arena,
@@ -12718,7 +12820,8 @@ PROTOBUF_NDEBUG_INLINE CallInvite::Impl_::Impl_(
         channel_id_(arena),
         from_user_id_(arena),
         from_username_(arena),
-        to_user_id_(arena) {}
+        to_user_id_(arena),
+        from_avatar_url_(arena) {}
 
 inline void CallInvite::SharedCtor(::_pb::Arena* PROTOBUF_NULLABLE arena) {
   new (&_impl_) Impl_(internal_visibility(), arena);
@@ -12738,6 +12841,7 @@ inline void CallInvite::SharedDtor(MessageLite& self) {
   this_._impl_.from_user_id_.Destroy();
   this_._impl_.from_username_.Destroy();
   this_._impl_.to_user_id_.Destroy();
+  this_._impl_.from_avatar_url_.Destroy();
   this_._impl_.~Impl_();
 }
 
@@ -12784,16 +12888,16 @@ CallInvite::GetClassData() const {
   return CallInvite_class_data_.base();
 }
 PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1
-const ::_pbi::TcParseTable<2, 4, 0, 74, 2>
+const ::_pbi::TcParseTable<3, 5, 0, 89, 2>
 CallInvite::_table_ = {
   {
     PROTOBUF_FIELD_OFFSET(CallInvite, _impl_._has_bits_),
     0, // no _extensions_
-    4, 24,  // max_field_number, fast_idx_mask
+    5, 56,  // max_field_number, fast_idx_mask
     offsetof(decltype(_table_), field_lookup_table),
-    4294967280,  // skipmap
+    4294967264,  // skipmap
     offsetof(decltype(_table_), field_entries),
-    4,  // num_field_entries
+    5,  // num_field_entries
     0,  // num_aux_entries
     offsetof(decltype(_table_), field_names),  // no aux_entries
     CallInvite_class_data_.base(),
@@ -12803,10 +12907,7 @@ CallInvite::_table_ = {
     ::_pbi::TcParser::GetTable<::signaling::CallInvite>(),  // to_prefetch
     #endif  // PROTOBUF_PREFETCH_PARSE_TABLE
   }, {{
-    // string to_user_id = 4;
-    {::_pbi::TcParser::FastUS1,
-     {34, 3, 0,
-      PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.to_user_id_)}},
+    {::_pbi::TcParser::MiniParse, {}},
     // string channel_id = 1;
     {::_pbi::TcParser::FastUS1,
      {10, 0, 0,
@@ -12819,6 +12920,16 @@ CallInvite::_table_ = {
     {::_pbi::TcParser::FastUS1,
      {26, 2, 0,
       PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.from_username_)}},
+    // string to_user_id = 4;
+    {::_pbi::TcParser::FastUS1,
+     {34, 3, 0,
+      PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.to_user_id_)}},
+    // string from_avatar_url = 5;
+    {::_pbi::TcParser::FastUS1,
+     {42, 4, 0,
+      PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.from_avatar_url_)}},
+    {::_pbi::TcParser::MiniParse, {}},
+    {::_pbi::TcParser::MiniParse, {}},
   }}, {{
     65535, 65535
   }}, {{
@@ -12830,15 +12941,18 @@ CallInvite::_table_ = {
     {PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.from_username_), _Internal::kHasBitsOffset + 2, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
     // string to_user_id = 4;
     {PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.to_user_id_), _Internal::kHasBitsOffset + 3, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
+    // string from_avatar_url = 5;
+    {PROTOBUF_FIELD_OFFSET(CallInvite, _impl_.from_avatar_url_), _Internal::kHasBitsOffset + 4, 0, (0 | ::_fl::kFcOptional | ::_fl::kUtf8String | ::_fl::kRepAString)},
   }},
   // no aux_entries
   {{
-    "\24\12\14\15\12\0\0\0"
+    "\24\12\14\15\12\17\0\0"
     "signaling.CallInvite"
     "channel_id"
     "from_user_id"
     "from_username"
     "to_user_id"
+    "from_avatar_url"
   }},
 };
 PROTOBUF_NOINLINE void CallInvite::Clear() {
@@ -12849,7 +12963,7 @@ PROTOBUF_NOINLINE void CallInvite::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       _impl_.channel_id_.ClearNonDefaultToEmpty();
     }
@@ -12861,6 +12975,9 @@ PROTOBUF_NOINLINE void CallInvite::Clear() {
     }
     if (CheckHasBit(cached_has_bits, 0x00000008U)) {
       _impl_.to_user_id_.ClearNonDefaultToEmpty();
+    }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      _impl_.from_avatar_url_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -12926,6 +13043,16 @@ PROTOBUF_NOINLINE void CallInvite::Clear() {
     }
   }
 
+  // string from_avatar_url = 5;
+  if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+    if (!this_._internal_from_avatar_url().empty()) {
+      const ::std::string& _s = this_._internal_from_avatar_url();
+      ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+          _s.data(), static_cast<int>(_s.length()), ::google::protobuf::internal::WireFormatLite::SERIALIZE, "signaling.CallInvite.from_avatar_url");
+      target = stream->WriteStringMaybeAliased(5, _s, target);
+    }
+  }
+
   if (ABSL_PREDICT_FALSE(this_._internal_metadata_.have_unknown_fields())) {
     target =
         ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
@@ -12951,7 +13078,7 @@ PROTOBUF_NOINLINE void CallInvite::Clear() {
 
   ::_pbi::Prefetch5LinesFrom7Lines(&this_);
   cached_has_bits = this_._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     // string channel_id = 1;
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!this_._internal_channel_id().empty()) {
@@ -12980,6 +13107,13 @@ PROTOBUF_NOINLINE void CallInvite::Clear() {
                                         this_._internal_to_user_id());
       }
     }
+    // string from_avatar_url = 5;
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!this_._internal_from_avatar_url().empty()) {
+        total_size += 1 + ::google::protobuf::internal::WireFormatLite::StringSize(
+                                        this_._internal_from_avatar_url());
+      }
+    }
   }
   return this_.MaybeComputeUnknownFieldsSize(total_size,
                                              &this_._impl_._cached_size_);
@@ -12999,7 +13133,7 @@ void CallInvite::MergeImpl(::google::protobuf::MessageLite& to_msg,
   (void)cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (BatchCheckHasBit(cached_has_bits, 0x0000000fU)) {
+  if (BatchCheckHasBit(cached_has_bits, 0x0000001fU)) {
     if (CheckHasBit(cached_has_bits, 0x00000001U)) {
       if (!from._internal_channel_id().empty()) {
         _this->_internal_set_channel_id(from._internal_channel_id());
@@ -13036,6 +13170,15 @@ void CallInvite::MergeImpl(::google::protobuf::MessageLite& to_msg,
         }
       }
     }
+    if (CheckHasBit(cached_has_bits, 0x00000010U)) {
+      if (!from._internal_from_avatar_url().empty()) {
+        _this->_internal_set_from_avatar_url(from._internal_from_avatar_url());
+      } else {
+        if (_this->_impl_.from_avatar_url_.IsDefault()) {
+          _this->_internal_set_from_avatar_url("");
+        }
+      }
+    }
   }
   _this->_impl_._has_bits_[0] |= cached_has_bits;
   _this->_internal_metadata_.MergeFrom<::google::protobuf::UnknownFieldSet>(
@@ -13060,6 +13203,7 @@ void CallInvite::InternalSwap(CallInvite* PROTOBUF_RESTRICT PROTOBUF_NONNULL oth
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.from_user_id_, &other->_impl_.from_user_id_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.from_username_, &other->_impl_.from_username_, arena);
   ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.to_user_id_, &other->_impl_.to_user_id_, arena);
+  ::_pbi::ArenaStringPtr::InternalSwap(&_impl_.from_avatar_url_, &other->_impl_.from_avatar_url_, arena);
 }
 
 ::google::protobuf::Metadata CallInvite::GetMetadata() const {

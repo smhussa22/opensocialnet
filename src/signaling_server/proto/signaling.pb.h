@@ -1645,6 +1645,7 @@ class Ready final : public ::google::protobuf::Message
   enum : int {
     kChannelIdsFieldNumber = 2,
     kSessionIdFieldNumber = 1,
+    kAvatarUrlFieldNumber = 3,
   };
   // repeated string channel_ids = 2;
   int channel_ids_size() const;
@@ -1683,12 +1684,27 @@ class Ready final : public ::google::protobuf::Message
   ::std::string* PROTOBUF_NONNULL _internal_mutable_session_id();
 
   public:
+  // string avatar_url = 3;
+  void clear_avatar_url() ;
+  const ::std::string& avatar_url() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_avatar_url(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_avatar_url();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_avatar_url();
+  void set_allocated_avatar_url(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_avatar_url() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_avatar_url(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_avatar_url();
+
+  public:
   // @@protoc_insertion_point(class_scope:signaling.Ready)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<1, 2,
-                                   0, 45,
+  static const ::google::protobuf::internal::TcParseTable<2, 3,
+                                   0, 55,
                                    2>
       _table_;
 
@@ -1711,6 +1727,7 @@ class Ready final : public ::google::protobuf::Message
     ::google::protobuf::internal::CachedSize _cached_size_;
     ::google::protobuf::RepeatedPtrField<::std::string> channel_ids_;
     ::google::protobuf::internal::ArenaStringPtr session_id_;
+    ::google::protobuf::internal::ArenaStringPtr avatar_url_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -3870,6 +3887,7 @@ class FriendSummary final : public ::google::protobuf::Message
     kUserIdFieldNumber = 1,
     kUsernameFieldNumber = 2,
     kDmChannelIdFieldNumber = 3,
+    kAvatarUrlFieldNumber = 5,
     kSinceMsFieldNumber = 4,
   };
   // string user_id = 1;
@@ -3917,6 +3935,21 @@ class FriendSummary final : public ::google::protobuf::Message
   ::std::string* PROTOBUF_NONNULL _internal_mutable_dm_channel_id();
 
   public:
+  // string avatar_url = 5;
+  void clear_avatar_url() ;
+  const ::std::string& avatar_url() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_avatar_url(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_avatar_url();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_avatar_url();
+  void set_allocated_avatar_url(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_avatar_url() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_avatar_url(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_avatar_url();
+
+  public:
   // int64 since_ms = 4;
   void clear_since_ms() ;
   ::int64_t since_ms() const;
@@ -3931,8 +3964,8 @@ class FriendSummary final : public ::google::protobuf::Message
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<2, 4,
-                                   0, 60,
+  static const ::google::protobuf::internal::TcParseTable<3, 5,
+                                   0, 70,
                                    2>
       _table_;
 
@@ -3956,6 +3989,7 @@ class FriendSummary final : public ::google::protobuf::Message
     ::google::protobuf::internal::ArenaStringPtr user_id_;
     ::google::protobuf::internal::ArenaStringPtr username_;
     ::google::protobuf::internal::ArenaStringPtr dm_channel_id_;
+    ::google::protobuf::internal::ArenaStringPtr avatar_url_;
     ::int64_t since_ms_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
@@ -6298,6 +6332,7 @@ class CallInvite final : public ::google::protobuf::Message
     kFromUserIdFieldNumber = 2,
     kFromUsernameFieldNumber = 3,
     kToUserIdFieldNumber = 4,
+    kFromAvatarUrlFieldNumber = 5,
   };
   // string channel_id = 1;
   void clear_channel_id() ;
@@ -6359,12 +6394,27 @@ class CallInvite final : public ::google::protobuf::Message
   ::std::string* PROTOBUF_NONNULL _internal_mutable_to_user_id();
 
   public:
+  // string from_avatar_url = 5;
+  void clear_from_avatar_url() ;
+  const ::std::string& from_avatar_url() const;
+  template <typename Arg_ = const ::std::string&, typename... Args_>
+  void set_from_avatar_url(Arg_&& arg, Args_... args);
+  ::std::string* PROTOBUF_NONNULL mutable_from_avatar_url();
+  [[nodiscard]] ::std::string* PROTOBUF_NULLABLE release_from_avatar_url();
+  void set_allocated_from_avatar_url(::std::string* PROTOBUF_NULLABLE value);
+
+  private:
+  const ::std::string& _internal_from_avatar_url() const;
+  PROTOBUF_ALWAYS_INLINE void _internal_set_from_avatar_url(const ::std::string& value);
+  ::std::string* PROTOBUF_NONNULL _internal_mutable_from_avatar_url();
+
+  public:
   // @@protoc_insertion_point(class_scope:signaling.CallInvite)
  private:
   class _Internal;
   friend class ::google::protobuf::internal::TcParser;
-  static const ::google::protobuf::internal::TcParseTable<2, 4,
-                                   0, 74,
+  static const ::google::protobuf::internal::TcParseTable<3, 5,
+                                   0, 89,
                                    2>
       _table_;
 
@@ -6389,6 +6439,7 @@ class CallInvite final : public ::google::protobuf::Message
     ::google::protobuf::internal::ArenaStringPtr from_user_id_;
     ::google::protobuf::internal::ArenaStringPtr from_username_;
     ::google::protobuf::internal::ArenaStringPtr to_user_id_;
+    ::google::protobuf::internal::ArenaStringPtr from_avatar_url_;
     PROTOBUF_TSAN_DECLARE_MEMBER
   };
   union { Impl_ _impl_; };
@@ -12005,6 +12056,71 @@ Ready::_internal_mutable_channel_ids() {
   return &_impl_.channel_ids_;
 }
 
+// string avatar_url = 3;
+inline void Ready::clear_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.avatar_url_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000004U);
+}
+inline const ::std::string& Ready::avatar_url() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.Ready.avatar_url)
+  return _internal_avatar_url();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void Ready::set_avatar_url(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  _impl_.avatar_url_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.Ready.avatar_url)
+}
+inline ::std::string* PROTOBUF_NONNULL Ready::mutable_avatar_url()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  ::std::string* _s = _internal_mutable_avatar_url();
+  // @@protoc_insertion_point(field_mutable:signaling.Ready.avatar_url)
+  return _s;
+}
+inline const ::std::string& Ready::_internal_avatar_url() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.avatar_url_.Get();
+}
+inline void Ready::_internal_set_avatar_url(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.avatar_url_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL Ready::_internal_mutable_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.avatar_url_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE Ready::release_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.Ready.avatar_url)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000004U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  auto* released = _impl_.avatar_url_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.avatar_url_.Set("", GetArena());
+  }
+  return released;
+}
+inline void Ready::set_allocated_avatar_url(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000004U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000004U);
+  }
+  _impl_.avatar_url_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.avatar_url_.IsDefault()) {
+    _impl_.avatar_url_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.Ready.avatar_url)
+}
+
 // -------------------------------------------------------------------
 
 // Heartbeat
@@ -14069,7 +14185,7 @@ inline void FriendSummary::clear_since_ms() {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.since_ms_ = ::int64_t{0};
   ClearHasBit(_impl_._has_bits_[0],
-                  0x00000008U);
+                  0x00000010U);
 }
 inline ::int64_t FriendSummary::since_ms() const {
   // @@protoc_insertion_point(field_get:signaling.FriendSummary.since_ms)
@@ -14077,7 +14193,7 @@ inline ::int64_t FriendSummary::since_ms() const {
 }
 inline void FriendSummary::set_since_ms(::int64_t value) {
   _internal_set_since_ms(value);
-  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
   // @@protoc_insertion_point(field_set:signaling.FriendSummary.since_ms)
 }
 inline ::int64_t FriendSummary::_internal_since_ms() const {
@@ -14087,6 +14203,71 @@ inline ::int64_t FriendSummary::_internal_since_ms() const {
 inline void FriendSummary::_internal_set_since_ms(::int64_t value) {
   ::google::protobuf::internal::TSanWrite(&_impl_);
   _impl_.since_ms_ = value;
+}
+
+// string avatar_url = 5;
+inline void FriendSummary::clear_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.avatar_url_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000008U);
+}
+inline const ::std::string& FriendSummary::avatar_url() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.FriendSummary.avatar_url)
+  return _internal_avatar_url();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void FriendSummary::set_avatar_url(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  _impl_.avatar_url_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.FriendSummary.avatar_url)
+}
+inline ::std::string* PROTOBUF_NONNULL FriendSummary::mutable_avatar_url()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  ::std::string* _s = _internal_mutable_avatar_url();
+  // @@protoc_insertion_point(field_mutable:signaling.FriendSummary.avatar_url)
+  return _s;
+}
+inline const ::std::string& FriendSummary::_internal_avatar_url() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.avatar_url_.Get();
+}
+inline void FriendSummary::_internal_set_avatar_url(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.avatar_url_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL FriendSummary::_internal_mutable_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.avatar_url_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE FriendSummary::release_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.FriendSummary.avatar_url)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000008U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  auto* released = _impl_.avatar_url_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.avatar_url_.Set("", GetArena());
+  }
+  return released;
+}
+inline void FriendSummary::set_allocated_avatar_url(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000008U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000008U);
+  }
+  _impl_.avatar_url_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.avatar_url_.IsDefault()) {
+    _impl_.avatar_url_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.FriendSummary.avatar_url)
 }
 
 // -------------------------------------------------------------------
@@ -15808,6 +15989,71 @@ inline void CallInvite::set_allocated_to_user_id(::std::string* PROTOBUF_NULLABL
     _impl_.to_user_id_.Set("", GetArena());
   }
   // @@protoc_insertion_point(field_set_allocated:signaling.CallInvite.to_user_id)
+}
+
+// string from_avatar_url = 5;
+inline void CallInvite::clear_from_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.from_avatar_url_.ClearToEmpty();
+  ClearHasBit(_impl_._has_bits_[0],
+                  0x00000010U);
+}
+inline const ::std::string& CallInvite::from_avatar_url() const
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  // @@protoc_insertion_point(field_get:signaling.CallInvite.from_avatar_url)
+  return _internal_from_avatar_url();
+}
+template <typename Arg_, typename... Args_>
+PROTOBUF_ALWAYS_INLINE void CallInvite::set_from_avatar_url(Arg_&& arg, Args_... args) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  _impl_.from_avatar_url_.Set(static_cast<Arg_&&>(arg), args..., GetArena());
+  // @@protoc_insertion_point(field_set:signaling.CallInvite.from_avatar_url)
+}
+inline ::std::string* PROTOBUF_NONNULL CallInvite::mutable_from_avatar_url()
+    ABSL_ATTRIBUTE_LIFETIME_BOUND {
+  SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  ::std::string* _s = _internal_mutable_from_avatar_url();
+  // @@protoc_insertion_point(field_mutable:signaling.CallInvite.from_avatar_url)
+  return _s;
+}
+inline const ::std::string& CallInvite::_internal_from_avatar_url() const {
+  ::google::protobuf::internal::TSanRead(&_impl_);
+  return _impl_.from_avatar_url_.Get();
+}
+inline void CallInvite::_internal_set_from_avatar_url(const ::std::string& value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  _impl_.from_avatar_url_.Set(value, GetArena());
+}
+inline ::std::string* PROTOBUF_NONNULL CallInvite::_internal_mutable_from_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  return _impl_.from_avatar_url_.Mutable( GetArena());
+}
+inline ::std::string* PROTOBUF_NULLABLE CallInvite::release_from_avatar_url() {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  // @@protoc_insertion_point(field_release:signaling.CallInvite.from_avatar_url)
+  if (!CheckHasBit(_impl_._has_bits_[0], 0x00000010U)) {
+    return nullptr;
+  }
+  ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  auto* released = _impl_.from_avatar_url_.Release();
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString()) {
+    _impl_.from_avatar_url_.Set("", GetArena());
+  }
+  return released;
+}
+inline void CallInvite::set_allocated_from_avatar_url(::std::string* PROTOBUF_NULLABLE value) {
+  ::google::protobuf::internal::TSanWrite(&_impl_);
+  if (value != nullptr) {
+    SetHasBit(_impl_._has_bits_[0], 0x00000010U);
+  } else {
+    ClearHasBit(_impl_._has_bits_[0], 0x00000010U);
+  }
+  _impl_.from_avatar_url_.SetAllocated(value, GetArena());
+  if (::google::protobuf::internal::DebugHardenForceCopyDefaultString() && _impl_.from_avatar_url_.IsDefault()) {
+    _impl_.from_avatar_url_.Set("", GetArena());
+  }
+  // @@protoc_insertion_point(field_set_allocated:signaling.CallInvite.from_avatar_url)
 }
 
 // -------------------------------------------------------------------

@@ -78,6 +78,7 @@ message Ready
 
   string session_id           = 1;
   repeated string channel_ids = 2; // channels this user is subscribed to
+  string avatar_url           = 3; // your own Google profile picture URL (empty for dev users)
 
 }
 
@@ -203,6 +204,7 @@ message FriendSummary
   string username       = 2; // display name from the users table
   string dm_channel_id  = 3; // shared 1-on-1 channel — both sides hold this same value
   int64  since_ms       = 4; // friendship.since as ms since epoch
+  string avatar_url     = 5; // Google profile picture URL (empty when none)
 
 }
 
@@ -296,10 +298,11 @@ message ChannelListResponse { repeated ChannelInfo channels = 1; }
 message CallInvite
 {
 
-  string channel_id    = 1; // DM/group channel the call lives in (used as the voice room)
-  string from_user_id  = 2; // stamped by the server from the session
-  string from_username = 3; // stamped by the server for the ringing UI
-  string to_user_id    = 4; // whom to ring (set by the caller)
+  string channel_id      = 1; // DM/group channel the call lives in (used as the voice room)
+  string from_user_id    = 2; // stamped by the server from the session
+  string from_username   = 3; // stamped by the server for the ringing UI
+  string to_user_id      = 4; // whom to ring (set by the caller)
+  string from_avatar_url = 5; // stamped by the server — caller's profile picture
 
 }
 

@@ -31,7 +31,7 @@ namespace OpenSocialNet::Video
         std::vector<OpenSocialNet::Network::Packet> packets { };
         if (h264_bytes.empty()) return packets;
 
-        const std::size_t chunk_size { OpenSocialNet::Network::maximum_packet_size };
+        const std::size_t chunk_size { OpenSocialNet::Network::maximum_video_chunk_size };
         std::size_t offset { 0 };
 
         // chop the frame into chunk_size-sized payloads; last one carries marker=1

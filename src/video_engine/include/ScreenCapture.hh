@@ -33,6 +33,10 @@ namespace OpenSocialNet::Video
     // root window is always black (XWayland is rootless — nothing ever
     // paints into it), so auto mode keeps re-checking until a real window
     // appears, and falls back to the root again if the target dies.
+    //
+    // macOS: FFmpeg's avfoundation "Capture screen 0" device instead —
+    // whole-display only (avfoundation cannot grab single windows), so
+    // window_id is ignored there.
     class ScreenCapture
     {
 
@@ -87,7 +91,17 @@ namespace OpenSocialNet::Video
         SwsContextPtr sws { }; // BGR0 target-sized -> I420 output scaler
         int src_width { 0 }; // grab target width
         int src_height { 0 }; // grab target height
-#endif // __linux__
+#elif defined(__APPLE__)
+        // Opaque pointers to avoid exposing FFmpeg/avformat headers to consumers.
+        void* av_fmt_ctx_   { nullptr }; // AVFormatContext*
+        void* av_codec_ctx_ { nullptr }; // AVCodecContext*
+        void* av_sws_ctx_   { nullptr }; // SwsContext*
+        void* av_packet_    { nullptr }; // AVPacket* (preallocated)
+        void* av_frame_     { nullptr }; // AVFrame*  (preallocated)
+        int   video_stream_idx_ { -1 };  // index of the screen video stream
+        int   src_width  { 0 }; // native display width
+        int   src_height { 0 }; // native display height
+#endif // __linux__ / __APPLE__
         int out_width { 0 }; // output frame width (even)
         int out_height { 0 }; // output frame height (even)
 

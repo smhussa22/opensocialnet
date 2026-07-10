@@ -53,7 +53,7 @@ namespace OpenSocialNet::Signaling
         // Returns false on driver/CQL failure (caller logs + proceeds).
         // `email` is denormalized into users_by_email so the GUI can do
         // friend lookup by email instead of forcing the Google sub.
-        bool upsert_user(const std::string& user_id, const std::string& username, const std::string& email = "");
+        bool upsert_user(const std::string& user_id, const std::string& username, const std::string& email = "", const std::string& avatar_url = "");
 
 
         // One row out of users_by_email. user_id is empty when no match.
@@ -74,6 +74,10 @@ namespace OpenSocialNet::Signaling
         // exist; used when joining friend rows with their friend's name
         // for the FriendListResponse / FriendRequestEvent payloads.
         std::string username_for(const std::string& user_id);
+
+        // Look up a user's Google profile picture URL. Empty string when
+        // the row doesn't exist or the user has no picture (HMAC/dev).
+        std::string avatar_for(const std::string& user_id);
 
 
         // ---- channel bootstrap (Part A: auto-join default channel) ----
@@ -166,9 +170,10 @@ namespace OpenSocialNet::Signaling
         CassPreparedPtr m_prep_insert_message { }; // INSERT INTO messages ...
         CassPreparedPtr m_prep_fetch_history { }; // SELECT ... FROM messages ...
         CassPreparedPtr m_prep_user_channels { }; // SELECT channel_id FROM user_channels ...
-        CassPreparedPtr m_prep_upsert_user { }; // INSERT INTO users (user_id, username, email, created_at) VALUES (?, ?, ?, toTimestamp(now()))
+        CassPreparedPtr m_prep_upsert_user { }; // INSERT INTO users (user_id, username, email, avatar_url, created_at) VALUES (?, ?, ?, ?, toTimestamp(now()))
         CassPreparedPtr m_prep_upsert_user_email { }; // INSERT INTO users_by_email ...
         CassPreparedPtr m_prep_username_for { }; // SELECT username FROM users WHERE user_id = ?
+        CassPreparedPtr m_prep_avatar_for { }; // SELECT avatar_url FROM users WHERE user_id = ?
         CassPreparedPtr m_prep_lookup_user_by_email { }; // SELECT user_id, username FROM users_by_email WHERE email = ?
         CassPreparedPtr m_prep_ensure_channel { }; // INSERT INTO channels (channel_id, name, kind) VALUES (?, ?, ?)
         CassPreparedPtr m_prep_list_channels { }; // SELECT channel_id, name, kind FROM channels

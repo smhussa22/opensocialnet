@@ -73,9 +73,10 @@ namespace OpenSocialNet::Signaling
         // Idempotent: overwriting an existing row with the same primary
         // key just refreshes username + created_at, which is fine for our
         // "first login wins, every subsequent login is a no-op" semantics.
-        m_prep_upsert_user        = prepare("INSERT INTO users (user_id, username, email, created_at) VALUES (?, ?, ?, toTimestamp(now()))");
+        m_prep_upsert_user        = prepare("INSERT INTO users (user_id, username, email, avatar_url, created_at) VALUES (?, ?, ?, ?, toTimestamp(now()))");
         m_prep_upsert_user_email  = prepare("INSERT INTO users_by_email (email, user_id, username) VALUES (?, ?, ?)");
         m_prep_username_for       = prepare("SELECT username FROM users WHERE user_id = ?");
+        m_prep_avatar_for         = prepare("SELECT avatar_url FROM users WHERE user_id = ?");
         m_prep_lookup_user_by_email = prepare("SELECT user_id, username FROM users_by_email WHERE email = ?");
 
         m_prep_ensure_channel     = prepare("INSERT INTO channels (channel_id, name, kind) VALUES (?, ?, ?)");
@@ -162,13 +163,14 @@ namespace OpenSocialNet::Signaling
     }
 
 
-    bool ScyllaClient::upsert_user(const std::string& user_id, const std::string& username, const std::string& email)
+    bool ScyllaClient::upsert_user(const std::string& user_id, const std::string& username, const std::string& email, const std::string& avatar_url)
     {
 
         CassStatementPtr stmt { ::cass_prepared_bind(m_prep_upsert_user.get()) };
         ::cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
         ::cass_statement_bind_string(stmt.get(), 1, username.c_str());
         ::cass_statement_bind_string(stmt.get(), 2, email.c_str());
+        ::cass_statement_bind_string(stmt.get(), 3, avatar_url.c_str());
 
         CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
         ::cass_future_wait(fut.get());
@@ -256,6 +258,28 @@ namespace OpenSocialNet::Signaling
         const char* s { nullptr };
         std::size_t len { 0 };
         ::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len);
+        return std::string { s, len };
+
+    }
+
+
+    std::string ScyllaClient::avatar_for(const std::string& user_id)
+    {
+
+        CassStatementPtr stmt { ::cass_prepared_bind(m_prep_avatar_for.get()) };
+        ::cass_statement_bind_string(stmt.get(), 0, user_id.c_str());
+
+        CassFuturePtr fut { ::cass_session_execute(m_session.get(), stmt.get()) };
+        ::cass_future_wait(fut.get());
+        if (::cass_future_error_code(fut.get()) != CASS_OK) return { };
+
+        CassResultPtr result { ::cass_future_get_result(fut.get()) };
+        const auto* row { ::cass_result_first_row(result.get()) };
+        if (row == nullptr) return { };
+
+        const char* s { nullptr };
+        std::size_t len { 0 };
+        if (::cass_value_get_string(::cass_row_get_column(row, 0), &s, &len) != CASS_OK) return { };
         return std::string { s, len };
 
     }

@@ -341,7 +341,170 @@ namespace OpenSocialNet::Video
 
 }
 
-#else // non-Linux stubs — screenshare unsupported on this platform
+#elif defined(__APPLE__)
+
+// macOS: FFmpeg's avfoundation "Capture screen N" input device. Same
+// non-blocking read pattern as the mac VideoCapture — avfoundation runs its
+// own capture thread, AVFMT_FLAG_NONBLOCK makes av_read_frame return
+// AVERROR(EAGAIN) when its queue is empty instead of blocking the tick loop.
+
+extern "C"
+{
+
+#include <libavformat/avformat.h>
+#include <libavdevice/avdevice.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+
+}
+
+namespace OpenSocialNet::Video
+{
+
+    bool ScreenCapture::init(int requested_width, int requested_height, unsigned long) noexcept
+    {
+
+        ::avdevice_register_all();
+
+        const AVInputFormat* fmt { ::av_find_input_format("avfoundation") };
+        if (!fmt)
+        {
+
+            std::printf("[scr-cap] avfoundation format not available — install Homebrew ffmpeg\n");
+            return false;
+
+        }
+
+        // I420 needs even dimensions
+        out_width = requested_width & ~1;
+        out_height = requested_height & ~1;
+
+        AVDictionary* opts { nullptr };
+        ::av_dict_set(&opts, "framerate",      "30", 0);
+        ::av_dict_set(&opts, "capture_cursor", "1",  0);
+
+        AVFormatContext* ctx { nullptr };
+        const int ret { ::avformat_open_input(&ctx, "Capture screen 0:none", const_cast<AVInputFormat*>(fmt), &opts) };
+        ::av_dict_free(&opts);
+
+        if (ret < 0)
+        {
+
+            char errbuf[256] { };
+            ::av_strerror(ret, errbuf, sizeof errbuf);
+            std::printf("[scr-cap] avfoundation open 'Capture screen 0': %s — grant Screen Recording permission in System Settings\n", errbuf);
+            shutdown();
+            return false;
+
+        }
+
+        ctx->flags |= AVFMT_FLAG_NONBLOCK;
+        av_fmt_ctx_ = ctx;
+
+        if (::avformat_find_stream_info(ctx, nullptr) < 0)
+        {
+
+            std::printf("[scr-cap] avfoundation: find_stream_info failed\n");
+            shutdown();
+            return false;
+
+        }
+
+        for (unsigned i { 0 }; i < ctx->nb_streams; ++i)
+        {
+
+            if (ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) { video_stream_idx_ = static_cast<int>(i); break; }
+
+        }
+        if (video_stream_idx_ < 0) { std::printf("[scr-cap] avfoundation: no video stream\n"); shutdown(); return false; }
+
+        const AVCodecParameters* par { ctx->streams[video_stream_idx_]->codecpar };
+        const AVCodec* codec { ::avcodec_find_decoder(par->codec_id) };
+        if (!codec) { shutdown(); return false; }
+
+        AVCodecContext* cctx { ::avcodec_alloc_context3(codec) };
+        if (!cctx) { shutdown(); return false; }
+        av_codec_ctx_ = cctx;
+
+        ::avcodec_parameters_to_context(cctx, par);
+        if (::avcodec_open2(cctx, codec, nullptr) < 0) { shutdown(); return false; }
+
+        src_width = cctx->width;
+        src_height = cctx->height;
+
+        av_sws_ctx_ = ::sws_getContext(src_width, src_height, cctx->pix_fmt, out_width, out_height, AV_PIX_FMT_YUV420P, SWS_BILINEAR, nullptr, nullptr, nullptr);
+        if (!av_sws_ctx_) { shutdown(); return false; }
+
+        av_packet_ = ::av_packet_alloc();
+        av_frame_ = ::av_frame_alloc();
+        if (!av_packet_ or !av_frame_) { shutdown(); return false; }
+
+        std::printf("[scr-cap] grabbing display 0 %dx%d -> %dx%d\n", src_width, src_height, out_width, out_height);
+        return true;
+
+    }
+
+    void ScreenCapture::shutdown() noexcept
+    {
+
+        if (av_packet_)    { auto* p { static_cast<AVPacket*>(av_packet_) };          ::av_packet_free(&p);          av_packet_    = nullptr; }
+        if (av_frame_)     { auto* f { static_cast<AVFrame*>(av_frame_) };            ::av_frame_free(&f);           av_frame_     = nullptr; }
+        if (av_sws_ctx_)   { ::sws_freeContext(static_cast<SwsContext*>(av_sws_ctx_)); av_sws_ctx_ = nullptr; }
+        if (av_codec_ctx_) { auto* c { static_cast<AVCodecContext*>(av_codec_ctx_) }; ::avcodec_free_context(&c);    av_codec_ctx_ = nullptr; }
+        if (av_fmt_ctx_)   { auto* c { static_cast<AVFormatContext*>(av_fmt_ctx_) };  ::avformat_close_input(&c);    av_fmt_ctx_   = nullptr; }
+        video_stream_idx_ = -1;
+        src_width = 0;
+        src_height = 0;
+        out_width = 0;
+        out_height = 0;
+
+    }
+
+    std::size_t ScreenCapture::capture_frame(std::span<std::uint8_t> frame_buffer) noexcept
+    {
+
+        if (!valid()) return 0;
+
+        auto* ctx { static_cast<AVFormatContext*>(av_fmt_ctx_) };
+        auto* cctx { static_cast<AVCodecContext*>(av_codec_ctx_) };
+        auto* swsc { static_cast<SwsContext*>(av_sws_ctx_) };
+        auto* pkt { static_cast<AVPacket*>(av_packet_) };
+        auto* frame { static_cast<AVFrame*>(av_frame_) };
+
+        const std::size_t y_plane_size { static_cast<std::size_t>(out_width) * static_cast<std::size_t>(out_height) };
+        const std::size_t i420_size { y_plane_size * 3 / 2 };
+        if (frame_buffer.size() < i420_size) return 0;
+
+        // The device captures at 30fps but we're only polled at the (lower)
+        // screenshare fps — drain everything queued and keep the newest frame
+        // so latency doesn't build up in avfoundation's internal queue.
+        bool got { false };
+        while (true)
+        {
+
+            const int ret { ::av_read_frame(ctx, pkt) };
+            if (ret < 0) break; // EAGAIN = queue drained
+            if (pkt->stream_index == video_stream_idx_ and ::avcodec_send_packet(cctx, pkt) >= 0 and ::avcodec_receive_frame(cctx, frame) >= 0) got = true;
+            ::av_packet_unref(pkt);
+
+        }
+        if (!got) return 0;
+
+        std::uint8_t* dst_planes[4] { frame_buffer.data(), frame_buffer.data() + y_plane_size, frame_buffer.data() + y_plane_size + y_plane_size / 4, nullptr };
+        const int dst_strides[4] { out_width, out_width / 2, out_width / 2, 0 };
+        ::sws_scale(swsc, frame->data, frame->linesize, 0, src_height, dst_planes, dst_strides);
+
+        return i420_size;
+
+    }
+
+    bool ScreenCapture::valid()  const noexcept { return av_fmt_ctx_ != nullptr and av_sws_ctx_ != nullptr; }
+    int  ScreenCapture::width()  const noexcept { return out_width;  }
+    int  ScreenCapture::height() const noexcept { return out_height; }
+
+}
+
+#else // other platforms — screenshare unsupported
 
 namespace OpenSocialNet::Video
 {
@@ -364,4 +527,4 @@ namespace OpenSocialNet::Video
 
 }
 
-#endif // __linux__
+#endif // __linux__ / __APPLE__

@@ -30,6 +30,7 @@ namespace OpenSocialNet::Signaling
         std::string sub   { };       // Google user id (= our user_id)
         std::string email { };       // verified email if the email scope was granted
         std::string name { };        // display name from the profile scope
+        std::string picture { };     // profile picture URL from the profile scope
         std::string error { };       // human-readable rejection reason on failure
 
     };

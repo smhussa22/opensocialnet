@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS users (
   user_id     text PRIMARY KEY,
   username    text,
   email       text,
+  avatar_url  text,  -- Google profile picture URL (empty for dev/HMAC users)
   created_at  timestamp
 );
 

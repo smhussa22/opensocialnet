@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <poll.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 // cpp stdlib headers
@@ -968,6 +970,12 @@ int main()
             const int flags { ::fcntl(video_ipc_fd, F_GETFL, 0) };
             if (flags >= 0) ::fcntl(video_ipc_fd, F_SETFL, flags | O_NONBLOCK);
 
+            // A single YUV420P frame (~345KB at 480p) is bigger than the
+            // default socketpair buffer, so writes WILL go partial. Enlarge
+            // the send buffer so a whole frame usually fits in one write.
+            const int sndbuf_size { 4 * 1024 * 1024 };
+            ::setsockopt(video_ipc_fd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size));
+
             video_router.set_frame_callback([video_ipc_fd](std::uint32_t pid, bool is_screen, int width, int height, const std::uint8_t* const planes[3], const int strides[3])
             {
 
@@ -1011,9 +1019,35 @@ int main()
                     dst += width / 2;
                 }
 
-                // Non-blocking write: EAGAIN means parent is busy — drop frame silently.
-                const ::ssize_t written { ::write(video_ipc_fd, buf.data(), total_size) };
-                (void)written;
+                // Frame writes must be all-or-nothing on the stream: a
+                // partial write followed by a drop desyncs the 'OVF'
+                // framing on the GUI side. EAGAIN before any byte went
+                // out -> drop the whole frame; EAGAIN mid-frame -> poll
+                // until writable and finish it.
+                std::size_t off { 0 };
+                while (off < total_size)
+                {
+
+                    const ::ssize_t written { ::write(video_ipc_fd, buf.data() + off, total_size - off) };
+                    if (written > 0)
+                    {
+
+                        off += static_cast<std::size_t>(written);
+                        continue;
+
+                    }
+                    if (written < 0 and (errno == EAGAIN or errno == EWOULDBLOCK))
+                    {
+
+                        if (off == 0) return;
+                        ::pollfd pfd { video_ipc_fd, POLLOUT, 0 };
+                        ::poll(&pfd, 1, 100);
+                        continue;
+
+                    }
+                    return; // hard error — parent likely exited
+
+                }
 
             });
 

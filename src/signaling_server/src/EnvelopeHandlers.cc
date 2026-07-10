@@ -303,7 +303,7 @@ namespace OpenSocialNet::Signaling
             std::string username { verify.name };
             if (username.empty()) username = verify.email;
             if (username.empty()) username = verify.sub;
-            state.scylla->upsert_user(verify.sub, username, verify.email);
+            state.scylla->upsert_user(verify.sub, username, verify.email, verify.picture);
 
             std::cerr << "[auth] JWT ok: sub=" << verify.sub << " email=" << verify.email << '\n';
 
@@ -362,6 +362,7 @@ namespace OpenSocialNet::Signaling
         ::signaling::Envelope envelope { };
         auto* ready = envelope.mutable_ready();
         ready->set_session_id(sess->session_id);
+        ready->set_avatar_url(state.scylla->avatar_for(sess->user_id));
 
         // Subscribing the socket to each of the user's channels is how we
         // turn a single Kafka publish into N WS sends without keeping our
@@ -842,6 +843,7 @@ namespace OpenSocialNet::Signaling
             auto* fs { resp->add_friends() };
             fs->set_user_id(f.friend_user_id);
             fs->set_username(state.scylla->username_for(f.friend_user_id));
+            fs->set_avatar_url(state.scylla->avatar_for(f.friend_user_id));
             fs->set_dm_channel_id(f.dm_channel_id);
             fs->set_since_ms(f.since_ms);
 
@@ -946,6 +948,7 @@ namespace OpenSocialNet::Signaling
         inv->set_channel_id(req.channel_id());
         inv->set_from_user_id(sess->user_id);
         inv->set_from_username(state.scylla->username_for(sess->user_id));
+        inv->set_from_avatar_url(state.scylla->avatar_for(sess->user_id));
         inv->set_to_user_id(req.to_user_id());
         notify_user(state, req.to_user_id(), evt);
         std::cerr << "[call] invite " << sess->user_id << " -> " << req.to_user_id() << " channel=" << req.channel_id() << '\n';

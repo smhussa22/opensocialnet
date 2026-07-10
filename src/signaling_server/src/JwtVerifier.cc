@@ -79,6 +79,7 @@ namespace OpenSocialNet::Signaling
             result.sub = decoded.get_payload_claim("sub").as_string();
             try { result.email = decoded.get_payload_claim("email").as_string(); } catch (...) { }
             try { result.name  = decoded.get_payload_claim("name").as_string();  } catch (...) { }
+            try { result.picture = decoded.get_payload_claim("picture").as_string(); } catch (...) { }
 
             result.ok = true;
             return result;

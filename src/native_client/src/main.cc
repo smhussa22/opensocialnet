@@ -30,6 +30,15 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
+#include <httplib.h>
+
+// stb_image decodes the Google profile picture bytes (JPEG/PNG) we
+// download over HTTPS; SDL3 has no image decoder of its own.
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_PNG
+#define STBI_NO_FAILURE_STRINGS
+#include <stb/stb_image.h>
 
 // project headers
 #include "Ipc.hh"
@@ -141,6 +150,63 @@ namespace
         style.WindowBorderSize = 0.0f;
         style.ChildBorderSize = 0.0f;
         style.PopupBorderSize = 1.0f;
+
+    }
+
+    // Byte length of the UTF-8 code point starting with this lead byte —
+    // initials/truncation must never split one.
+    std::size_t utf8_cp_len(unsigned char c)
+    {
+
+        if ((c >> 5) == 0x6) return 2;
+        if ((c >> 4) == 0xE) return 3;
+        if ((c >> 3) == 0x1E) return 4;
+        return 1;
+
+    }
+
+    // Avatar circle at an absolute screen position: the Google profile
+    // picture when a texture exists for this user, else a hash-colored
+    // disc with the user's initials (whole code points, so CJK renders).
+    void draw_avatar_circle(ImDrawList* dl, const std::unordered_map<std::string, SDL_Texture*>& textures, const std::string& user_id, const std::string& label, ImVec2 center, float r)
+    {
+
+        SDL_Texture* avatar { nullptr };
+        if (const auto it { textures.find(user_id) }; it != textures.end()) avatar = it->second;
+
+        if (avatar != nullptr)
+        {
+
+            dl->AddImageRounded((ImTextureID)(uintptr_t)avatar,
+                                { center.x - r, center.y - r }, { center.x + r, center.y + r },
+                                { 0, 0 }, { 1, 1 }, IM_COL32_WHITE, r);
+            return;
+
+        }
+
+        const std::size_t h { std::hash<std::string>{}(label) };
+        const ImU32 bg { IM_COL32(
+            static_cast<int>(50 + (h & 0x30)),
+            static_cast<int>(80 + ((h >> 6) & 0x30)),
+            static_cast<int>(140 + ((h >> 12) & 0x50)), 255) };
+        dl->AddCircleFilled(center, r, bg);
+
+        // First two code points, ASCII uppercased; multibyte glyphs are
+        // copied whole so CJK/emoji names render.
+        std::string init { };
+        for (std::size_t i { 0 }, taken { 0 }; i < label.size() and taken < 2; ++taken)
+        {
+
+            const std::size_t n { std::min(utf8_cp_len(static_cast<unsigned char>(label[i])), label.size() - i) };
+            if (n == 1) init.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(label[i]))));
+            else init.append(label, i, n);
+            i += n;
+
+        }
+        if (init.empty()) init = "?";
+        const ImVec2 tsz { ImGui::CalcTextSize(init.c_str()) };
+        dl->AddText({ center.x - tsz.x * 0.5f, center.y - tsz.y * 0.5f },
+                    IM_COL32(255, 255, 255, 230), init.c_str());
 
     }
 
@@ -411,17 +477,6 @@ namespace
 
     };
 
-    // One public channel row from ChannelListResponse, shown in the
-    // Join Channel modal's browse list.
-    struct ChannelInfo
-    {
-
-        std::string channel_id { };
-        std::string name       { };
-        std::string kind       { };
-
-    };
-
     // Last LookupUser response stashed for the Add Friend modal to show.
     // Empty user_id means either "no query in flight" or "no match" —
     // disambiguated by `looked_up`, set to true once any response lands.
@@ -469,6 +524,90 @@ namespace
     };
 
 
+    // Decoded profile pictures fetched off-thread. The fetch worker fills
+    // rgba; the render loop turns dirty entries into SDL textures, since
+    // texture creation must happen on the render thread.
+    struct AvatarStore
+    {
+
+        struct Entry
+        {
+
+            std::vector<std::uint8_t> rgba { }; // decoded RGBA pixels
+            int  width  { 0 };     // decoded image width
+            int  height { 0 };     // decoded image height
+            bool dirty  { false }; // decoded but no texture yet
+            bool failed { false }; // fetch/decode failed — initials fallback
+
+        };
+
+        std::mutex mu { };
+        std::unordered_map<std::string, Entry> entries   { }; // user_id -> decoded state
+        std::unordered_map<std::string, bool>  requested { }; // user_id -> fetch already launched
+
+    };
+
+    // Fire-and-forget HTTPS fetch + decode of one profile picture. The
+    // store is static-lifetime so the detached worker can safely outlive
+    // the frame that launched it.
+    void request_avatar(AvatarStore& store, const std::string& user_id, const std::string& url)
+    {
+
+        if (url.empty() or user_id.empty()) return;
+        {
+
+            std::scoped_lock<std::mutex> lock { store.mu };
+            if (store.requested.contains(user_id)) return;
+            store.requested[user_id] = true;
+
+        }
+
+        std::thread { [&store, user_id, url]()
+        {
+
+            auto fail = [&]()
+            {
+
+                std::scoped_lock<std::mutex> lock { store.mu };
+                store.entries[user_id].failed = true;
+
+            };
+
+            // Split "https://host/path" into origin + path for httplib.
+            const std::size_t scheme_end { url.find("://") };
+            if (scheme_end == std::string::npos) { fail(); return; }
+            const std::size_t path_start { url.find('/', scheme_end + 3) };
+            const std::string origin { path_start == std::string::npos ? url : url.substr(0, path_start) };
+            const std::string path   { path_start == std::string::npos ? std::string { "/" } : url.substr(path_start) };
+
+            ::httplib::Client client { origin };
+            client.set_follow_location(true);
+            client.set_connection_timeout(5);
+            client.set_read_timeout(5);
+            const auto res { client.Get(path) };
+            if (!res or res->status != 200 or res->body.empty()) { fail(); return; }
+
+            int w { 0 }, h { 0 }, comp { 0 };
+            ::stbi_uc* pixels { ::stbi_load_from_memory(reinterpret_cast<const ::stbi_uc*>(res->body.data()), static_cast<int>(res->body.size()), &w, &h, &comp, 4) };
+            if (pixels == nullptr or w <= 0 or h <= 0) { fail(); return; }
+
+            {
+
+                std::scoped_lock<std::mutex> lock { store.mu };
+                auto& entry { store.entries[user_id] };
+                entry.rgba.assign(pixels, pixels + static_cast<std::size_t>(w) * h * 4);
+                entry.width  = w;
+                entry.height = h;
+                entry.dirty  = true;
+
+            }
+            ::stbi_image_free(pixels);
+
+        } }.detach();
+
+    }
+
+
     // Latest ClientStats tick from the network child, copied under the
     // AppState mutex for the overlay window to render.
     struct StatsSnapshot
@@ -487,10 +626,10 @@ namespace
 
         std::string self_user_id         { };
         std::string self_display         { };
+        std::unordered_map<std::string, std::string> avatar_urls { }; // user_id -> Google pfp URL (self, friends, callers)
         std::string active_channel       { };
         std::string active_voice_channel { }; // which voice room we're in, empty = not in call
         std::vector<std::string>                              channels      { };
-        std::vector<ChannelInfo>                              browse_channels { }; // last ChannelListResponse for the join modal
         std::vector<FriendEntry>                              friends_       { };
         std::vector<PendingRequest>                           pending        { };
         std::unordered_map<std::string, std::deque<ChatLine>> chat_history  { };
@@ -506,11 +645,13 @@ namespace
             std::string channel_id    { };       // voice room to join on accept
             std::string from_user_id  { };       // whom to send CallAccept/Decline back to
             std::string from_username { };       // display name for the ringing UI
+            std::chrono::steady_clock::time_point started { }; // when the ring arrived (auto-dismiss)
 
         };
         IncomingCall incoming_call         { }; // set by kCallInvite on the reader thread
         std::string  outgoing_call_channel { }; // non-empty while we're ringing someone
         std::string  outgoing_call_user    { }; // whom we're ringing
+        std::chrono::steady_clock::time_point outgoing_call_started { }; // when we started ringing (timeout)
         std::string  call_peer_user_id     { }; // other party while a call is live (CallEnd target)
         bool         call_accepted_flag    { false }; // reader thread saw CallAccept for our ring
         bool         call_ended_flag       { false }; // reader thread saw CallEnd for the live call
@@ -564,6 +705,7 @@ namespace
                 state.gateway_ready = true;
                 state.channels.clear();
                 for (const auto& c : env.ready().channel_ids()) state.channels.push_back(c);
+                if (!env.ready().avatar_url().empty()) state.avatar_urls[state.self_user_id] = env.ready().avatar_url();
                 break;
 
             }
@@ -620,6 +762,7 @@ namespace
                 {
 
                     state.friends_.push_back({ f.user_id(), f.username(), f.dm_channel_id() });
+                    if (!f.avatar_url().empty()) state.avatar_urls[f.user_id()] = f.avatar_url();
 
                 }
                 state.pending.clear();
@@ -666,22 +809,6 @@ namespace
                 for (const auto& ch : state.channels) if (ch == evt.channel_id()) { known = true; break; }
                 if (!known) state.channels.push_back(evt.channel_id());
                 state.active_channel = evt.channel_id();
-                break;
-
-            }
-
-            case ::signaling::Envelope::kChannelListResponse:
-            {
-
-                const auto& resp { env.channel_list_response() };
-                std::scoped_lock<std::mutex> lock { state.mu };
-                state.browse_channels.clear();
-                for (const auto& ch : resp.channels())
-                {
-
-                    state.browse_channels.push_back({ ch.channel_id(), ch.name(), ch.kind() });
-
-                }
                 break;
 
             }
@@ -745,6 +872,8 @@ namespace
                 state.incoming_call.channel_id    = inv.channel_id();
                 state.incoming_call.from_user_id  = inv.from_user_id();
                 state.incoming_call.from_username = inv.from_username();
+                state.incoming_call.started      = std::chrono::steady_clock::now();
+                if (!inv.from_avatar_url().empty()) state.avatar_urls[inv.from_user_id()] = inv.from_avatar_url();
                 break;
 
             }
@@ -843,7 +972,7 @@ int main()
     const std::string google_client_id     { env_str("OSN_GOOGLE_CLIENT_ID",     "") };
     const std::string google_client_secret { env_str("OSN_GOOGLE_CLIENT_SECRET", "") };
     const std::string signaling_host       { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
-    const std::string room_name            { env_str("OSN_ROOM", "general") };
+    const std::string room_name            { env_str("OSN_ROOM", "") };
 
     // ---- SDL + ImGui ----
     if (!SDL_Init(SDL_INIT_VIDEO))
@@ -883,7 +1012,17 @@ int main()
         if (std::ifstream { font_path, std::ios::binary })
         {
 
-            io.Fonts->AddFontFromFileTTF(font_path, 16.0f * scale);
+            // Default ranges stop at Latin Supplement, so names with
+            // extended Latin / Greek / Cyrillic showed as missing glyphs.
+            static ImVector<ImWchar> font_ranges { };
+            ImFontGlyphRangesBuilder builder { };
+            builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+            builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+            builder.AddRanges(io.Fonts->GetGlyphRangesGreek());
+            static const ImWchar latin_ext[] { 0x0100, 0x024F, 0x1E00, 0x1EFF, 0x2018, 0x2019, 0 };
+            builder.AddRanges(latin_ext);
+            builder.BuildRanges(&font_ranges);
+            io.Fonts->AddFontFromFileTTF(font_path, 16.0f * scale, nullptr, font_ranges.Data);
             io.FontGlobalScale = 1.0f / scale;
 
         }
@@ -1003,8 +1142,12 @@ int main()
         const std::string relay_host { signaling_host };
         const std::string local_port { "0" };
 
+        // Idle relay room is per-user: there is no channel concept anymore,
+        // so idle clients must never share a media room. Real rooms are
+        // joined dynamically when a call starts (JoinVoice over IPC).
+        const std::string idle_room { room_name.empty() ? "idle:" + user_name : room_name };
         setenv("OSN_SIGNALING_HOST", signaling_host.c_str(), 1);
-        setenv("OSN_ROOM",           room_name.c_str(),      1);
+        setenv("OSN_ROOM",           idle_room.c_str(),      1);
         setenv("OSN_USER",           user_name.c_str(),      1);
         setenv("OSN_AUTH_TOKEN",     auth_token.c_str(),     1);
         setenv("OSN_LOCAL_PORT",     local_port.c_str(),     1);
@@ -1122,7 +1265,23 @@ int main()
 
                 std::uint8_t hdr[17] { };
                 if (!read_exact(hdr, sizeof hdr)) break;
-                if (std::memcmp(hdr, expected_magic, 4) != 0) break;
+
+                // Resync instead of dying: if the stream ever desyncs,
+                // slide byte-by-byte until the 'OVF' magic lines up again.
+                if (std::memcmp(hdr, expected_magic, 4) != 0)
+                {
+
+                    bool eof { false };
+                    while (std::memcmp(hdr, expected_magic, 4) != 0)
+                    {
+
+                        std::memmove(hdr, hdr + 1, sizeof(hdr) - 1);
+                        if (!read_exact(hdr + sizeof(hdr) - 1, 1)) { eof = true; break; }
+
+                    }
+                    if (eof) break;
+
+                }
 
                 std::uint32_t peer_id { 0 };
                 std::memcpy(&peer_id, hdr + 4, 4);
@@ -1133,7 +1292,10 @@ int main()
                 std::uint32_t data_size { 0 };
                 std::memcpy(&data_size, hdr + 13, 4);
 
-                if (data_size == 0 || data_size > 4u * 1024u * 1024u) break;
+                // Insane size means we latched onto stray bytes that merely
+                // looked like magic — skip this header and resync again.
+                if (data_size == 0 or data_size > 8u * 1024u * 1024u) continue;
+                if (data_size != static_cast<std::uint32_t>(w) * h * 3u / 2u) continue;
 
                 frame_buf.resize(data_size);
                 if (!read_exact(frame_buf.data(), data_size)) break;
@@ -1157,6 +1319,11 @@ int main()
     // SDL textures for remote peers. Render-thread only — no mutex needed.
     std::unordered_map<std::uint32_t, VideoTexEntry> video_textures { };
 
+    // Profile pictures: static so detached fetch workers can safely
+    // outlive the render loop; textures are render-thread only.
+    static AvatarStore avatar_store { };
+    std::unordered_map<std::string, SDL_Texture*> avatar_textures { };
+
     // ---- per-frame UI state ----
     // All media starts OFF — the network child is launched muted
     // (OSN_START_MUTED / OSN_VIDEO_START) and only a joined call flips
@@ -1168,11 +1335,11 @@ int main()
 
     char chat_draft[chat_input_capacity]      { };
     char add_friend_input[friend_input_capacity] { };
-    char join_channel_input[friend_input_capacity] { };
+    char new_group_input[friend_input_capacity] { };
     char screen_window_input[32] { };
     bool show_add_friend_modal   { false };
     bool show_requests_modal     { false };
-    bool show_join_channel_modal { false };
+    bool show_new_group_modal { false };
     bool show_camera_modal       { false };
     bool show_screen_modal       { false };
     bool show_stats_overlay      { false };
@@ -1335,6 +1502,44 @@ int main()
 
         }
 
+        // Ring timeouts: an unanswered outgoing ring auto-cancels after 30s
+        // (CallEnd tells the callee to stop ringing); a stale incoming ring
+        // modal dismisses itself after 45s in case the caller's CallEnd was
+        // lost.
+        {
+
+            const auto now { std::chrono::steady_clock::now() };
+            std::string timeout_channel { };
+            std::string timeout_user    { };
+            {
+
+                std::scoped_lock<std::mutex> lock { state.mu };
+                if (!state.outgoing_call_channel.empty() and now - state.outgoing_call_started > std::chrono::seconds { 30 })
+                {
+
+                    timeout_channel = state.outgoing_call_channel;
+                    timeout_user    = state.outgoing_call_user;
+                    state.outgoing_call_channel.clear();
+                    state.outgoing_call_user.clear();
+                    state.call_status_line = "No answer";
+
+                }
+                if (state.incoming_call.active and now - state.incoming_call.started > std::chrono::seconds { 45 }) state.incoming_call = { };
+
+            }
+            if (!timeout_channel.empty())
+            {
+
+                ::signaling::Envelope env { };
+                auto* end { env.mutable_call_end() };
+                end->set_channel_id(timeout_channel);
+                end->set_to_user_id(timeout_user);
+                ipc.send_envelope(env);
+
+            }
+
+        }
+
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
@@ -1359,11 +1564,8 @@ int main()
             // ---- LEFT SIDEBAR ----
             ImGui::BeginChild("##sidebar", ImVec2 { sidebar_width, 0 }, true);
 
-            ImGui::TextDisabled("Signed in as");
-            ImGui::TextWrapped("%s", state.self_display.c_str());
-
-            // Gateway status: green once Ready arrives, yellow while the
-            // child is still handshaking, red if the child died.
+            // Self header: avatar + name, status dot underneath (green once
+            // Ready arrives, yellow while handshaking, red if the child died).
             {
 
                 bool ready { };
@@ -1373,9 +1575,28 @@ int main()
                     ready = state.gateway_ready;
 
                 }
-                if (!network_child_alive) ImGui::TextColored(ImVec4 { 0.95f, 0.35f, 0.35f, 1.0f }, "* Offline — network process died");
-                else if (ready) ImGui::TextColored(ImVec4 { 0.35f, 0.85f, 0.45f, 1.0f }, "* Connected");
-                else ImGui::TextColored(ImVec4 { 0.95f, 0.75f, 0.30f, 1.0f }, "* Connecting to gateway...");
+
+                ImDrawList* dl { ImGui::GetWindowDrawList() };
+                const float av_d { 34.0f };
+                const ImVec2 pos { ImGui::GetCursorScreenPos() };
+                draw_avatar_circle(dl, avatar_textures, state.self_user_id, state.self_display, ImVec2 { pos.x + av_d * 0.5f, pos.y + av_d * 0.5f }, av_d * 0.5f);
+                ImGui::Dummy(ImVec2 { av_d, av_d });
+                ImGui::SameLine();
+                ImGui::BeginGroup();
+                ImGui::Text("%s", state.self_display.c_str());
+
+                ImU32 dot_col { };
+                const char* dot_label { };
+                if (!network_child_alive) { dot_col = IM_COL32(237, 66, 69, 255); dot_label = "Offline"; }
+                else if (ready)           { dot_col = IM_COL32(59, 165, 93, 255); dot_label = "Online"; }
+                else                      { dot_col = IM_COL32(240, 178, 50, 255); dot_label = "Connecting..."; }
+                const float lh { ImGui::GetTextLineHeight() };
+                const ImVec2 dp { ImGui::GetCursorScreenPos() };
+                dl->AddCircleFilled(ImVec2 { dp.x + 5.0f, dp.y + lh * 0.55f }, 4.5f, dot_col);
+                ImGui::Dummy(ImVec2 { 13.0f, lh });
+                ImGui::SameLine();
+                ImGui::TextDisabled("%s", dot_label);
+                ImGui::EndGroup();
 
             }
             ImGui::Separator();
@@ -1398,7 +1619,7 @@ int main()
             if (ImGui::Button("+ Add Friend", ImVec2 { -1, 0 })) show_add_friend_modal = true;
 
             ImGui::Separator();
-            ImGui::TextDisabled("Channels");
+            ImGui::TextDisabled("Group Chats");
 
             {
 
@@ -1410,13 +1631,13 @@ int main()
                     if (ch.starts_with("dm:")) continue; // DMs render in the Friends list below
                     any_group = true;
                     const bool selected { ch == state.active_channel };
-                    if (ImGui::Selectable(("# " + ch).c_str(), selected)) state.active_channel = ch;
+                    if (ImGui::Selectable(ch.c_str(), selected)) state.active_channel = ch;
 
                 }
-                if (!any_group) ImGui::TextDisabled("No channels yet.\nJoin one below!");
+                if (!any_group) ImGui::TextDisabled("No group chats yet.");
 
             }
-            if (ImGui::Button("+ Join Channel", ImVec2 { -1, 0 })) show_join_channel_modal = true;
+            if (ImGui::Button("+ New Group Chat", ImVec2 { -1, 0 })) show_new_group_modal = true;
 
             ImGui::Separator();
             ImGui::TextDisabled("Friends");
@@ -1440,7 +1661,12 @@ int main()
                     const bool in_call { f.dm_channel_id == state.active_voice_channel };
                     const bool ringing { f.dm_channel_id == state.outgoing_call_channel };
                     const std::string label { f.username.empty() ? f.user_id : f.username };
-                    if (ImGui::Selectable(label.c_str(), sel, 0, ImVec2 { sidebar_width - 75.0f, 0 })) state.active_channel = f.dm_channel_id;
+                    const float av_d { 20.0f };
+                    const ImVec2 fp { ImGui::GetCursorScreenPos() };
+                    draw_avatar_circle(ImGui::GetWindowDrawList(), avatar_textures, f.user_id, label, ImVec2 { fp.x + av_d * 0.5f, fp.y + av_d * 0.5f }, av_d * 0.5f);
+                    ImGui::Dummy(ImVec2 { av_d, av_d });
+                    ImGui::SameLine();
+                    if (ImGui::Selectable(label.c_str(), sel, 0, ImVec2 { sidebar_width - 100.0f, 0 })) state.active_channel = f.dm_channel_id;
                     ImGui::SameLine();
                     if (in_call)      { if (ImGui::SmallButton("Hang Up")) { hangup_channel = f.dm_channel_id; hangup_peer = state.call_peer_user_id; } }
                     else if (ringing) { if (ImGui::SmallButton("Cancel"))  { cancel_channel = f.dm_channel_id; cancel_user = f.user_id; } }
@@ -1463,6 +1689,7 @@ int main()
                 std::scoped_lock<std::mutex> lock { state.mu };
                 state.outgoing_call_channel = ring_channel;
                 state.outgoing_call_user    = ring_user;
+                state.outgoing_call_started = std::chrono::steady_clock::now();
                 state.call_status_line.clear();
 
             }
@@ -1507,7 +1734,7 @@ int main()
                 std::scoped_lock<std::mutex> lock { state.mu };
                 active_channel = state.active_channel;
                 for (const auto& f : state.friends_) if (f.dm_channel_id == active_channel) { active_label = "DM with " + (f.username.empty() ? f.user_id : f.username); break; }
-                if (active_label.empty()) active_label = "#" + active_channel;
+                if (active_label.empty()) active_label = active_channel;
 
             }
 
@@ -1560,11 +1787,40 @@ int main()
 
             }
 
-            ImGui::Text("%s", active_label.c_str());
+            // Kick off profile picture fetches for anyone we have a URL
+            // for, and turn freshly decoded ones into SDL textures.
+            {
+
+                std::vector<std::pair<std::string, std::string>> wanted { };
+                {
+
+                    std::scoped_lock<std::mutex> lock { state.mu };
+                    for (const auto& [uid, url] : state.avatar_urls) wanted.emplace_back(uid, url);
+
+                }
+                for (const auto& [uid, url] : wanted) request_avatar(avatar_store, uid, url);
+
+                std::scoped_lock<std::mutex> lock { avatar_store.mu };
+                for (auto& [uid, entry] : avatar_store.entries)
+                {
+
+                    if (!entry.dirty) continue;
+                    entry.dirty = false;
+                    auto& tex { avatar_textures[uid] };
+                    if (tex != nullptr) { SDL_DestroyTexture(tex); tex = nullptr; }
+                    tex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, entry.width, entry.height);
+                    if (tex != nullptr) SDL_UpdateTexture(tex, nullptr, entry.rgba.data(), entry.width * 4);
+
+                }
+
+            }
+
+            ImGui::Text("%s", active_label.empty() ? "Home" : active_label.c_str());
             ImGui::Separator();
 
             // Snapshot call state for this frame.
             std::string in_call_channel { };
+            std::string in_call_peer_id { };
             std::string in_call_peer_label { };
             std::string ringing_label { };
             std::string status_line { };
@@ -1572,6 +1828,7 @@ int main()
 
                 std::scoped_lock<std::mutex> lock { state.mu };
                 in_call_channel = state.active_voice_channel;
+                in_call_peer_id = state.call_peer_user_id;
                 if (!state.call_peer_user_id.empty()) in_call_peer_label = display_for(state, state.call_peer_user_id);
                 if (!state.outgoing_call_user.empty()) ringing_label = display_for(state, state.outgoing_call_user);
                 status_line = state.call_status_line;
@@ -1595,7 +1852,7 @@ int main()
                     ImDrawList* dl      { ImGui::GetWindowDrawList() };
 
                     // Draw an avatar circle tile at screen position (origin.x + x_off, origin.y + 4).
-                    auto draw_tile = [&](float x_off, const std::string& label, bool speaking, bool muted)
+                    auto draw_tile = [&](float x_off, const std::string& user_id, const std::string& label, bool speaking, bool muted)
                     {
 
                         const ImVec2 pos { origin.x + x_off, origin.y + 4.0f };
@@ -1606,30 +1863,22 @@ int main()
                         if (speaking)
                             dl->AddCircle({ cx, cy }, r + 3.5f, IM_COL32(59, 165, 93, 220), 48, 3.0f);
 
-                        const std::size_t h { std::hash<std::string>{}(label) };
-                        const ImU32 bg { IM_COL32(
-                            static_cast<int>(50 + (h & 0x30)),
-                            static_cast<int>(80 + ((h >> 6) & 0x30)),
-                            static_cast<int>(140 + ((h >> 12) & 0x50)), 255) };
-                        dl->AddCircleFilled({ cx, cy }, r, bg);
-
-                        const std::string init {
-                            label.size() >= 2
-                            ? std::string {
-                                static_cast<char>(std::toupper(static_cast<unsigned char>(label[0]))),
-                                static_cast<char>(std::toupper(static_cast<unsigned char>(label[1]))) }
-                            : (label.empty() ? std::string { "?" }
-                               : std::string { static_cast<char>(std::toupper(static_cast<unsigned char>(label[0]))) })
-                        };
-                        const ImVec2 tsz { ImGui::CalcTextSize(init.c_str()) };
-                        dl->AddText({ cx - tsz.x * 0.5f, cy - tsz.y * 0.5f },
-                                    IM_COL32(255, 255, 255, 230), init.c_str());
+                        draw_avatar_circle(dl, avatar_textures, user_id, label, ImVec2 { cx, cy }, r);
 
                         if (muted)
                             dl->AddCircleFilled({ cx + r * 0.65f, cy + r * 0.65f }, 7.0f,
                                                 IM_COL32(237, 66, 69, 255));
 
-                        const std::string disp { label.size() > 18 ? label.substr(0, 16) + ".." : label };
+                        std::string disp { label };
+                        if (label.size() > 18)
+                        {
+
+                            // Truncate on a code point boundary, never mid-sequence.
+                            std::size_t cut { 0 };
+                            while (cut < 16) cut += std::min(utf8_cp_len(static_cast<unsigned char>(label[cut])), label.size() - cut);
+                            disp = label.substr(0, cut) + "..";
+
+                        }
                         const ImVec2 nsz { ImGui::CalcTextSize(disp.c_str()) };
                         dl->AddText({ pos.x + (tile_sz - nsz.x) * 0.5f, pos.y + tile_sz + 4.0f },
                                     IM_COL32(210, 210, 210, 255), disp.c_str());
@@ -1640,7 +1889,7 @@ int main()
 
                     // Self tile
                     const std::string self_label { state.self_display.empty() ? state.self_user_id : state.self_display };
-                    draw_tile(12.0f, self_label, audio_enabled, !audio_enabled);
+                    draw_tile(12.0f, state.self_user_id, self_label, audio_enabled, !audio_enabled);
 
                     // Peer tile: video texture if their camera is on, else avatar circle
                     if (!in_call_peer_label.empty())
@@ -1662,7 +1911,7 @@ int main()
                         {
 
                             const float x_off { 12.0f + tile_sz + 4.0f + 16.0f };
-                            draw_tile(x_off, in_call_peer_label, true, false);
+                            draw_tile(x_off, in_call_peer_id, in_call_peer_label, true, false);
 
                         }
 
@@ -1808,6 +2057,20 @@ int main()
                     }
 
                 }
+                else if (active_channel.empty())
+                {
+
+                    // Nothing selected — centered empty state.
+                    const ImVec2 avail { ImGui::GetContentRegionAvail() };
+                    const char* line1 { "It's quiet in here." };
+                    const char* line2 { "Pick a friend or group chat on the left to start talking." };
+                    ImGui::Dummy(ImVec2 { 0.0f, avail.y * 0.5f - ImGui::GetTextLineHeightWithSpacing() });
+                    ImGui::SetCursorPosX((avail.x - ImGui::CalcTextSize(line1).x) * 0.5f);
+                    ImGui::TextDisabled("%s", line1);
+                    ImGui::SetCursorPosX((avail.x - ImGui::CalcTextSize(line2).x) * 0.5f);
+                    ImGui::TextDisabled("%s", line2);
+
+                }
                 else
                 {
 
@@ -1820,7 +2083,8 @@ int main()
             if (state.chat_scroll_request.exchange(false, std::memory_order_acq_rel)) ImGui::SetScrollHereY(1.0f);
             ImGui::EndChild();
 
-            // Chat input — Enter sends
+            // Chat input — Enter sends; disabled until a chat is open
+            ImGui::BeginDisabled(active_channel.empty());
             ImGui::SetNextItemWidth(-1.0f);
             if (ImGui::InputText("##chat_input", chat_draft, sizeof chat_draft, ImGuiInputTextFlags_EnterReturnsTrue))
             {
@@ -1835,6 +2099,7 @@ int main()
                 ImGui::SetKeyboardFocusHere(-1);
 
             }
+            ImGui::EndDisabled();
 
             ImGui::EndChild();
 
@@ -1873,7 +2138,16 @@ int main()
                 {
 
                     const std::string who { inc.from_username.empty() ? inc.from_user_id : inc.from_username };
-                    ImGui::Text("%s is calling...", who.c_str());
+                    const float av_d { 56.0f };
+                    const ImVec2 mp { ImGui::GetCursorScreenPos() };
+                    draw_avatar_circle(ImGui::GetWindowDrawList(), avatar_textures, inc.from_user_id, who, ImVec2 { mp.x + av_d * 0.5f, mp.y + av_d * 0.5f }, av_d * 0.5f);
+                    ImGui::Dummy(ImVec2 { av_d, av_d });
+                    ImGui::SameLine();
+                    ImGui::BeginGroup();
+                    ImGui::Dummy(ImVec2 { 0.0f, av_d * 0.5f - ImGui::GetTextLineHeight() });
+                    ImGui::Text("%s", who.c_str());
+                    ImGui::TextDisabled("Incoming call...");
+                    ImGui::EndGroup();
                     ImGui::Spacing();
 
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.24f, 0.65f, 0.36f, 1.0f });
@@ -2011,6 +2285,9 @@ int main()
 
             if (ImGui::Button("Entire screen (auto)", ImVec2 { 260, 0 })) share_now = true;
 
+#ifndef __APPLE__
+            // avfoundation grabs whole displays only, so the X11 window-id
+            // path is Linux-only.
             ImGui::Spacing();
             ImGui::TextDisabled("...or a specific window (xwininfo id):");
             ImGui::SetNextItemWidth(160);
@@ -2023,6 +2300,7 @@ int main()
                 if (target_win != 0) share_now = true;
 
             }
+#endif
 
             if (share_now)
             {
@@ -2148,73 +2426,33 @@ int main()
 
         }
 
-        if (show_join_channel_modal)
+        if (show_new_group_modal)
         {
 
-            ImGui::OpenPopup("Join Channel");
-            join_channel_input[0] = '\0';
-            // refresh the browse list every time the modal opens
-            ::signaling::Envelope env { };
-            env.mutable_list_channels();
-            ipc.send_envelope(env);
-            show_join_channel_modal = false;
+            ImGui::OpenPopup("New Group Chat");
+            new_group_input[0] = '\0';
+            show_new_group_modal = false;
 
         }
-        if (ImGui::BeginPopupModal("Join Channel", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        if (ImGui::BeginPopupModal("New Group Chat", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
 
-            ImGui::TextDisabled("Type a name to join it — new names create the channel.");
+            ImGui::TextDisabled("Name the group — friends who enter the same name join it.");
             ImGui::SetNextItemWidth(360);
-            const bool enter_pressed { ImGui::InputTextWithHint("##channel_name", "channel name", join_channel_input, sizeof join_channel_input, ImGuiInputTextFlags_EnterReturnsTrue) };
+            const bool enter_pressed { ImGui::InputTextWithHint("##group_name", "group name", new_group_input, sizeof new_group_input, ImGuiInputTextFlags_EnterReturnsTrue) };
 
-            const bool join_clicked { ImGui::Button("Join", ImVec2 { 100, 0 }) };
+            const bool create_clicked { ImGui::Button("Create", ImVec2 { 100, 0 }) };
             ImGui::SameLine();
             if (ImGui::Button("Close", ImVec2 { 100, 0 })) ImGui::CloseCurrentPopup();
 
-            if ((join_clicked or enter_pressed) and join_channel_input[0] != '\0')
+            if ((create_clicked or enter_pressed) and new_group_input[0] != '\0')
             {
 
                 ::signaling::Envelope env { };
-                env.mutable_join_channel()->set_name(join_channel_input);
+                env.mutable_join_channel()->set_name(new_group_input);
                 ipc.send_envelope(env);
-                join_channel_input[0] = '\0';
+                new_group_input[0] = '\0';
                 ImGui::CloseCurrentPopup();
-
-            }
-
-            ImGui::Separator();
-            ImGui::TextDisabled("Public channels");
-
-            // Snapshot under the lock, render outside it.
-            std::vector<ChannelInfo> browse { };
-            std::vector<std::string> mine { };
-            {
-
-                std::scoped_lock<std::mutex> lock { state.mu };
-                browse = state.browse_channels;
-                mine = state.channels;
-
-            }
-            if (browse.empty()) ImGui::TextDisabled("No public channels yet — type a name above to create one.");
-            for (const auto& ch : browse)
-            {
-
-                ImGui::PushID(ch.channel_id.c_str());
-                ImGui::TextUnformatted(("# " + ch.name).c_str());
-                ImGui::SameLine(260.0f);
-                bool member { false };
-                for (const auto& m : mine) if (m == ch.channel_id) { member = true; break; }
-                if (member) ImGui::TextDisabled("joined");
-                else if (ImGui::SmallButton("Join"))
-                {
-
-                    ::signaling::Envelope env { };
-                    env.mutable_join_channel()->set_name(ch.channel_id);
-                    ipc.send_envelope(env);
-                    ImGui::CloseCurrentPopup();
-
-                }
-                ImGui::PopID();
 
             }
             ImGui::EndPopup();
