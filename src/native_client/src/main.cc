@@ -1969,47 +1969,54 @@ int main()
                         (ctrl_bar_h - btn_sz) * 0.5f
                     });
 
-                    // Microphone
-                    if (!audio_enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.75f, 0.18f, 0.18f, 1.0f });
-                    if (ImGui::Button(!audio_enabled ? FA_MIC_SLASH : FA_MIC, ImVec2 { btn_sz, btn_sz }))
+                    // Microphone. The click toggles the flag mid-frame, so
+                    // the push/pop decision must be snapshotted BEFORE the
+                    // button or the style stack goes unbalanced (same for
+                    // the three buttons below).
+                    const bool mic_muted { !audio_enabled };
+                    if (mic_muted) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.75f, 0.18f, 0.18f, 1.0f });
+                    if (ImGui::Button(mic_muted ? FA_MIC_SLASH : FA_MIC, ImVec2 { btn_sz, btn_sz }))
                     {
                         audio_enabled = !audio_enabled;
                         if (network_pid > 0) kill(network_pid, SIGUSR1);
                     }
-                    if (!audio_enabled) ImGui::PopStyleColor();
+                    if (mic_muted) ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip(audio_enabled ? "Mute" : "Unmute");
                     ImGui::SameLine();
 
                     // Deafen
-                    if (deafened) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.75f, 0.18f, 0.18f, 1.0f });
-                    if (ImGui::Button(deafened ? FA_VOLUME_XMRK : FA_HEADPHONES, ImVec2 { btn_sz, btn_sz }))
+                    const bool was_deafened { deafened };
+                    if (was_deafened) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.75f, 0.18f, 0.18f, 1.0f });
+                    if (ImGui::Button(was_deafened ? FA_VOLUME_XMRK : FA_HEADPHONES, ImVec2 { btn_sz, btn_sz }))
                     {
                         deafened = !deafened;
                         if (deafened and audio_enabled) { audio_enabled = false; if (network_pid > 0) kill(network_pid, SIGUSR1); }
                     }
-                    if (deafened) ImGui::PopStyleColor();
+                    if (was_deafened) ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip(deafened ? "Undeafen" : "Deafen");
                     ImGui::SameLine();
 
                     // Camera
-                    if (video_enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.18f, 0.48f, 0.80f, 1.0f });
-                    if (ImGui::Button(video_enabled ? FA_VIDEO : FA_VIDEO_SLASH, ImVec2 { btn_sz, btn_sz }))
+                    const bool cam_on { video_enabled };
+                    if (cam_on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.18f, 0.48f, 0.80f, 1.0f });
+                    if (ImGui::Button(cam_on ? FA_VIDEO : FA_VIDEO_SLASH, ImVec2 { btn_sz, btn_sz }))
                     {
                         if (video_enabled) { video_enabled = false; if (network_pid > 0) kill(network_pid, SIGUSR2); }
                         else show_camera_modal = true;
                     }
-                    if (video_enabled) ImGui::PopStyleColor();
+                    if (cam_on) ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip(video_enabled ? "Turn Off Camera" : "Turn On Camera");
                     ImGui::SameLine();
 
                     // Screenshare
-                    if (screenshare_enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.18f, 0.48f, 0.80f, 1.0f });
+                    const bool share_on { screenshare_enabled };
+                    if (share_on) ImGui::PushStyleColor(ImGuiCol_Button, ImVec4 { 0.18f, 0.48f, 0.80f, 1.0f });
                     if (ImGui::Button(FA_DESKTOP, ImVec2 { btn_sz, btn_sz }))
                     {
                         if (screenshare_enabled) { screenshare_enabled = false; if (network_pid > 0) kill(network_pid, SIGURG); }
                         else show_screen_modal = true;
                     }
-                    if (screenshare_enabled) ImGui::PopStyleColor();
+                    if (share_on) ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip(screenshare_enabled ? "Stop Sharing" : "Share Screen");
                     ImGui::SameLine();
 
