@@ -126,6 +126,28 @@ int main()
     ::uWS::App app { };
     state.app = &app;
 
+    // Serve the OAuth client id/secret over plain HTTP so native clients
+    // on fresh machines can sign in without a local .secrets file. The
+    // desktop-app client_secret is non-confidential per Google's docs
+    // (it ships inside any distributed binary anyway). The body is
+    // KEY=VALUE lines — the same format the client's env-file parser
+    // already understands. 404s when the gateway itself has no config.
+    const std::string oauth_client_id     { env_or("OSN_GOOGLE_CLIENT_ID",     "") };
+    const std::string oauth_client_secret { env_or("OSN_GOOGLE_CLIENT_SECRET", "") };
+    app.get("/oauth_config", [oauth_client_id, oauth_client_secret](auto* res, auto* /*req*/)
+    {
+
+        if (oauth_client_id.empty())
+        {
+
+            res->writeStatus("404 Not Found")->end("no oauth config on this gateway\n");
+            return;
+
+        }
+        res->writeHeader("Content-Type", "text/plain")->end("OSN_GOOGLE_CLIENT_ID=" + oauth_client_id + "\nOSN_GOOGLE_CLIENT_SECRET=" + oauth_client_secret + "\n");
+
+    });
+
     // Start the Kafka consumer once we have an App handle to publish into.
     kafka.start_consumer(&app, env_or("KAFKA_BOOTSTRAP", "localhost:19092"));
 

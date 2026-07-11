@@ -27,6 +27,7 @@ cd "$REPO_ROOT"
 # running to enable the Google sign-in path on the gateway. Empty value
 # leaves only HMAC dev auth working.
 : "${OSN_GOOGLE_CLIENT_ID:=}"
+: "${OSN_GOOGLE_CLIENT_SECRET:=}"
 
 # Relay endpoint that signaling_server stamps into VoicePeerJoined replies.
 # Defaults to the EC2 public IP parsed out of EC2_HOST (ubuntu@1.2.3.4).
@@ -37,7 +38,7 @@ echo "relay endpoint clients will be told to dial: $OSN_RELAY_HOST:50100"
 
 # compose.prod.yml interpolates these on EVERY docker compose call (up /
 # ps / restart / logs), so prefix all of them with the same env block.
-COMPOSE_ENV="OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' OSN_RELAY_HOST='$OSN_RELAY_HOST' OSN_GOOGLE_CLIENT_ID='$OSN_GOOGLE_CLIENT_ID'"
+COMPOSE_ENV="OPENSOCIALNET_AUTH_SECRET='$OPENSOCIALNET_AUTH_SECRET' OSN_RELAY_HOST='$OSN_RELAY_HOST' OSN_GOOGLE_CLIENT_ID='$OSN_GOOGLE_CLIENT_ID' OSN_GOOGLE_CLIENT_SECRET='$OSN_GOOGLE_CLIENT_SECRET'"
 
 SSH=(ssh -o StrictHostKeyChecking=no -i "$EC2_KEY" "$EC2_HOST")
 SCP=(scp -o StrictHostKeyChecking=no -i "$EC2_KEY")

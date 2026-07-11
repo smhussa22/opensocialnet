@@ -101,6 +101,10 @@ services:
       # HMAC dev token path works. Sourced from .secrets/google_oauth.env
       # on the deploy host (gitignored).
       OSN_GOOGLE_CLIENT_ID: "${OSN_GOOGLE_CLIENT_ID:-}"
+      # Desktop-app client_secret, served back to native clients via
+      # GET /oauth_config so fresh checkouts sign in with zero local
+      # setup. Google's docs treat desktop secrets as non-confidential.
+      OSN_GOOGLE_CLIENT_SECRET: "${OSN_GOOGLE_CLIENT_SECRET:-}"
       # Relay endpoint stamped into every VoicePeerJoined reply. Must be
       # this host's PUBLIC IP — native clients dial it over the internet,
       # so 127.0.0.1 would have them looping back to themselves.

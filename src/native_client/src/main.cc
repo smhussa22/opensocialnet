@@ -366,7 +366,7 @@ namespace
                 if (google_client_id.empty())
                 {
 
-                    ImGui::TextWrapped("Google sign-in unavailable: OSN_GOOGLE_CLIENT_ID is not set and .secrets/google_oauth.env was not found.");
+                    ImGui::TextWrapped("Google sign-in unavailable: no local OAuth config (OSN_GOOGLE_CLIENT_ID / .secrets/google_oauth.env) and the gateway could not be reached for one.");
 
                 }
                 else if (job->in_flight.load(std::memory_order_acquire))
@@ -969,9 +969,27 @@ int main()
     // sign-in without the user remembering to source the file first.
     load_env_file(".secrets/google_oauth.env");
 
-    const std::string google_client_id     { env_str("OSN_GOOGLE_CLIENT_ID",     "") };
-    const std::string google_client_secret { env_str("OSN_GOOGLE_CLIENT_SECRET", "") };
     const std::string signaling_host       { env_str("OSN_SIGNALING_HOST", "3.144.229.204") };
+    std::string       google_client_id     { env_str("OSN_GOOGLE_CLIENT_ID",     "") };
+    std::string       google_client_secret { env_str("OSN_GOOGLE_CLIENT_SECRET", "") };
+
+    // No local OAuth config (fresh checkout / other machine): ask the
+    // gateway for it, so sign-in works with zero manual setup anywhere.
+    if (google_client_id.empty())
+    {
+
+        const auto remote { OpenSocialNet::NativeClient::fetch_oauth_config(signaling_host) };
+        if (remote.ok)
+        {
+
+            google_client_id     = remote.client_id;
+            google_client_secret = remote.client_secret;
+            std::printf("[auth] OAuth config fetched from gateway %s\n", signaling_host.c_str());
+
+        }
+        else std::printf("[auth] no local OAuth config and gateway %s did not provide one\n", signaling_host.c_str());
+
+    }
     const std::string room_name            { env_str("OSN_ROOM", "") };
 
     // ---- SDL + ImGui ----

@@ -60,6 +60,24 @@ namespace OpenSocialNet::NativeClient
     // Pass it through here; the value goes on the wire to Google only.
     OAuthResult google_login(const std::string& client_id, const std::string& client_secret, int auth_timeout_seconds = 120);
 
+
+    // OAuth client id/secret fetched from the gateway's /oauth_config
+    // endpoint — the zero-setup path for machines with no local
+    // .secrets/google_oauth.env copy.
+    struct OAuthConfig
+    {
+
+        bool        ok            { false }; // fetch succeeded and client_id is non-empty
+        std::string client_id     { };       // OSN_GOOGLE_CLIENT_ID
+        std::string client_secret { };       // OSN_GOOGLE_CLIENT_SECRET (desktop-app type: non-confidential)
+
+    };
+
+    // Blocking HTTP GET http://host:port/oauth_config with a short
+    // timeout. Returns ok=false on any network error, non-200, or a
+    // body missing the client id.
+    OAuthConfig fetch_oauth_config(const std::string& host, int port = 9001, int timeout_seconds = 3);
+
 }
 
 #endif // NATIVE_CLIENT_OAUTH_CLIENT_HH

@@ -426,4 +426,37 @@ namespace OpenSocialNet::NativeClient
 
     }
 
+    OAuthConfig fetch_oauth_config(const std::string& host, int port, int timeout_seconds)
+    {
+
+        OAuthConfig config { };
+
+        ::httplib::Client cli { host, port };
+        cli.set_connection_timeout(timeout_seconds, 0);
+        cli.set_read_timeout(timeout_seconds, 0);
+
+        const auto res { cli.Get("/oauth_config") };
+        if (!res or res->status != 200) return config;
+
+        // body is KEY=VALUE lines, same shape as .secrets/google_oauth.env
+        std::istringstream body { res->body };
+        std::string line { };
+        while (std::getline(body, line))
+        {
+
+            if (!line.empty() and line.back() == '\r') line.pop_back();
+            const auto eq { line.find('=') };
+            if (eq == std::string::npos) continue;
+            const std::string key { line.substr(0, eq) };
+            const std::string val { line.substr(eq + 1) };
+            if (key == "OSN_GOOGLE_CLIENT_ID")     config.client_id     = val;
+            if (key == "OSN_GOOGLE_CLIENT_SECRET") config.client_secret = val;
+
+        }
+
+        config.ok = !config.client_id.empty();
+        return config;
+
+    }
+
 }
