@@ -1170,7 +1170,15 @@ int main()
         setenv("OSN_AUTH_TOKEN",     auth_token.c_str(),     1);
         setenv("OSN_LOCAL_PORT",     local_port.c_str(),     1);
         setenv("OSN_VIDEO",          "1",                    1);
-        setenv("OSN_SCREEN",         "1",                    1);
+        // Screenshare is opt-in, NOT eager. On macOS the child's screen
+        // capture init calls avformat_open_input("Capture screen 0") which
+        // blocks the main thread forever inside a CFRunLoop when the binary
+        // lacks Screen Recording permission (a terminal-launched CLI never
+        // gets the prompt) — the child then never reaches its capture loop,
+        // so no mic frames or keepalives are ever sent and the call has no
+        // audio. Leave it off here; screenshare is triggered on demand via
+        // the set_screen IPC control once the mac capture path is fixed.
+        setenv("OSN_SCREEN",         "0",                    1);
         // Discord-style: no media flows until the user actually joins a
         // call. The child starts muted with the camera off; the GUI
         // unmutes via SIGUSR1 once a call is accepted.
